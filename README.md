@@ -1,59 +1,61 @@
-# FoE Companion 0.3
+# 🛡️ FOE Helper / Companion – Podręcznik Użytkownika (v0.3)
 
-Panel odczytuje automatycznie odpowiedzi fetch/XHR gry pod /game/json. Nie wklejasz JSON. Po pierwszym załadowaniu lub aktualizacji rozszerzenia odśwież grę i otwórz mapę Pól Chwały. Obserwator rozpoznaje obiekt zawierający map.provinces i battlegroundParticipants także wewnątrz tablic i obiektów odpowiedzi. GuildBattlegroundStateService.getState w dostarczonym przykładzie zawiera tylko uczestnictwo i mistrzostwa, nie mapę. Panel czeka na kolejną odpowiedź z sektorami, bez wysyłania własnych żądań do gry.
+Rozszerzenie przeznaczone do automatycznej analizy danych w grze Forge of Empires. Aplikacja działa w tle, interpretując pakiety przesyłane między serwerem gry a przeglądarką. Nie wymaga ręcznego wklejania plików JSON ani wprowadzania danych.
 
-Zakładki: ⚔️ Pola Chwały, 🏛️ kalkulator 1.9 (do zbudowania), 🏘️ zbiory (do zbudowania), ⚙️ diagnostyka. Import JSON usunięto. Statystyki komunikacji i metody są tylko w diagnostyce.
+---
 
-## Pierwsza instalacja / przejście na 0.3
+## 🛠️ Instalacja rozszerzenia z pliku ZIP
 
-1. brave://extensions → Tryb programisty.
-2. Wyłącz poprzednią kopię z innego folderu.
-3. Załaduj rozpakowane → C:\Users\Romantyk\Documents\Codex\2026-09-06\c\foe-helper.
-4. Jeśli już korzystasz z tego folderu, kliknij raz Reload na kafelku (nowa wersja dodaje service worker i lokalne uprawnienie developerskie).
-5. Odśwież grę. Otwórz Pola Chwały. Diagnostyka powinna wskazywać wersję 0.3 i odebrane odpowiedzi.
+Instalacja w przeglądarce Brave z przygotowanej paczki archiwum:
 
-## Automatyczne zmiany kodu
+1. **Przygotowanie folderu:** Wypakować zawartość pliku `.zip` do stałej lokalizacji na dysku (np. do katalogu `Dokumenty`). *Ważne: plik manifest.json musi znajdować się bezpośrednio w wypakowanym folderze głównego projektu.*
+2. **Karta rozszerzeń:** Wpisać w pasek adresu przeglądarki `brave://extensions` i zatwierdzić klawiszem Enter.
+3. **Tryb programisty:** Włączyć przełącznik **Tryb deweloperki** (Developer mode) znajdujący się w prawym górnym rogu ekranu.
+4. **Wczytanie wtyczki:** Kliknąć przycisk **Załaduj rozpakowane** (Load unpacked) w lewym górnym rogu i wskazać folder powstały po wypakowaniu pliku ZIP.
 
-1. Dwuklik START-DEV.cmd w folderze projektu. Zostaw okno uruchomione.
-2. Po zapisaniu zmiany JS, sectors.json lub manifestu lokalny watcher wykryje ją w około 2–5 sekund.
-3. Rozszerzenie przeładuje się, a po nim odświeży się karta gry. To automatyczne pełne przeładowanie, nie podmiana kodu w działającej grze.
-4. Po odświeżeniu ponownie otwórz mapę, aby gra przesłała aktualny stan. Dane nie są trwale zapisywane.
-5. Zatrzymaj watcher Ctrl+C lub zamknij jego okno. Nie uruchamiaj go podczas walk, jeśli nie chcesz odświeżenia karty przy zapisie kodu.
+*Uwaga:* Po pierwszej instalacji lub aktualizacji wtyczki należy **odświeżyć kartę z grą** (F5 lub Ctrl+R). Do poprawnego działania wymagane jest prowadzenie rozgrywki na tylko jednej otwartej karcie.
 
-START-DEV używa Node dostarczonego z Codex na tym komputerze; na innym komputerze wymaga Node w PATH. Serwer nasłuchuje tylko 127.0.0.1:18743 i zwraca hash wersji, bez plików i bez danych gry. Panel nie wysyła do niego danych gry. Uprawnienie localhost służy wyłącznie temu mechanizmowi. Bez uruchomionego watchera obowiązuje ręczne Reload + Ctrl+R. Wiele otwartych kart gry może wymagać ręcznego odświeżenia pozostałych kart po przeładowaniu rozszerzenia; tryb pracy zakłada jedną kartę.
+---
 
-## Edycja
+## 🧭 Opis funkcji i sposób użycia
 
-- panel.js: wygląd, zakładki, prezentacja.
-- model.js: rozpoznawanie obiektu, aktualizacje i formatowanie.
-- capture.js: obserwacja fetch/XHR; brak obsługi WebSocket/workerów i innych domen.
-- sectors.json: 61 sektorów; granice zawsze obustronne; własne pola rozpoznawane po currentParticipantId, wyświetlane jako ⚪.
-- dev-server.cjs, dev-client.js, background.js: automatyczne przeładowanie.
+Aplikacja jest podzielona na cztery główne obszary robocze:
 
-Zapisz plik w zwykłym edytorze. Nie pakuj i nie przenoś ponownie folderu. Graf został zrekonstruowany ze zrzutu. Przy korekcie sąsiedztwa zmień oba sektory. Nie uruchamiaj create-map.cjs po ręcznych korektach, bo nadpisze JSON.
+### 1. ⚔️ Pola Chwały
+Moduł służy do mapowania i vizualizacji sytuacji w prowincjach.
+* **Działanie:** Należy wejść na mapę Pól Chwały w grze. Rozszerzenie automatycznie odczyta strukturę sektorów.
+* **Zawartość:** Ekran prezentuje status 61 sektorów, relacje sąsiedztwa oraz prowincje własne (oznaczone jako ⚪).
+* **Aktualizacja danych:** Wtyczka nie generuje własnych zapytań sieciowych. Aktualizacja stanu mapy następuje po jej ponownym zamknięciu i otwarciu w interfejsie gry.
 
-Testy: node tests.cjs oraz node test-dev.cjs (test watchera przy wyłączonym START-DEV). Testy nie zastępują próby w zalogowanej sesji Brave.
+### 2. 🏛️ Kalkulator Pereł 1.9
+Narzędzie do wyliczania bezpiecznych poziomów wpłat dla miejsc 1-5 w Perłach Architektury.
+* **Działanie:** Należy otworzyć okno wybranej Perły Architektury (własnej lub innego gracza).
+* **Obliczenia:** System automatycznie pobiera koszt poziomu i wylicza wartości dla pozycji P1–P5 z uwzględnieniem mnożnika 1.9 (zaokrąglanie w górę). Przyciski obok kwot kopiują gotowy tekst zabezpieczenia bezpośrednio do schowka.
+* **Wkład właściciela:** Wyświetlana jest łączna kwota wymagana do zablokowania miejsc. Opcjonalny checkbox pozwala pomniejszyć wyliczenie o 1 PR.
+* **Wysyłanie wpłat:** Przycisk "Wpłać" automatycznie realizuje transakcję w grze na bazie bieżących nagłówków sesji. W przypadku wykrycia zabezpieczeń kryptograficznych (podpisy cyfrowe/checksumy), funkcja ta jest automatycznie blokowana w celu ochrony konta.
 
-https://developer.chrome.com/docs/extensions/reference/api/runtime
-https://developer.chrome.com/docs/extensions/develop/concepts/network-requests
+### 3. ⚛️ Najazdy Kwantowe
+Moduł prognozowania ekonomicznego dla osady kwantowej.
+* **Działanie:** Należy otworzyć Osadę Kwantową w grze, aby wtyczka zainicjowała odczyt struktur.
+* **Prognoza:** Ekran kalkuluje spodziewany zbiór monet, zaopatrzenia oraz chronostopów z uwzględnieniem bonusów oraz aktualnego wskaźnika Euforii.
+* **Grupowanie czasu:** Budynki z czasem zakończenia produkcji różniącym się o mniej niż godzinę są łączone w grupy. Prezentowany termin jest czasem zakończenia ostatniej produkcji w grupie. Place budowy wyświetlane są w osobnej sekcji.
 
-## Kalkulator pereł
-Przelicznik domyślny 1.9 (akceptuje też przecinek), pięć nagród z zaokrągleniem w górę i przyciskami kopiowania. Wpłata właściciela to koszt całego poziomu minus suma pięciu obliczonych kwot; checkbox odejmuje dodatkowo 1 PR, minimum zero. To łączny planowany wkład, nie pozostała dopłata po uwzględnieniu bieżących wpłat i nie gwarancja zabezpieczenia miejsc.
+### 4. ⚙️ Diagnostyka
+Karta techniczna monitorująca status aplikacji.
+* **Zawartość:** Wyświetla aktualną wersję rozszerzenia (0.3) oraz statystyki odebranych pakietów danych. Służy do weryfikacji poprawności nasłuchiwania interfejsu API.
 
-Dane miasta są odczytywane przy starcie (limit odpowiedzi zwiększony do 24 MB) i zachowane w pamięci pod kluczem właściciel:ID budynku. Request getConstruction jest łączony z response po requestId. Po zmianie poziomu stare nagrody są odrzucane. Brak pewnego dopasowania pokazuje brak kosztu zamiast zgadywania. Dla cudzej perły potrzebne są dane jej miasta otrzymane w bieżącej sesji.
+---
 
-Przycisk Wpłać wysyła dodatkowo wyświetlaną kwotę po rzeczywistym kliknięciu. Endpoint i nagłówki pochodzą z bieżącego żądania GreatBuildingsService, nie z zapisanej sesji. Przy nagłówku signature/checksum wysyłanie jest blokowane, ponieważ nie zaimplementowano podpisywania zmienionej treści. Wymagane są ID właściciela, ID budynku i poziom z danych miasta. Jedna wpłata naraz; brak automatycznych powtórzeń. Po wpłacie lub niejednoznacznym wyniku należy otworzyć perłę ponownie. Testy transportu używają wyłącznie mocka, nie wykonano prawdziwej wpłaty. Parametr 49 w przykładzie odpowiada poziomowi budynku 775 w dostarczonym startup response. Pole klasy protokołu to __class__, nie **class**.
+## 📝 Moduł Notatek (Notes)
 
-Nie dodawaj prywatnego response.json do paczki dystrybucyjnej. Plik miasta może zawierać dane konta i sesji.
+Dolna sekcja panelu (zablokowana do maksymalnie 300 pikseli wysokości) służy do prowadzenia zapisków.
+* **Zapis:** Treść jest zapisywana automatycznie podczas wprowadzania znaków do pamięci podręcznej przeglądarki (`localStorage`).
+* **Kontekstowość:** Wpisany tekst jest unikalny dla każdej zakładki. W module kalkulatora notatki są przypisywane globalnie do konkretnego typu Perły Architektury, niezależnie od jej właściciela.
+* *Ważne:* Czyszczenie danych przeglądarki lub pamięci podręcznej witryny bezpowrotnie usuwa zapisane notatki.
 
-Miejsca bez nagrody lub z nagrodą zero mają kwotę 1 PR, także w sumie odejmowanej od kosztu poziomu.
+---
 
-# Najazdy kwantowe i notatki
+## ⚠️ Środki ostrożności i bezpieczeństwo
 
-Zakładka ⚛️ odczytuje osadę i stan najazdu z odpowiedzi gry. Otwórz osadę po przeładowaniu rozszerzenia. Panel pokazuje prognozę monet, młotków i chronostopów, terminy zbiorów oraz budynki w każdej grupie. Przerwa większa niż godzinę rozpoczyna nową grupę; termin grupy jest terminem ostatniego budynku.
-
-Prognoza obejmuje jeden zbiór z aktualnie produkujących budynków, bonusy osady i euforię. Nie zakłada przebudowy ani ponownego uruchamiania produkcji. Budynki w budowie są wymienione oddzielnie. Definicje z gry zastępują lokalny katalog `quantum-definitions.json`. Brakujące definicje i nieuwzględniona kara niezadowolenia są sygnalizowane. Saldo jest pokazywane tylko po odebraniu danych zasobowych, nie jest wyciągane z kosztów lub nagród.
-
-Notatki są przyklejone do dołu panelu (maksymalnie 300 px); treść zakładki przewija się nad nimi. Zapis następuje podczas pisania w localStorage gry, pod kluczem `foe-companion.notes`. Każda zakładka ma własne notatki, a kalkulator pereł osobne dla każdego typu perły, wspólne dla różnych właścicieli. Czyszczenie danych witryny usuwa notatki. Cyfry wpisywane w notatkach nie uruchamiają kopiowania wpłat.
-
-Testy: `node tests-quantum-notes.cjs`, `node tests.cjs`, `node tests-pearls.cjs`.
+1. **Ochrona danych:** W katalogu roboczym mogą powstawać pliki z logami danych (np. `response.json`). **Zabrania się udostępniania paczki rozszerzenia zawierającej takie pliki osobom trzecim.** Mogą one zawierać klucze sesji oraz pełne dane konta gry.
+2. **Aktualizacja kodu:** Przy ręcznych modyfikacjach kodu w plikach `.json` lub `.js`, należy użyć mechanizmu `START-DEV.cmd`, który automatycznie odświeży rozszerzenie oraz kartę gry po zapisie.

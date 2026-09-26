@@ -1,0 +1,539 @@
+{
+  "mapId": "volcano_archipelago",
+  "schemaVersion": 1,
+  "source": "Oficjalne metadane gry: https://foepl.innogamescdn.com/start/metadata?id=guild_battleground_maps-a1b2dd721160387c4439213af4b6a3c7335da1b0",
+  "sectors": {
+    "A1M": {
+      "id": 0,
+      "neighbors": [
+        "B1O",
+        "D1B",
+        "A2S",
+        "A2T"
+      ]
+    },
+    "B1O": {
+      "id": 1,
+      "neighbors": [
+        "A1M",
+        "C1N",
+        "B2S",
+        "B2T"
+      ]
+    },
+    "C1N": {
+      "id": 2,
+      "neighbors": [
+        "B1O",
+        "D1B",
+        "C2S",
+        "C2T"
+      ]
+    },
+    "D1B": {
+      "id": 3,
+      "neighbors": [
+        "A1M",
+        "C1N",
+        "D2S",
+        "D2T"
+      ]
+    },
+    "A2S": {
+      "id": 4,
+      "neighbors": [
+        "A1M",
+        "A2T",
+        "D2T",
+        "A3V",
+        "A3X"
+      ]
+    },
+    "A2T": {
+      "id": 5,
+      "neighbors": [
+        "A1M",
+        "A2S",
+        "B2S",
+        "A3Y",
+        "A3Z"
+      ]
+    },
+    "B2S": {
+      "id": 6,
+      "neighbors": [
+        "B1O",
+        "A2T",
+        "B2T",
+        "B3V",
+        "B3X"
+      ]
+    },
+    "B2T": {
+      "id": 7,
+      "neighbors": [
+        "B1O",
+        "B2S",
+        "C2S",
+        "B3Y",
+        "B3Z"
+      ]
+    },
+    "C2S": {
+      "id": 8,
+      "neighbors": [
+        "C1N",
+        "B2T",
+        "C2T",
+        "C3V",
+        "C3X"
+      ]
+    },
+    "C2T": {
+      "id": 9,
+      "neighbors": [
+        "C1N",
+        "C2S",
+        "D2S",
+        "C3Y",
+        "C3Z"
+      ]
+    },
+    "D2S": {
+      "id": 10,
+      "neighbors": [
+        "D1B",
+        "C2T",
+        "D2T",
+        "D3V",
+        "D3X"
+      ]
+    },
+    "D2T": {
+      "id": 11,
+      "neighbors": [
+        "D1B",
+        "A2S",
+        "D2S",
+        "D3Y",
+        "D3Z"
+      ]
+    },
+    "A3V": {
+      "id": 12,
+      "neighbors": [
+        "A2S",
+        "A3X",
+        "D3Z",
+        "A4A",
+        "A4B"
+      ]
+    },
+    "A3X": {
+      "id": 13,
+      "neighbors": [
+        "A2S",
+        "A3V",
+        "A3Y",
+        "A4C",
+        "A4D"
+      ]
+    },
+    "A3Y": {
+      "id": 14,
+      "neighbors": [
+        "A2T",
+        "A3X",
+        "A3Z",
+        "A4E",
+        "A4F"
+      ]
+    },
+    "A3Z": {
+      "id": 15,
+      "neighbors": [
+        "A2T",
+        "A3Y",
+        "B3V",
+        "A4G",
+        "A4H"
+      ]
+    },
+    "B3V": {
+      "id": 16,
+      "neighbors": [
+        "B2S",
+        "A3Z",
+        "B3X",
+        "B4A",
+        "B4B"
+      ]
+    },
+    "B3X": {
+      "id": 17,
+      "neighbors": [
+        "B2S",
+        "B3V",
+        "B3Y",
+        "B4C",
+        "B4D"
+      ]
+    },
+    "B3Y": {
+      "id": 18,
+      "neighbors": [
+        "B2T",
+        "B3X",
+        "B3Z",
+        "B4E",
+        "B4F"
+      ]
+    },
+    "B3Z": {
+      "id": 19,
+      "neighbors": [
+        "B2T",
+        "B3Y",
+        "C3V",
+        "B4G",
+        "B4H"
+      ]
+    },
+    "C3V": {
+      "id": 20,
+      "neighbors": [
+        "C2S",
+        "B3Z",
+        "C3X",
+        "C4A",
+        "C4B"
+      ]
+    },
+    "C3X": {
+      "id": 21,
+      "neighbors": [
+        "C2S",
+        "C3V",
+        "C3Y",
+        "C4C",
+        "C4D"
+      ]
+    },
+    "C3Y": {
+      "id": 22,
+      "neighbors": [
+        "C2T",
+        "C3X",
+        "C3Z",
+        "C4E",
+        "C4F"
+      ]
+    },
+    "C3Z": {
+      "id": 23,
+      "neighbors": [
+        "C2T",
+        "C3Y",
+        "D3V",
+        "C4G",
+        "C4H"
+      ]
+    },
+    "D3V": {
+      "id": 24,
+      "neighbors": [
+        "D2S",
+        "C3Z",
+        "D3X",
+        "D4A",
+        "D4B"
+      ]
+    },
+    "D3X": {
+      "id": 25,
+      "neighbors": [
+        "D2S",
+        "D3V",
+        "D3Y",
+        "D4C",
+        "D4D"
+      ]
+    },
+    "D3Y": {
+      "id": 26,
+      "neighbors": [
+        "D2T",
+        "D3X",
+        "D3Z",
+        "D4E",
+        "D4F"
+      ]
+    },
+    "D3Z": {
+      "id": 27,
+      "neighbors": [
+        "D2T",
+        "A3V",
+        "D3Y",
+        "D4G",
+        "D4H"
+      ]
+    },
+    "A4A": {
+      "id": 28,
+      "neighbors": [
+        "A3V",
+        "A4B",
+        "D4H"
+      ]
+    },
+    "A4B": {
+      "id": 29,
+      "neighbors": [
+        "A3V",
+        "A4A",
+        "A4C"
+      ]
+    },
+    "A4C": {
+      "id": 30,
+      "neighbors": [
+        "A3X",
+        "A4B",
+        "A4D"
+      ]
+    },
+    "A4D": {
+      "id": 31,
+      "neighbors": [
+        "A3X",
+        "A4C",
+        "A4E"
+      ]
+    },
+    "A4E": {
+      "id": 32,
+      "neighbors": [
+        "A3Y",
+        "A4D",
+        "A4F"
+      ]
+    },
+    "A4F": {
+      "id": 33,
+      "neighbors": [
+        "A3Y",
+        "A4E",
+        "A4G"
+      ]
+    },
+    "A4G": {
+      "id": 34,
+      "neighbors": [
+        "A3Z",
+        "A4F",
+        "A4H"
+      ]
+    },
+    "A4H": {
+      "id": 35,
+      "neighbors": [
+        "A3Z",
+        "A4G",
+        "B4A"
+      ]
+    },
+    "B4A": {
+      "id": 36,
+      "neighbors": [
+        "B3V",
+        "A4H",
+        "B4B"
+      ]
+    },
+    "B4B": {
+      "id": 37,
+      "neighbors": [
+        "B3V",
+        "B4A",
+        "B4C"
+      ]
+    },
+    "B4C": {
+      "id": 38,
+      "neighbors": [
+        "B3X",
+        "B4B",
+        "B4D"
+      ]
+    },
+    "B4D": {
+      "id": 39,
+      "neighbors": [
+        "B3X",
+        "B4C",
+        "B4E"
+      ]
+    },
+    "B4E": {
+      "id": 40,
+      "neighbors": [
+        "B3Y",
+        "B4D",
+        "B4F"
+      ]
+    },
+    "B4F": {
+      "id": 41,
+      "neighbors": [
+        "B3Y",
+        "B4E",
+        "B4G"
+      ]
+    },
+    "B4G": {
+      "id": 42,
+      "neighbors": [
+        "B3Z",
+        "B4F",
+        "B4H"
+      ]
+    },
+    "B4H": {
+      "id": 43,
+      "neighbors": [
+        "B3Z",
+        "B4G",
+        "C4A"
+      ]
+    },
+    "C4A": {
+      "id": 44,
+      "neighbors": [
+        "C3V",
+        "B4H",
+        "C4B"
+      ]
+    },
+    "C4B": {
+      "id": 45,
+      "neighbors": [
+        "C3V",
+        "C4A",
+        "C4C"
+      ]
+    },
+    "C4C": {
+      "id": 46,
+      "neighbors": [
+        "C3X",
+        "C4B",
+        "C4D"
+      ]
+    },
+    "C4D": {
+      "id": 47,
+      "neighbors": [
+        "C3X",
+        "C4C",
+        "C4E"
+      ]
+    },
+    "C4E": {
+      "id": 48,
+      "neighbors": [
+        "C3Y",
+        "C4D",
+        "C4F"
+      ]
+    },
+    "C4F": {
+      "id": 49,
+      "neighbors": [
+        "C3Y",
+        "C4E",
+        "C4G"
+      ]
+    },
+    "C4G": {
+      "id": 50,
+      "neighbors": [
+        "C3Z",
+        "C4F",
+        "C4H"
+      ]
+    },
+    "C4H": {
+      "id": 51,
+      "neighbors": [
+        "C3Z",
+        "C4G",
+        "D4A"
+      ]
+    },
+    "D4A": {
+      "id": 52,
+      "neighbors": [
+        "D3V",
+        "C4H",
+        "D4B"
+      ]
+    },
+    "D4B": {
+      "id": 53,
+      "neighbors": [
+        "D3V",
+        "D4A",
+        "D4C"
+      ]
+    },
+    "D4C": {
+      "id": 54,
+      "neighbors": [
+        "D3X",
+        "D4B",
+        "D4D"
+      ]
+    },
+    "D4D": {
+      "id": 55,
+      "neighbors": [
+        "D3X",
+        "D4C",
+        "D4E"
+      ]
+    },
+    "D4E": {
+      "id": 56,
+      "neighbors": [
+        "D3Y",
+        "D4D",
+        "D4F"
+      ]
+    },
+    "D4F": {
+      "id": 57,
+      "neighbors": [
+        "D3Y",
+        "D4E",
+        "D4G"
+      ]
+    },
+    "D4G": {
+      "id": 58,
+      "neighbors": [
+        "D3Z",
+        "D4F",
+        "D4H"
+      ]
+    },
+    "D4H": {
+      "id": 59,
+      "neighbors": [
+        "D3Z",
+        "A4A",
+        "D4G"
+      ]
+    }
+  }
+}

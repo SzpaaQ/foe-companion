@@ -36,24 +36,6 @@ Testy: node tests.cjs oraz node test-dev.cjs (test watchera przy wyłączonym ST
 
 https://developer.chrome.com/docs/extensions/reference/api/runtime
 https://developer.chrome.com/docs/extensions/develop/concepts/network-requests
+# Po dodaniu Najazdów i notatek
 
-## Kalkulator pereł
-Przelicznik domyślny 1.9 (akceptuje też przecinek), pięć nagród z zaokrągleniem w górę i przyciskami kopiowania. Wpłata właściciela to koszt całego poziomu minus suma pięciu obliczonych kwot; checkbox odejmuje dodatkowo 1 PR, minimum zero. To łączny planowany wkład, nie pozostała dopłata po uwzględnieniu bieżących wpłat i nie gwarancja zabezpieczenia miejsc.
-
-Dane miasta są odczytywane przy starcie (limit odpowiedzi zwiększony do 24 MB) i zachowane w pamięci pod kluczem właściciel:ID budynku. Request getConstruction jest łączony z response po requestId. Po zmianie poziomu stare nagrody są odrzucane. Brak pewnego dopasowania pokazuje brak kosztu zamiast zgadywania. Dla cudzej perły potrzebne są dane jej miasta otrzymane w bieżącej sesji.
-
-Przycisk Wpłać wysyła dodatkowo wyświetlaną kwotę po rzeczywistym kliknięciu. Endpoint i nagłówki pochodzą z bieżącego żądania GreatBuildingsService, nie z zapisanej sesji. Przy nagłówku signature/checksum wysyłanie jest blokowane, ponieważ nie zaimplementowano podpisywania zmienionej treści. Wymagane są ID właściciela, ID budynku i poziom z danych miasta. Jedna wpłata naraz; brak automatycznych powtórzeń. Po wpłacie lub niejednoznacznym wyniku należy otworzyć perłę ponownie. Testy transportu używają wyłącznie mocka, nie wykonano prawdziwej wpłaty. Parametr 49 w przykładzie odpowiada poziomowi budynku 775 w dostarczonym startup response. Pole klasy protokołu to __class__, nie **class**.
-
-Nie dodawaj prywatnego response.json do paczki dystrybucyjnej. Plik miasta może zawierać dane konta i sesji.
-
-Miejsca bez nagrody lub z nagrodą zero mają kwotę 1 PR, także w sumie odejmowanej od kosztu poziomu.
-
-# Najazdy kwantowe i notatki
-
-Zakładka ⚛️ odczytuje osadę i stan najazdu z odpowiedzi gry. Otwórz osadę po przeładowaniu rozszerzenia. Panel pokazuje prognozę monet, młotków i chronostopów, terminy zbiorów oraz budynki w każdej grupie. Przerwa większa niż godzinę rozpoczyna nową grupę; termin grupy jest terminem ostatniego budynku.
-
-Prognoza obejmuje jeden zbiór z aktualnie produkujących budynków, bonusy osady i euforię. Nie zakłada przebudowy ani ponownego uruchamiania produkcji. Budynki w budowie są wymienione oddzielnie. Definicje z gry zastępują lokalny katalog `quantum-definitions.json`. Brakujące definicje i nieuwzględniona kara niezadowolenia są sygnalizowane. Saldo jest pokazywane tylko po odebraniu danych zasobowych, nie jest wyciągane z kosztów lub nagród.
-
-Notatki są przyklejone do dołu panelu (maksymalnie 300 px); treść zakładki przewija się nad nimi. Zapis następuje podczas pisania w localStorage gry, pod kluczem `foe-companion.notes`. Każda zakładka ma własne notatki, a kalkulator pereł osobne dla każdego typu perły, wspólne dla różnych właścicieli. Czyszczenie danych witryny usuwa notatki. Cyfry wpisywane w notatkach nie uruchamiają kopiowania wpłat.
-
-Testy: `node tests-quantum-notes.cjs`, `node tests.cjs`, `node tests-pearls.cjs`.
+Nowe pliki: `quantum.js`, `quantum-definitions.json`, `notes.js`. Zmieniony manifest ładuje je automatycznie. Po tej aktualizacji uruchom ponownie `START-DEV.cmd`, jeśli serwer działał już wcześniej — zmieniła się lista obserwowanych plików. Jeśli panel nie zaktualizuje się sam, kliknij przeładowanie rozszerzenia w `brave://extensions` i odśwież grę. Otwórz następnie osadę kwantową, aby pobrać aktualny układ.

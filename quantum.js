@@ -1,6 +1,20 @@
 (function(root){
  const KEYS=['guild_raids_money','guild_raids_supplies','guild_raids_chrono_alloy'];
  const empty=()=>Object.fromEntries(KEYS.map(k=>[k,0]));
+ function ropeCapacity(definitions,wallet){
+   const options=[...definitions.values()].find(d=>d.id.endsWith('_Ropery'))?.components?.AllAge?.production?.options||[];
+   const packs=options.flatMap(o=>(o.products||[]).filter(p=>p.playerResources?.resources?.guild_raids_rope>0).map(p=>({amount:p.playerResources.resources.guild_raids_rope,cost:p.requirements?.resources})));
+   if(!packs.length||!Number.isFinite(wallet.guild_raids_money)||!Number.isFinite(wallet.guild_raids_supplies))return null;
+   const gcd=(a,b)=>b?gcd(b,a%b):a;
+   if(packs.some(p=>!p.cost?.guild_raids_money||!p.cost?.guild_raids_supplies))return null;
+   const unit=packs.map(p=>p.cost.guild_raids_money).reduce(gcd),ratio=packs[0].cost.guild_raids_supplies/packs[0].cost.guild_raids_money;
+   if(packs.some(p=>Math.abs(p.cost.guild_raids_supplies/p.cost.guild_raids_money-ratio)>1e-8))return null;
+   const budget=Math.max(0,Math.floor(Math.min(wallet.guild_raids_money,wallet.guild_raids_supplies/ratio)/unit));
+   if(budget>2000000)return null;
+   const dp=new Float64Array(budget+1);
+   for(let b=1;b<=budget;b++){dp[b]=dp[b-1];for(const p of packs){const cost=p.cost.guild_raids_money/unit;if(cost<=b)dp[b]=Math.max(dp[b],dp[b-cost]+p.amount);}}
+   return dp[budget];
+ }
  const categoryOrder=['main_building','residential','production','goods','culture','decoration'];
  function groupedBuildings(items){const groups=new Map();for(const item of items){const key=item.cityentity_id||item.name;let g=groups.get(key);if(!g){g={name:item.name,category:item.category,count:0,production:empty()};groups.set(key,g);}g.count++;for(const k of KEYS)g.production[k]+=item.production[k];}return [...groups.values()].sort((a,b)=>(categoryOrder.indexOf(a.category)<0?99:categoryOrder.indexOf(a.category))-(categoryOrder.indexOf(b.category)<0?99:categoryOrder.indexOf(b.category))||a.name.localeCompare(b.name,'pl'));}
  function isSettlementResponse(data){return (Array.isArray(data)?data:[data]).some(r=>r?.requestClass==='CityMapService'&&r.requestMethod==='getCityMap'&&r.responseData?.gridId==='guild_raids');}
@@ -15,7 +29,7 @@
     if(v.__class__==='GuildRaidsRunningState'){raid={name:v.raidInstance?.raidName,difficulty:v.raidInstance?.difficultyLevel,endsAt:v.endsAt};version++;}
     if(v.__class__==='ResourceBag'){
      const r=v.resources?.resources||v.resources;
-     if(r&&KEYS.some(k=>Object.hasOwn(r,k))){for(const [k,n] of Object.entries(r))if(k.startsWith('guild_raids_')&&typeof n==='number')wallet[k]=n;version++;}
+     if(r&&Object.keys(r).some(k=>k.startsWith('guild_raids_'))){for(const [k,n] of Object.entries(r))if(k.startsWith('guild_raids_')&&typeof n==='number')wallet[k]=n;version++;}
     }
    });
    // Known entities may be replaced by typed updates; a fresh map handles removals.
@@ -68,7 +82,7 @@
    }}}
    let actionsPerHour=5000;
    for(const e of map.entities){if(e.connected===0)continue;for(const b of component(e)?.boosts?.boosts||[])if(b.type==='guild_raids_action_points_collection')actionsPerHour+=Number(b.value)||0;}
-   return {groups,totals,builds,missing:[...missing],actionsPerHour,raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
+   return {groups,totals,builds,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
   }
   return {consume,summary,definitions,get map(){return map;}};
  }

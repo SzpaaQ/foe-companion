@@ -416,7 +416,7 @@ Otwórz mapę Pól Chwały w grze.
           <button id="copy">
             Kopiuj rozpiskę
           </button>
-          <button id="export-battle" disabled>Pobierz stan mapy JSON</button>
+          <button id="export-battle" disabled style="display:none">Pobierz stan mapy JSON</button>
 
           <p id="feedback"></p>
         </section>
@@ -482,6 +482,12 @@ Otwórz mapę Pól Chwały w grze.
           <hr style="border-color:#345058;margin:16px 0">
           <label><input id="auto-open-quantum" type="checkbox" checked> Automatycznie wysuwaj panel po wejściu do osady Najazdów kwantowych</label>
 
+          <h2>Alerty Pól Chwały</h2>
+          <label><input id="gbg-sound-enabled" type="checkbox"> Alert dźwiękowy przed odblokowaniem sektora</label>
+          <label>Wyprzedzenie (minuty) <input id="gbg-sound-minutes" type="number" min="1" max="60" step="1" value="2" style="width:65px"></label>
+          <button id="gbg-sound-test">Test dźwięku</button>
+          <p id="gbg-sound-status" role="status"></p>
+          <small>Alerty dotyczą sektorów z aktualnej rozpiski. Zostaw kartę gry otwartą; uśpienie karty może opóźnić dźwięk.</small>
           <h2>Diagnostyka</h2>
 
           <small>
@@ -504,6 +510,54 @@ Otwórz mapę Pól Chwały w grze.
     `;
 
     const $ = id => root.getElementById(id);
+    const soundKey='foe-companion.gbgSound';
+    let soundSettings={enabled:false,minutes:2},audioContext=null,alertBusy=false;
+    try{const saved=JSON.parse(localStorage.getItem(soundKey)||'null');if(saved)soundSettings={enabled:saved.enabled===true,minutes:Number.isInteger(saved.minutes)&&saved.minutes>=1&&saved.minutes<=60?saved.minutes:2};}catch{}
+    $('gbg-sound-enabled').checked=soundSettings.enabled;
+    $('gbg-sound-minutes').value=soundSettings.minutes;
+    let sounded={};
+    try{sounded=JSON.parse(sessionStorage.getItem(soundKey+'.sent')||'{}')||{};}catch{}
+    async function unlockAudio(){
+      audioContext ||= new AudioContext();
+      if(audioContext.state==='suspended')await audioContext.resume();
+      return audioContext.state==='running';
+    }
+    function playAlert(){
+      if(audioContext?.state!=='running')return false;
+      for(let i=0;i<3;i++){
+        const osc=audioContext.createOscillator(),gain=audioContext.createGain(),at=audioContext.currentTime+i*.23;
+        osc.frequency.value=i===1?1047:784;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.14,at+.015);gain.gain.exponentialRampToValueAtTime(.001,at+.18);
+        osc.connect(gain);gain.connect(audioContext.destination);osc.start(at);osc.stop(at+.2);
+      }
+      return true;
+    }
+    function checkSectorAlerts(){
+      if(!soundSettings.enabled||!battle||alertBusy)return;
+      const now=Date.now()/1000;
+      const due=FoeModel.rows(battle,$('frontier').checked).rows.filter(r=>r.color!=='⚪'&&r.until>now&&r.until-now<=soundSettings.minutes*60&&!sounded[`${battle.map.id}:${r.id}:${r.until}`]);
+      if(!due.length)return;
+      if(!playAlert()){$('gbg-sound-status').textContent='Kliknij „Test dźwięku”, aby aktywować dźwięk w tej karcie.';return;}
+      alertBusy=true;
+      for(const [key,until] of Object.entries(sounded))if(until<=now)delete sounded[key];
+      for(const r of due)sounded[`${battle.map.id}:${r.id}:${r.until}`]=r.until;
+      try{sessionStorage.setItem(soundKey+'.sent',JSON.stringify(sounded));}catch{}
+      $('gbg-sound-status').textContent='🔔 Wkrótce odblokowanie: '+due.map(r=>r.sector).join(', ');
+      setTimeout(()=>alertBusy=false,800);
+    }
+    $('gbg-sound-enabled').onchange=async()=>{
+      soundSettings.enabled=$('gbg-sound-enabled').checked;localStorage.setItem(soundKey,JSON.stringify(soundSettings));
+      if(soundSettings.enabled){try{await unlockAudio();checkSectorAlerts();}catch{$('gbg-sound-status').textContent='Nie udało się uruchomić dźwięku.';}}
+      else $('gbg-sound-status').textContent='Alerty wyłączone.';
+    };
+    $('gbg-sound-minutes').onchange=()=>{
+      const value=Number($('gbg-sound-minutes').value);
+      if(!Number.isInteger(value)||value<1||value>60){$('gbg-sound-minutes').value=soundSettings.minutes;return;}
+      soundSettings.minutes=value;localStorage.setItem(soundKey,JSON.stringify(soundSettings));checkSectorAlerts();
+    };
+    $('gbg-sound-test').onclick=async()=>{try{await unlockAudio();$('gbg-sound-status').textContent=playAlert()?'Odtworzono dźwięk testowy.':'Dźwięk zablokowany przez przeglądarkę.';}catch{$('gbg-sound-status').textContent='Nie udało się uruchomić dźwięku.';}};
+    document.addEventListener('pointerdown',()=>{if(soundSettings.enabled)unlockAudio().catch(()=>{});},{capture:true});
+    setInterval(checkSectorAlerts,1000);
+    document.addEventListener('visibilitychange',checkSectorAlerts);
     $('quantum-calculation-version').textContent=' · Obliczenia Najazdów: '+(FoeQuantum.calculationVersion||1);
     // Extend the existing UI without replacing user styling and settings.
     const style=document.createElement('style');
@@ -543,24 +597,32 @@ Otwórz mapę Pól Chwały w grze.
     });
     new MutationObserver(syncNotes).observe(root.querySelector('aside'),{subtree:true,attributes:true,attributeFilter:['hidden']});
     window.addEventListener('storage',e=>{if(e.key===FoeNotes.KEY && root.activeElement!==$('notes-text')){noteKey=null;syncNotes();}});
-    const formatResources=r=>`🪙 ${r.guild_raids_money.toLocaleString('pl-PL')}   🔨 ${r.guild_raids_supplies.toLocaleString('pl-PL')}   ⏳ ${r.guild_raids_chrono_alloy.toLocaleString('pl-PL')}`;
+    const formatResources=r=>`🪙 ${r.guild_raids_money.toLocaleString('pl-PL')}   🔨 ${r.guild_raids_supplies.toLocaleString('pl-PL')}   🔩 ${r.guild_raids_chrono_alloy.toLocaleString('pl-PL')}`;
     const formatTime=t=>new Date(t*1000).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
     paintQuantum=()=>{
       const summary=quantumTracker.summary();$('quantum-summary').replaceChildren();$('quantum-groups').replaceChildren();
       const text=(parent,value,tag='p',className='')=>{const node=document.createElement(tag);node.textContent=value;node.className=className;parent.append(node);return node;};
       if(!summary){text($('quantum-summary'),'Otwórz osadę kwantową w grze.');return;}
-      text($('quantum-summary'),'Na pełny zbiór','small');
-      text($('quantum-summary'),formatResources(summary.totals),'p','quantum-resources');
-      text($('quantum-summary'),`⚡ ${summary.actionsPerHour.toLocaleString('pl-PL')} działań/h · ⚔️ ${(summary.actionsPerHour/3500).toLocaleString('pl-PL',{maximumFractionDigits:2})} walk/h`);
-      text($('quantum-summary'),'Przy koszcie 3500 działań za walkę; baza 5000 działań/h + budynki.');
-      text($('quantum-summary'),'Prognoza po jednym zbiorze z każdego produkującego budynku, przy obecnym układzie.');
-      if(summary.missing.length)text($('quantum-summary'),`Niepełne dane: brakuje definicji ${summary.missing.length} budynków. Wynik jest częściowy.`);
-      if(summary.bonuses.unhappy)text($('quantum-summary'),'Zadowolenie poniżej populacji — prognoza nie uwzględnia kary za niezadowolenie.');
-      const wallet=FoeQuantum.KEYS.every(k=>typeof summary.wallet[k]==='number');
-      if(wallet)text($('quantum-summary'),'Zapasy: '+formatResources(summary.wallet));
-      if(summary.raid?.name)text($('quantum-summary'),`${summary.raid.name} · trudność ${summary.raid.difficulty??'—'}`);
-      if(summary.raid?.endsAt)text($('quantum-summary'),'Koniec najazdu: '+formatTime(summary.raid.endsAt));
-      text($('quantum-summary'),`Przy ostatnim zbiorze: ${summary.bonuses.euphoria?'euforia 150%':'bez euforii'} · bonus monet +${summary.bonuses.coins}% · młotków +${summary.bonuses.supplies}%`);
+
+      const heading=$('quantum').querySelector('h2');heading.replaceChildren(document.createTextNode('Najazdy kwantowe'));
+      heading.style.cssText='display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px;margin-bottom:8px';
+      const meta=text(heading,'👑 '+(summary.raid?.difficulty??'—')+' · ⌛ '+(summary.raid?.endsAt?formatTime(summary.raid.endsAt):'—'),'small');meta.style.cssText='font-size:12px;color:#ffd700';
+      const box=$('quantum-summary');box.style.cssText='font-size:13px;line-height:1.4;color:#f0e6d2;margin-bottom:12px';
+      const stocks=text(box,'','div');stocks.style.cssText='display:flex;flex-wrap:wrap;gap:10px;font-weight:bold;border-bottom:1px solid #4a3525;padding-bottom:6px;margin-bottom:8px';
+      const num=n=>Number.isFinite(n)?n.toLocaleString('pl-PL'):'—';
+      for(const [key,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩'],['guild_raids_rope','➰']]){
+        const node=text(stocks,icon+' '+num(summary.wallet[key]),'span');
+        if(key==='guild_raids_rope')node.title=summary.ropeCapacity===null?'Brak danych do obliczenia produkcji lin.':'Z obecnych zapasów można wyprodukować maksymalnie '+num(summary.ropeCapacity)+' lin, łącząc dostępne paczki. Kalkulacja kosztów, bez kosztu budowy wytwórni.';
+      }
+      const mood=text(stocks,'✨ '+(summary.currentBonuses.euphoria?'150%':summary.currentBonuses.unhappy?'niska':'100%'),'span');mood.style.color=summary.currentBonuses.euphoria?'#4caf50':'#dfd1b8';
+      const hourly=text(box,'⚡ '+num(summary.actionsPerHour)+'/h · ⚔️ '+(summary.actionsPerHour/3500).toLocaleString('pl-PL',{maximumFractionDigits:2})+'/h','div');hourly.style.cssText='text-align:center;font-size:12px;color:#a99885;margin-bottom:8px';
+      const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px';box.append(table);
+      const tr=document.createElement('tr');table.append(tr);text(tr,'Następny zbiór:','th');
+      const next=summary.groups[0]?.production;
+      for(const [key,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩']]){const cell=text(tr,icon+' '+num(next?.[key]),'td');cell.style.cssText='padding:6px 4px;border-left:1px solid #4a3525;text-align:center;font-weight:bold';}
+      const foot=text(box,'Bonus 🪙 +'+summary.bonuses.coins+'% / 🔨 +'+summary.bonuses.supplies+'%','div');foot.style.cssText='font-size:11px;color:#a99885;border-top:1px solid #4a3525;padding-top:4px';
+      if(summary.missing.length)text(box,'Niepełne dane: brakuje definicji '+summary.missing.length+' budynków.');
+      if(summary.bonuses.unhappy)text(box,'Prognoza nie uwzględnia kary za niezadowolenie.');
       for(const group of summary.groups){
         const box=document.createElement('div');box.className='quantum-group';$('quantum-groups').append(box);
         text(box,group.at<=Date.now()/1000?'Gotowe do zbioru':formatTime(group.at),'strong');
@@ -569,6 +631,19 @@ Otwórz mapę Pól Chwały w grze.
         for(const item of FoeQuantum.groupedBuildings(group.items))text(details,`${item.count}× ${item.name} · ${formatResources(item.production)}`);
       }
       if(summary.builds.length)text($('quantum-groups'),`W budowie (bez zbioru w prognozie): ${summary.builds.map(b=>b.name+(b.at?' — '+formatTime(b.at):'')).join(', ')}`);
+      const emojiTitles={'🪙':'Monety kwantowe','🔨':'Zaopatrzenie kwantowe (młotki)','🔩':'Chronostopy','👑':'Poziom trudności najazdu','⌛':'Termin zakończenia najazdu','✨':'Mnożnik produkcji wynikający z zadowolenia','⚡':'Produkcja działań kwantowych na godzinę','⚔️':'Walki na godzinę przy koszcie 3500 działań za walkę'};
+      const walker=document.createTreeWalker($('quantum'),NodeFilter.SHOW_TEXT),nodes=[];
+      while(walker.nextNode())nodes.push(walker.currentNode);
+      for(const node of nodes){
+        const parts=node.textContent.split(/(🪙|🔨|🔩|👑|⌛|✨|⚡|⚔️)/u);
+        if(parts.length===1)continue;
+        const fragment=document.createDocumentFragment();
+        for(const part of parts){
+          if(emojiTitles[part]){const icon=document.createElement('span');icon.textContent=part;icon.title=emojiTitles[part];fragment.append(icon);}
+          else fragment.append(document.createTextNode(part));
+        }
+        node.replaceWith(fragment);
+      }
     };
     syncNotes();paintQuantum();
     setInterval(paintQuantum,30000);
@@ -729,6 +804,7 @@ Otwórz mapę Pól Chwały w grze.
       });
 
     paint = () => {
+      checkSectorAlerts();
       $('export-battle').disabled=!battle;
       $('status').textContent =
         `Odebrano ${count} odpowiedzi. ${

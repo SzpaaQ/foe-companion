@@ -68,7 +68,7 @@ test('negFeedback: wrong_person basic', () => {
 
 test('negFeedback: duplicate offers do not consume resource occurrences', () => {
   assert.deepStrictEqual(plain(negFeedback(['a','a','b','c','d'], ['a','b','b','c','d'])),
-    ['correct','wrong_person','correct','correct','correct']);
+    ['correct','not_needed','correct','correct','correct']);
 });
 
 test('negFeedback: HAR example turn1 (petroleum correct)', () => {
@@ -192,4 +192,31 @@ test('real interrupted negotiation history retains candidates after repeated wro
  }
  assert.ok(candidates.every(c=>c[2]==='supplies'&&c[4]==='rubber'));
  assert.ok(Array.isArray(negBestGuess(candidates,goods,[null,null,null,null,'rubber'])));
+});
+
+test('every recorded turn retains solutions, including resolved goods reused in later turns',()=>{
+ for(const session of require('./negotiation-regression.json')){
+  let candidates=negAllCandidates(session.goods),guess=new Array(5).fill(null);
+  for(const [index,turn] of session.turns.entries()){
+   for(const offer of turn.offers)guess[offer.slotId??0]=offer.resourceId;
+   candidates=negFilter(candidates,guess,turn.feedback);
+   assert.ok(candidates.length>0,'empty candidates at turn '+(index+1)+' for '+session.goods.join(','));
+  }
+ }
+});
+test('third-turn loss gives up once before reporting defeat',async()=>{
+ const listeners=[],calls=[],messages=[];let turns=0;
+ class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
+ const window={addEventListener:(t,f)=>listeners.push(f),postMessage:m=>messages.push(m),fetch:async(url,o)=>{
+  const [r]=JSON.parse(o.body);calls.push(r.requestMethod);
+  const responses={getBattleground:{currentParticipantId:1,map:{provinces:[{id:7,ownerId:2}]}},startNegotiation:{__class__:'NegotiationGame',possibleCosts:{resources:{a:1}}},giveUp:{__class__:'Success'}};
+  if(r.requestMethod==='submitTurn')responses.submitTurn={__class__:'NegotiationGameResult',state:++turns===3?'out_of_turns':'ongoing',turnResult:{slots:[]}};
+  return {ok:true,json:async()=>[{...r,responseData:responses[r.requestMethod]}]};
+ }};
+ const source=fs.readFileSync(__dirname+'/capture.js','utf8');
+ vm.runInNewContext(source,{window,location:{origin:'https://t.test',href:'https://t.test/'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'sig'}});
+ const xhr=new XHR();xhr.open('POST','https://t.test/game/json?h=test');xhr.setRequestHeader('Signature','sig');xhr.send('[]');
+ await Promise.all(listeners.map(f=>f({source:window,origin:'https://t.test',data:{channel:'foe-negotiate',token:'n',provinceId:7}})));
+ assert.deepEqual(calls,['getBattleground','startNegotiation','submitTurn','submitTurn','submitTurn','giveUp']);
+ const result=messages.find(m=>m.channel==='foe-negotiate-result');assert.equal(result.surrendered,true);assert.equal(result.ok,false);assert.equal(result.won,false);
 });

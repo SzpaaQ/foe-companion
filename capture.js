@@ -324,8 +324,10 @@
   // Port logiki z foe_negotiation_trainer.py (funkcja feedback_for).
   function negFeedback(secret, guess) {
     // Oferty są oceniane niezależnie: wrong_person oznacza obecność towaru
-    // u innej osoby, bez zużywania liczby jego wystąpień (HAR z dwiema turami).
-    return guess.map((resource,i)=>resource===secret[i]?'correct':secret.includes(resource)?'wrong_person':'not_needed');
+    // u nadal nierozwiązanej osoby. Najpierw usuwamy trafienia correct,
+    // ale nie zużywamy wystąpień podczas oceny kolejnych wrong_person.
+    const unresolved=secret.filter((resource,i)=>guess[i]!==resource);
+    return guess.map((resource,i)=>resource===secret[i]?'correct':unresolved.includes(resource)?'wrong_person':'not_needed');
   }
 
   // Buduje listę wszystkich kombinacji (goods^5) — kandydatów.
@@ -459,7 +461,9 @@
           return;
         }
         if (result.state === 'out_of_turns') {
-          answer(false, 'Wyczerpano limit tur negocjacji.', {won: false, turns: turnNumber});
+          const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+          if(surrendered?.__class__!=='Success')throw Error('Nie potwierdzono poddania przegranej negocjacji. Sprawdź jej stan w grze.');
+          answer(false, 'Wyczerpano limit tur. Negocjacja poddana.', {won: false, turns: turnNumber,surrendered:true});
           return;
         }
 

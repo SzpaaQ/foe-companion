@@ -1,0 +1,1526 @@
+[
+  {
+    "goods": [
+      "tinplate",
+      "petroleum",
+      "money",
+      "machineparts",
+      "explosives"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "tinplate"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "petroleum"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "explosives"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "money"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "machineparts"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "tinplate",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "petroleum",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "explosives",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "money",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "machineparts",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "tinplate"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "machineparts"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "petroleum"
+          }
+        ],
+        "feedback": [
+          {
+            "slotId": 1,
+            "resourceId": "tinplate",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "machineparts",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "petroleum",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "petroleum",
+      "tinplate",
+      "money",
+      "explosives",
+      "machineparts"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "petroleum"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "tinplate"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "machineparts"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "money"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "explosives"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "petroleum",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "tinplate",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "machineparts",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "money",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "explosives",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "tinplate"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "money"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "petroleum"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "petroleum"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "machineparts"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "tinplate",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "money",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "petroleum",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "petroleum",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "machineparts",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "money"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "petroleum"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "tinplate"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "money",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "petroleum",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "tinplate",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "won"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "whaleoil",
+      "fertilizer",
+      "textiles",
+      "coke",
+      "rubber"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "coke"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "textiles",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "coke",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "coke"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "rubber"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "coke",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "fertilizer"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "won"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "fertilizer",
+      "whaleoil",
+      "rubber",
+      "textiles",
+      "supplies"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "supplies"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "textiles"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "supplies",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "textiles",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "whaleoil"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "whaleoil",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "fertilizer",
+      "whaleoil",
+      "supplies",
+      "textiles",
+      "rubber"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "supplies"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "textiles"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "supplies",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "textiles",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "supplies"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "fertilizer"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "supplies",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "fertilizer",
+      "supplies",
+      "whaleoil",
+      "rubber",
+      "textiles"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "supplies"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "rubber"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "supplies",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "supplies"
+          }
+        ],
+        "feedback": [
+          {
+            "slotId": 1,
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "supplies",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "whaleoil",
+      "fertilizer",
+      "textiles",
+      "rubber",
+      "supplies"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "supplies"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "rubber"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "whaleoil",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "supplies",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "textiles",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "rubber",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "textiles"
+          }
+        ],
+        "feedback": [
+          {
+            "slotId": 1,
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "whaleoil",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "rubber",
+      "fertilizer",
+      "textiles",
+      "supplies",
+      "whaleoil"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "supplies"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "textiles",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "supplies",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "whaleoil"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "rubber"
+          }
+        ],
+        "feedback": [
+          {
+            "slotId": 1,
+            "resourceId": "whaleoil",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "won"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "fertilizer",
+      "textiles",
+      "whaleoil",
+      "coke",
+      "rubber"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "coke"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "textiles",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "whaleoil",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "coke",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "rubber"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "fertilizer",
+      "textiles",
+      "rubber",
+      "whaleoil",
+      "coke"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "coke"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "whaleoil"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "textiles",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "coke",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "textiles"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "textiles",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "whaleoil",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      }
+    ]
+  },
+  {
+    "goods": [
+      "fertilizer",
+      "rubber",
+      "textiles",
+      "coke",
+      "whaleoil"
+    ],
+    "turns": [
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "coke"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "textiles",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "coke",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 1,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "fertilizer"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "whaleoil"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "rubber",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 1,
+            "resourceId": "textiles",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "fertilizer",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "ongoing"
+      },
+      {
+        "offers": [
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 0,
+            "resourceId": "textiles"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 2,
+            "resourceId": "rubber"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 3,
+            "resourceId": "whaleoil"
+          },
+          {
+            "__class__": "NegotiationGameSlot",
+            "slotId": 4,
+            "resourceId": "fertilizer"
+          }
+        ],
+        "feedback": [
+          {
+            "resourceId": "textiles",
+            "state": "not_needed",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 2,
+            "resourceId": "rubber",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 3,
+            "resourceId": "whaleoil",
+            "state": "wrong_person",
+            "__class__": "NegotiationGameSlotResult"
+          },
+          {
+            "slotId": 4,
+            "resourceId": "fertilizer",
+            "state": "correct",
+            "__class__": "NegotiationGameSlotResult"
+          }
+        ],
+        "state": "out_of_turns"
+      }
+    ]
+  }
+]

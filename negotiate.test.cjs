@@ -236,5 +236,5 @@ test('server turn error checks running negotiation and gives up',async()=>{
  const xhr=new XHR();xhr.open('POST','https://t.test/game/json?h=test');xhr.setRequestHeader('Signature','sig');xhr.send('[]');
  await Promise.all(listeners.map(f=>f({source:window,origin:'https://t.test',data:{channel:'foe-negotiate',token:'n',provinceId:7}})));
  assert.deepEqual(calls,['getBattleground','startNegotiation','submitTurn','getRunning','giveUp']);
- const result=messages.find(m=>m.channel==='foe-negotiate-result');assert.equal(result.ok,false);assert.match(result.message,/poddana/);
+ const result=messages.find(m=>m.channel==='foe-negotiate-result');assert.equal(result.ok,false);assert.match(result.message,/poddana/);assert.equal(result.stopAuto,true);assert.notEqual(result.continueAuto,true);
 });

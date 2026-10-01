@@ -501,7 +501,7 @@
           }
         }catch{cleanup=' Nie potwierdzono zamknięcia negocjacji — sprawdź ją w grze.';}
       }
-      answer(false, error.message+cleanup);
+      answer(false, error.message+cleanup+' Auto-negocjacje zatrzymane. Sprawdź dostępność towarów przed ponownym uruchomieniem.',{stopAuto:true});
     } finally {
       negBusy = false;
     }

@@ -906,7 +906,7 @@ Otwórz mapę Pól Chwały w grze.
         if(d.ok&&d.refreshed){// progres odświeżony — model jest już zaktualizowany przez emit
         }
         if(autoNegSector!==null){
-          if(!(d.ok&&d.refreshed)&&!d.continueAuto){stopAutoNeg(d.message);}
+          if(d.stopAuto||(!(d.ok&&d.refreshed)&&!d.continueAuto)){stopAutoNeg(d.message);}
           else{
             const id=autoNegSector;
             const delay=(autoSettings.min+Math.random()*(autoSettings.max-autoSettings.min))*1000;

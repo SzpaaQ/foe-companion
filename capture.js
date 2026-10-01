@@ -365,7 +365,7 @@
   function negFilter(candidates, guess, slots) {
     return candidates.filter(secret => {
       for (const {slotId, resourceId, state} of slots) {
-        const actual = negFeedback(secret, guess)[slotId];
+        const actual = negFeedback(secret, guess)[slotId??0];
         if (actual !== state) return false;
       }
       return true;
@@ -444,6 +444,7 @@
       while (turnNumber <= MAX_TURNS) {
         // Wyznacz ruch.
         const guess = negBestGuess(candidates, goods, locked);
+        if(!Array.isArray(guess))throw Error('Brak zgodnego rozwiązania. Dokończ lub anuluj trwającą negocjację w grze przed uruchomieniem nowej.');
         // Wyślij tylko nierozwiązane sloty.
         const slots = guess
           .map((r, i) => ({__class__: 'NegotiationGameSlot', slotId: i, resourceId: r}))
@@ -455,7 +456,7 @@
         const result = await battleCall(connection, 'NegotiationGameService', 'submitTurn', [slots, turnNumber]);
         if (result?.__class__ !== 'NegotiationGameResult') throw Error('Nieoczekiwana odpowiedź serwera.');
 
-        const feedback = result.turnResult?.slots || [];
+        const feedback = (result.turnResult?.slots || []).map(slot=>({...slot,slotId:slot.slotId??0}));
         // Poinformuj panel o wyniku tury.
         window.postMessage({channel: 'foe-negotiate-feedback', token, turn: turnNumber, state: result.state, feedback}, location.origin);
 

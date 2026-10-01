@@ -837,7 +837,7 @@ Otwórz mapę Pól Chwały w grze.
       };
     }
     let autoSector=null,autoTimer=null,lossStreak=0,fights=0,wins=0;
-    const stats=document.createElement('div');stats.title='Wygrane / zakończone walki przyciskami rozszerzenia w tej sesji';stats.textContent='🏆 0/0';$('open-sectors').before(stats);
+    const stats=document.createElement('td');stats.title='Wygrane / zakończone walki przyciskami rozszerzenia w tej sesji';stats.textContent='🏆 0/0';$('open-sectors').before(stats);
     const stopButton=document.createElement('button');stopButton.textContent='⏹ Zatrzymaj autoatak';stopButton.hidden=true;stats.after(stopButton);stopButton.onclick=()=>stopAuto('Autoatak zatrzymany. Rozpoczęte żądanie zostanie dokończone.');
     function stopAuto(message){clearTimeout(autoTimer);autoTimer=null;autoSector=null;stopButton.hidden=true;if(message)$('battle-feedback').textContent=message;paintOpenSectors();}
 
@@ -845,12 +845,15 @@ Otwórz mapę Pól Chwały w grze.
     // Montaż następuje po deklaracji zmiennych negocjacyjnych w kolejnym bloku.
     let negPending=null,negPendingSector=null,negLastSector=null,negLastUntil=0,negLastOK=false;
     let autoNegSector=null,autoNegTimer=null,negWins=0,negDone=0;
-    const negStats=document.createElement('div');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
+    const negStats=document.createElement('td');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
     const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Zatrzymaj auto-negocjację';stopNegButton.hidden=true;
     // Panel tury negocjacji — wyświetlany pod listą sektorów podczas aktywnej negocjacji.
     const negPanel=document.createElement('div');negPanel.id='neg-panel';negPanel.style.cssText='background:#0b191e;border-radius:6px;padding:10px;margin:8px 0;font-size:13px;display:none';
     // Montuj w DOM: negStats i stopNegButton za stopButton, negPanel przed listą sektorów.
-    stopButton.after(negStats);negStats.after(stopNegButton);
+    const counters=document.createElement('table');counters.style.cssText='width:100%;margin:6px 0;border-collapse:collapse';
+    const counterBody=document.createElement('tbody'),counterRow=document.createElement('tr');
+    stats.before(counters);counterRow.append(stats,negStats);counterBody.append(counterRow);counters.append(counterBody);
+    stopButton.after(stopNegButton);
     stopNegButton.onclick=()=>stopAutoNeg('Auto-negocjacja zatrzymana. Trwająca negocjacja zostanie dokończona.');
     $('open-sectors').before(negPanel);
     function stopAutoNeg(message){

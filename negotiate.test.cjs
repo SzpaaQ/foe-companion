@@ -153,3 +153,13 @@ test('solver always wins within 5 turns for 4-good 5-slot puzzle (sampled secret
     assert.ok(turns <= 5, 'solver failed for secret ' + JSON.stringify(secret) + ' (turns=' + turns + ')');
   }
 });
+
+test('omitted slotId in interrupted HAR means slot zero, not an impossible result',()=>{
+ const guess=['whaleoil','rubber','coke','asbestos','petroleum'];
+ const goods=[...guess,'explosives'];
+ const feedback=guess.map((resourceId,i)=>({...i?{slotId:i}:{},resourceId,state:'wrong_person'}));
+ const filtered=negFilter(negAllCandidates(goods),guess,feedback);
+ assert.ok(filtered.length>0);
+ assert.deepEqual(JSON.parse(JSON.stringify(filtered)),JSON.parse(JSON.stringify(negFilter(negAllCandidates(goods),guess,feedback.map((s,i)=>({...s,slotId:i}))))));
+ assert.ok(Array.isArray(negBestGuess(filtered,goods,new Array(5).fill(null))));
+});

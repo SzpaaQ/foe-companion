@@ -843,7 +843,7 @@ Otwórz mapę Pól Chwały w grze.
 
     // --- Negocjacje UI --- (negStats/stopNegButton/negPanel zdefiniowane poniżej, montowane tu)
     // Montaż następuje po deklaracji zmiennych negocjacyjnych w kolejnym bloku.
-    let negPending=null,negLastSector=null,negLastUntil=0,negLastOK=false;
+    let negPending=null,negPendingSector=null,negLastSector=null,negLastUntil=0,negLastOK=false;
     let autoNegSector=null,autoNegTimer=null,negWins=0,negDone=0;
     const negStats=document.createElement('div');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
     const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Zatrzymaj auto-negocjację';stopNegButton.hidden=true;
@@ -966,15 +966,10 @@ Otwórz mapę Pól Chwały w grze.
         const progress=document.createElement('span');progress.textContent=row.progress+'/'+(row.maxProgress??'—');progress.title='Postęp przejęcia naszej gildii';
         const chance=document.createElement('span');chance.textContent='🔥 '+(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');chance.title='Szansa na wzrost oporu';
 
-        // --- Przyciski walki (tylko gdy isAttackBattleType !== false) ---
-        // Gra ustawia isAttackBattleType:true dla sektorów walki.
-        // Dla sektorów negocjacyjnych pole jest undefined w getBattleground.
-        // true  → tylko walka  (⚔️ aktywny, 🤝 ukryty)
-        // false → tylko negocjacja (🤝 aktywny, ⚔️ ukryty) — rzadkie, serwer tak mówi
-        // undefined → typ nieznany, pokaż oba (capture.js odrzuci zły typ z czytelnym błędem)
-        const isBattle = row.isAttackBattleType === true;
-        const isNegOnly = row.isAttackBattleType === false;
-        // dla undefined: pokazujemy oba przyciski
+        // isAttackBattleType wybiera atak lub obronę, nie walkę lub negocjacje.
+        // Obie akcje są dostępne; serwer potwierdza możliwość ich wykonania.
+        const isBattle = false;
+        const isNegOnly = false;
 
         const action=document.createElement('button');
         if(!isNegOnly){

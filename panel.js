@@ -414,6 +414,11 @@ window.addEventListener('message', event => {
         >
           <h2>Pola Chwały</h2>
 
+          <h3>Otwarte sektory</h3>
+          <div id="open-sectors"></div>
+          <p id="battle-feedback" role="status"></p>
+
+          <h3>Rozpiska</h3>
           <label>
             <input
               id="frontier"
@@ -435,9 +440,7 @@ Otwórz mapę Pól Chwały w grze.
           <button id="export-battle" disabled style="display:none">Pobierz stan mapy JSON</button>
 
           <p id="feedback"></p>
-          <h3>Otwarte sektory</h3>
-          <div id="open-sectors"></div>
-          <p id="battle-feedback" role="status"></p>
+
         </section>
 
         <section
@@ -593,6 +596,7 @@ Otwórz mapę Pól Chwały w grze.
       #gbg-stop-controls button[hidden]{display:block!important;visibility:hidden;pointer-events:none}
       #neg-status{height:24px;line-height:24px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       #neg-status::before{content:'Status: ';font-weight:bold}
+      #list{max-height:100px;box-sizing:border-box;overflow-y:auto}
       #open-sectors{height:180px;overflow-y:scroll;overflow-x:hidden}
       #neg-panel{height:160px;box-sizing:border-box;overflow-y:scroll;overflow-x:hidden;overflow-wrap:anywhere}
       #battle-feedback{height:64px;overflow-y:scroll;overflow-wrap:anywhere;margin:8px 0}

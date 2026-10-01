@@ -335,6 +335,7 @@
     const result = [];
     const n = goods.length;
     const total = n ** 5;
+    if(total>200000)throw Error('Zbyt wiele kombinacji dla lokalnego solvera.');
     for (let i = 0; i < total; i++) {
       let x = i;
       const c = new Array(5);
@@ -372,14 +373,15 @@
     if (allCertain) return certain;
 
     // Wygeneruj dozwolone ruchy: respektuj locked i nie powtarzaj odrzuconych.
-    const moves = candidates.length <= 500 ? candidates : candidates.filter((_, i) => i % Math.ceil(candidates.length / 500) === 0);
+    const moves = candidates.length <= 64 ? candidates : candidates.filter((_, i) => i % Math.ceil(candidates.length / 64) === 0);
 
+    const sample=candidates.length<=256?candidates:candidates.filter((_,i)=>i%Math.ceil(candidates.length/256)===0);
     let best = null, bestScore = Infinity;
     for (const guess of moves) {
       // Zastąp zablokowane sloty ich wartościami.
       const g = guess.map((v, i) => locked[i] !== null ? locked[i] : v);
       const buckets = new Map();
-      for (const secret of candidates) {
+      for (const secret of sample) {
         const key = negFeedback(secret, g).join(',');
         buckets.set(key, (buckets.get(key) || 0) + 1);
       }
@@ -392,7 +394,7 @@
   let negBusy = false;
   window.addEventListener('message', async event => {
     if (event.source !== window || event.origin !== location.origin || event.data?.channel !== 'foe-negotiate') return;
-    const {token, provinceId} = event.data;
+    const {token, provinceId, reserve} = event.data;
     const answer = (ok, message, extra = {}) =>
       window.postMessage({channel: 'foe-negotiate-result', token, ok, message, ...extra}, location.origin);
 
@@ -401,7 +403,7 @@
     if (!Number.isSafeInteger(provinceId) || provinceId < 0) return answer(false, 'Nieprawidłowy sektor.');
 
     negBusy = true;
-    const connection = battleTransport;
+    const connection = battleTransport;let started=false;
     try {
       // 1. Pobierz mapę — sprawdź czy sektor jest otwarty i negocjowalny.
       const fresh = await battleCall(connection, 'GuildBattlegroundService', 'getBattleground', []);
@@ -410,7 +412,17 @@
         throw Error('Sektor nie jest już otwarty do negocjacji.');
       // isAttackBattleType określa atak/obronę; oba typy pozwalają negocjować.
 
+      if(Number.isInteger(reserve)&&reserve>=0){
+        let progress=province.conquestProgress?.find(p=>p.participantId===fresh.currentParticipantId);
+        if(!Number.isFinite(progress?.maxProgress)){
+          const detail=await battleCall(connection,'GuildBattlegroundService','getProvince',[provinceId]);
+          progress=detail?.conquestProgress?.find(p=>p.participantId===fresh.currentParticipantId);
+        }
+        if(!Number.isFinite(progress?.maxProgress))throw Error('Brak potwierdzonego limitu sektora — auto-negocjacja zatrzymana.');
+        if(progress.maxProgress-(progress.progress??0)-2<reserve)throw Error('Osiągnięto zapas: pozostaw '+reserve+' walk. Negocjacja może dodać 2 punkty progresu.');
+      }
       // 2. Rozpocznij negocjację.
+      started=true;
       const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId]);
       if (game?.__class__ !== 'NegotiationGame') throw Error('Nie uruchomiono negocjacji.');
 
@@ -463,7 +475,7 @@
         if (result.state === 'out_of_turns') {
           const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[]);
           if(surrendered?.__class__!=='Success')throw Error('Nie potwierdzono poddania przegranej negocjacji. Sprawdź jej stan w grze.');
-          answer(false, 'Wyczerpano limit tur. Negocjacja poddana.', {won: false, turns: turnNumber,surrendered:true});
+          answer(false, 'Wyczerpano limit tur. Negocjacja poddana.', {won: false, turns: turnNumber,surrendered:true,continueAuto:true});
           return;
         }
 
@@ -478,7 +490,18 @@
       }
       answer(false, 'Osiągnięto wewnętrzny limit bezpieczeństwa tur.', {won: false});
     } catch (error) {
-      answer(false, error.message);
+      let cleanup='';
+      if(started){
+        try{
+          const running=await battleCall(connection,'NegotiationGameService','getRunning',[]);
+          if(running?.game?.context==='guildBattleground'&&['ongoing','out_of_turns'].includes(running.state)){
+            const result=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+            if(result?.__class__!=='Success')throw Error('brak potwierdzenia');
+            cleanup=' Aktywna negocjacja została poddana.';
+          }
+        }catch{cleanup=' Nie potwierdzono zamknięcia negocjacji — sprawdź ją w grze.';}
+      }
+      answer(false, error.message+cleanup);
     } finally {
       negBusy = false;
     }

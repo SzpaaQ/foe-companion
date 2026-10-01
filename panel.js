@@ -855,7 +855,8 @@ Otwórz mapę Pól Chwały w grze.
     stats.before(counters);counterRow.append(stats,negStats);counterBody.append(counterRow);counters.append(counterBody);
     stopButton.after(stopNegButton);
     stopNegButton.onclick=()=>stopAutoNeg('Auto-negocjacja zatrzymana. Trwająca negocjacja zostanie dokończona.');
-    $('open-sectors').before(negPanel);
+    $('open-sectors').after(negPanel);
+    const negStatus=document.createElement('div');negStatus.textContent='ready';negStatus.style.cssText='font-size:12px;margin:6px 0';$('open-sectors').before(negStatus);
     function stopAutoNeg(message){
       clearTimeout(autoNegTimer);autoNegTimer=null;autoNegSector=null;stopNegButton.hidden=true;
       if(message)$('battle-feedback').textContent=message;paintOpenSectors();
@@ -865,10 +866,10 @@ Otwórz mapę Pól Chwały w grze.
       if(!battleReady){if(autoNegSector!==null)stopAutoNeg('Brak gotowego połączenia.');return;}
       const row=FoeModel.rows(battle,true).rows.find(r=>r.id===id&&r.until<=Date.now()/1000);
       if(!row){stopAutoNeg('Sektor nie jest już dostępny.');return;}
-      negPending=crypto.randomUUID();negPendingSector=id;
+      negPending=crypto.randomUUID();negPendingSector=id;negStatus.textContent='start nego';
       negPanel.style.display='block';negPanel.innerHTML='<em>Uruchamiam negocjację: '+row.sector+'…</em>';
       $('battle-feedback').textContent='Negocjacja: '+row.sector+'…';
-      window.postMessage({channel:'foe-negotiate',token:negPending,provinceId:id},location.origin);
+      window.postMessage({channel:'foe-negotiate',token:negPending,provinceId:id,...(autoNegSector!==null?{reserve:autoSettings.reserve}:{})},location.origin);
       paintOpenSectors();
     }
     window.addEventListener('message',event=>{
@@ -880,6 +881,7 @@ Otwórz mapę Pól Chwały w grze.
         negPanel.innerHTML='<strong>Negocjacja w toku</strong><br>Towary: '+goodsStr+'<div id="neg-turns"></div>';
       }
       if(d?.channel==='foe-negotiate-turn'&&d.token===negPending){
+        negStatus.textContent=d.turn+' tura';
         let div=negPanel.querySelector('#neg-turns');if(!div){div=document.createElement('div');div.id='neg-turns';negPanel.append(div);}
         const row=document.createElement('div');row.style.cssText='border-top:1px solid #1e3540;padding:4px 0;margin-top:4px';
         row.innerHTML='<small style="color:#90a5ad">Tura '+d.turn+':</small> '+d.guess.join(' · ');
@@ -898,13 +900,13 @@ Otwórz mapę Pól Chwały w grze.
       }
       if(d?.channel==='foe-negotiate-result'&&d.token===negPending){
         negLastSector=negPendingSector;negLastUntil=Date.now()+1800;negLastOK=d.ok===true;
-        negPending=null;negPendingSector=null;
+        negPending=null;negPendingSector=null;negStatus.textContent=d.won===true?'wygrana':d.won===false?'przegrana':'ready';
         $('battle-feedback').textContent=d.message;
         if(typeof d.won==='boolean'){negDone++;if(d.won)negWins++;negStats.textContent='🤝 '+negWins+'/'+negDone;}
         if(d.ok&&d.refreshed){// progres odświeżony — model jest już zaktualizowany przez emit
         }
         if(autoNegSector!==null){
-          if(!d.ok&&!d.won){stopAutoNeg(d.message);}
+          if(!(d.ok&&d.refreshed)&&!d.continueAuto){stopAutoNeg(d.message);}
           else{
             const id=autoNegSector;
             const delay=(autoSettings.min+Math.random()*(autoSettings.max-autoSettings.min))*1000;
@@ -1360,3 +1362,5 @@ Otwórz mapę Pól Chwały w grze.
     mount();
   }
 })();
+// sshdsd
+

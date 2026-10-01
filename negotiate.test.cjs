@@ -220,3 +220,21 @@ test('third-turn loss gives up once before reporting defeat',async()=>{
  assert.deepEqual(calls,['getBattleground','startNegotiation','submitTurn','submitTurn','submitTurn','giveUp']);
  const result=messages.find(m=>m.channel==='foe-negotiate-result');assert.equal(result.surrendered,true);assert.equal(result.ok,false);assert.equal(result.won,false);
 });
+test('server turn error checks running negotiation and gives up',async()=>{
+ const listeners=[],calls=[],messages=[];let turns=0;
+ class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
+ const window={addEventListener:(t,f)=>listeners.push(f),postMessage:m=>messages.push(m),fetch:async(url,o)=>{
+  const [r]=JSON.parse(o.body);calls.push(r.requestMethod);
+  const responses={getBattleground:{currentParticipantId:1,map:{provinces:[{id:7,ownerId:2}]}},startNegotiation:{__class__:'NegotiationGame',possibleCosts:{resources:{a:1}}},giveUp:{__class__:'Success'}};
+  if(r.requestMethod==='submitTurn')responses.submitTurn={__class__:'NegotiationGameResult',state:++turns===3?'out_of_turns':'ongoing',turnResult:{slots:[]}};
+  if(r.requestMethod==='submitTurn')responses.submitTurn={__class__:'Error'};
+  if(r.requestMethod==='getRunning')responses.getRunning={game:{context:'guildBattleground'},state:'ongoing'};
+  return {ok:true,json:async()=>[{...r,responseData:responses[r.requestMethod]}]};
+ }};
+ const source=fs.readFileSync(__dirname+'/capture.js','utf8');
+ vm.runInNewContext(source,{window,location:{origin:'https://t.test',href:'https://t.test/'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'sig'}});
+ const xhr=new XHR();xhr.open('POST','https://t.test/game/json?h=test');xhr.setRequestHeader('Signature','sig');xhr.send('[]');
+ await Promise.all(listeners.map(f=>f({source:window,origin:'https://t.test',data:{channel:'foe-negotiate',token:'n',provinceId:7}})));
+ assert.deepEqual(calls,['getBattleground','startNegotiation','submitTurn','getRunning','giveUp']);
+ const result=messages.find(m=>m.channel==='foe-negotiate-result');assert.equal(result.ok,false);assert.match(result.message,/poddana/);
+});

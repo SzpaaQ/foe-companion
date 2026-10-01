@@ -24,7 +24,7 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
   const ctx={window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
-  return {calls,messages,async negotiate(){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7}})));},async fight(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
+  return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
 }
 test('fresh reserve check: 196/200 fights once; 197/200 stops without army mutation',async()=>{
   const h=harness();const first=await h.fight(3);assert.equal(first.won,true);assert.equal(first.refreshed,true);
@@ -81,8 +81,13 @@ test('missing live progress stops auto even after a win',()=>{
 test('negotiation starts for attack, defense and omitted battle type; locked sectors remain blocked',async()=>{
  for(const attackType of [true,false,undefined]){
   const h=harness({attackType});await h.negotiate();
-  assert.deepEqual(h.calls,['getBattleground','startNegotiation']);
+  assert.deepEqual(h.calls,['getBattleground','startNegotiation','getRunning']);
  }
  const h=harness({attackType:true,lockedUntil:Date.now()/1000+3600});await h.negotiate();
  assert.deepEqual(h.calls,['getBattleground']);
+});
+
+test('auto negotiation reserves space for its two progress points',async()=>{
+ const blocked=harness({progress:197,max:200});await blocked.negotiate(2);assert.deepEqual(blocked.calls,['getBattleground']);
+ const allowed=harness({progress:196,max:200});await allowed.negotiate(2);assert.ok(allowed.calls.includes('startNegotiation'));
 });

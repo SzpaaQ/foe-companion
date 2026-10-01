@@ -3,11 +3,11 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 
-function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false}={}){
+function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>messages.push(m)};
-  const map=()=>({currentParticipantId:1,map:{provinces:[{id:7,ownerId:2,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
+  const map=()=>({currentParticipantId:1,map:{provinces:[{id:7,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
   window.fetch=async(url,options)=>{
     const [r]=JSON.parse(options.body);calls.push(r.requestMethod);
     let data={};
@@ -24,7 +24,7 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false}=
   const ctx={window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
-  return {calls,messages,async fight(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
+  return {calls,messages,async negotiate(){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7}})));},async fight(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
 }
 test('fresh reserve check: 196/200 fights once; 197/200 stops without army mutation',async()=>{
   const h=harness();const first=await h.fight(3);assert.equal(first.won,true);assert.equal(first.refreshed,true);
@@ -76,4 +76,13 @@ test('waves do not count; stop cancels next scheduled request',()=>{
 test('missing live progress stops auto even after a win',()=>{
   const h=controller();h.context.control.start();h.result(true,{refreshed:false});
   assert.equal(h.context.control.state().autoSector,null);assert.equal(h.timers.size,0);assert.equal(h.context.control.state().wins,1);
+});
+
+test('negotiation starts for attack, defense and omitted battle type; locked sectors remain blocked',async()=>{
+ for(const attackType of [true,false,undefined]){
+  const h=harness({attackType});await h.negotiate();
+  assert.deepEqual(h.calls,['getBattleground','startNegotiation']);
+ }
+ const h=harness({attackType:true,lockedUntil:Date.now()/1000+3600});await h.negotiate();
+ assert.deepEqual(h.calls,['getBattleground']);
 });

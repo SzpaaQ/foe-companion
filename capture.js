@@ -423,8 +423,7 @@
       const province = fresh.map?.provinces?.find(p => (p.id ?? 0) === provinceId);
       if (!province || province.isSpawnSpot || province.ownerId === fresh.currentParticipantId || province.lockedUntil > Date.now() / 1000)
         throw Error('Sektor nie jest już otwarty do negocjacji.');
-      if (province.isAttackBattleType !== false)
-        throw Error('Ten sektor wymaga walki, nie negocjacji.');
+      // isAttackBattleType określa atak/obronę; oba typy pozwalają negocjować.
 
       // 2. Rozpocznij negocjację.
       const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId]);

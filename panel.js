@@ -581,6 +581,22 @@ Otwórz mapę Pól Chwały w grze.
     // Extend the existing UI without replacing user styling and settings.
     const style=document.createElement('style');
     style.textContent=`aside{display:flex;flex-direction:column;overflow:hidden}header,nav{flex-shrink:0}aside>section{flex:1;min-height:0;overflow:auto}#notes-dock{flex-shrink:0;max-height:300px;overflow:hidden;border-top:1px solid #345058;padding-top:8px;margin-top:10px;display:flex;flex-direction:column}#notes-dock label{margin:0 0 4px}#notes-text{font:13px/1.5 system-ui;box-sizing:border-box;width:100%;height:140px;min-height:60px;max-height:250px;resize:vertical;background:#0b191e;color:#e7eeee;border:1px solid #45616a;border-radius:7px;padding:8px}#notes-status{font-size:11px;min-height:16px;color:#90a5ad}.quantum-group{border-top:1px solid #345058;padding:10px 0}.quantum-resources{font-size:16px;color:#f1d69a}`;
+    style.textContent+=`
+      *{scrollbar-width:thin;scrollbar-color:#45616a transparent}
+      *::-webkit-scrollbar{width:4px;height:4px}
+      *::-webkit-scrollbar-thumb{background:#45616a;border-radius:4px}
+      *::-webkit-scrollbar-track{background:transparent}
+      aside>section,#list,#open-sectors,#neg-panel,#battle-feedback{scrollbar-gutter:stable;overflow-anchor:none}
+      #gbg-controls{position:sticky;top:0;z-index:2;background:#102127;padding:4px 0}
+      #gbg-stop-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px;height:38px;align-items:stretch}
+      #gbg-stop-controls button{margin:0;padding:4px;font-size:11px;min-width:0}
+      #gbg-stop-controls button[hidden]{display:block!important;visibility:hidden;pointer-events:none}
+      #neg-status{height:24px;line-height:24px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #neg-status::before{content:'Status: ';font-weight:bold}
+      #open-sectors{height:180px;overflow-y:scroll;overflow-x:hidden}
+      #neg-panel{height:160px;box-sizing:border-box;overflow-y:scroll;overflow-x:hidden;overflow-wrap:anywhere}
+      #battle-feedback{height:64px;overflow-y:scroll;overflow-wrap:anywhere;margin:8px 0}
+    `;
     root.append(style);
     const qtab=document.createElement('button');qtab.dataset.page='quantum';qtab.setAttribute('role','tab');qtab.setAttribute('aria-selected','false');qtab.title='Najazdy kwantowe';qtab.setAttribute('aria-label','Najazdy kwantowe');qtab.textContent='⚛️';
     root.querySelector('nav').insertBefore(qtab,root.querySelector('[data-page="settings"]'));
@@ -848,15 +864,17 @@ Otwórz mapę Pól Chwały w grze.
     const negStats=document.createElement('td');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
     const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Zatrzymaj auto-negocjację';stopNegButton.hidden=true;
     // Panel tury negocjacji — wyświetlany pod listą sektorów podczas aktywnej negocjacji.
-    const negPanel=document.createElement('div');negPanel.id='neg-panel';negPanel.style.cssText='background:#0b191e;border-radius:6px;padding:10px;margin:8px 0;font-size:13px;display:none';
+    const negPanel=document.createElement('div');negPanel.id='neg-panel';negPanel.style.cssText='background:#0b191e;border-radius:6px;padding:10px;margin:8px 0;font-size:13px';negPanel.textContent='Przebieg negocjacji pojawi się tutaj.';
     // Montuj w DOM: negStats i stopNegButton za stopButton, negPanel przed listą sektorów.
     const counters=document.createElement('table');counters.style.cssText='width:100%;margin:6px 0;border-collapse:collapse';
     const counterBody=document.createElement('tbody'),counterRow=document.createElement('tr');
     stats.before(counters);counterRow.append(stats,negStats);counterBody.append(counterRow);counters.append(counterBody);
-    stopButton.after(stopNegButton);
+    const controls=document.createElement('div');controls.id='gbg-controls';
+    const stops=document.createElement('div');stops.id='gbg-stop-controls';
+    stopButton.before(controls);stops.append(stopButton,stopNegButton);controls.append(stops);
     stopNegButton.onclick=()=>stopAutoNeg('Auto-negocjacja zatrzymana. Trwająca negocjacja zostanie dokończona.');
     $('open-sectors').after(negPanel);
-    const negStatus=document.createElement('div');negStatus.textContent='ready';negStatus.style.cssText='font-size:12px;margin:6px 0';$('open-sectors').before(negStatus);
+    const negStatus=document.createElement('div');negStatus.id='neg-status';negStatus.textContent='ready';negStatus.style.cssText='font-size:12px';controls.append(negStatus);
     function stopAutoNeg(message){
       clearTimeout(autoNegTimer);autoNegTimer=null;autoNegSector=null;stopNegButton.hidden=true;
       if(message)$('battle-feedback').textContent=message;paintOpenSectors();
@@ -914,7 +932,7 @@ Otwórz mapę Pól Chwały w grze.
           }
         } else {
           // Jednorazowa negocjacja skończona — ukryj panel po chwili.
-          setTimeout(()=>{if(!negPending)negPanel.style.display='none';},4000);
+          // Zachowaj przebieg i jego stałą wysokość również po zakończeniu.
         }
         paintOpenSectors();
       }

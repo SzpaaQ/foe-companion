@@ -1,0 +1,8 @@
+*.har
+*.pem
+*.crx
+transcript.json
+har/
+*.png
+__pycache__/
+node_modules/

@@ -323,26 +323,9 @@
   // feedback_for(secret, guess) → ['correct'|'wrong_person'|'not_needed', ...]
   // Port logiki z foe_negotiation_trainer.py (funkcja feedback_for).
   function negFeedback(secret, guess) {
-    const n = secret.length;
-    const result = new Array(n).fill(null);
-    const remaining = new Map();
-    // Krok 1: blokuj dokładne trafienia (correct).
-    for (let i = 0; i < n; i++) {
-      if (guess[i] === secret[i]) { result[i] = 'correct'; }
-      else { remaining.set(secret[i], (remaining.get(secret[i]) || 0) + 1); }
-    }
-    // Krok 2: wrong_person lub not_needed.
-    for (let i = 0; i < n; i++) {
-      if (result[i] !== null) continue;
-      const g = guess[i];
-      if ((remaining.get(g) || 0) > 0) {
-        result[i] = 'wrong_person';
-        remaining.set(g, remaining.get(g) - 1);
-      } else {
-        result[i] = 'not_needed';
-      }
-    }
-    return result;
+    // Oferty są oceniane niezależnie: wrong_person oznacza obecność towaru
+    // u innej osoby, bez zużywania liczby jego wystąpień (HAR z dwiema turami).
+    return guess.map((resource,i)=>resource===secret[i]?'correct':secret.includes(resource)?'wrong_person':'not_needed');
   }
 
   // Buduje listę wszystkich kombinacji (goods^5) — kandydatów.
@@ -444,7 +427,12 @@
       while (turnNumber <= MAX_TURNS) {
         // Wyznacz ruch.
         const guess = negBestGuess(candidates, goods, locked);
-        if(!Array.isArray(guess))throw Error('Brak zgodnego rozwiązania. Dokończ lub anuluj trwającą negocjację w grze przed uruchomieniem nowej.');
+        if(!Array.isArray(guess)){
+          const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+          if(surrendered?.__class__!=='Success')throw Error('Nie potwierdzono poddania negocjacji. Sprawdź jej stan w grze.');
+          answer(false,'Solver nie znalazł zgodnego rozwiązania. Negocjacja poddana; automatyzacja zatrzymana.',{won:false,surrendered:true});
+          return;
+        }
         // Wyślij tylko nierozwiązane sloty.
         const slots = guess
           .map((r, i) => ({__class__: 'NegotiationGameSlot', slotId: i, resourceId: r}))

@@ -35,6 +35,22 @@ const { negFeedback, negAllCandidates, negFilter, negBestGuess } = loadSolver();
 // Helper: convert VM array to plain JS array for cross-context comparison
 const plain = arr => JSON.parse(JSON.stringify(arr));
 
+test('no solution gives up once and reports confirmed surrender without submitting a turn',async()=>{
+ const listeners=[],calls=[],messages=[];
+ class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
+ const window={addEventListener:(t,f)=>listeners.push(f),postMessage:m=>messages.push(m),fetch:async(url,o)=>{
+  const [r]=JSON.parse(o.body);calls.push(r.requestMethod);
+  const responses={getBattleground:{currentParticipantId:1,map:{provinces:[{id:7,ownerId:2}]}},startNegotiation:{__class__:'NegotiationGame',possibleCosts:{resources:{a:1}}},giveUp:{__class__:'Success'}};
+  return {ok:true,json:async()=>[{...r,responseData:responses[r.requestMethod]}]};
+ }};
+ const source=fs.readFileSync(__dirname+'/capture.js','utf8').replace('const guess = negBestGuess(candidates, goods, locked);','const guess = null;');
+ vm.runInNewContext(source,{window,location:{origin:'https://t.test',href:'https://t.test/'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'sig'}});
+ const xhr=new XHR();xhr.open('POST','https://t.test/game/json?h=test');xhr.setRequestHeader('Signature','sig');xhr.send('[]');
+ await Promise.all(listeners.map(f=>f({source:window,origin:'https://t.test',data:{channel:'foe-negotiate',token:'n',provinceId:7}})));
+ assert.deepEqual(calls,['getBattleground','startNegotiation','giveUp']);
+ const result=messages.find(m=>m.channel==='foe-negotiate-result');assert.equal(result.surrendered,true);assert.equal(result.ok,false);assert.equal(result.won,false);
+});
+
 test('negFeedback: all correct', () => {
   assert.deepStrictEqual(plain(negFeedback(['a','b','c','d','e'], ['a','b','c','d','e'])),
     ['correct','correct','correct','correct','correct']);
@@ -50,9 +66,9 @@ test('negFeedback: wrong_person basic', () => {
     ['wrong_person','wrong_person','correct','correct','correct']);
 });
 
-test('negFeedback: duplicate goods — correct wins over wrong_person', () => {
+test('negFeedback: duplicate offers do not consume resource occurrences', () => {
   assert.deepStrictEqual(plain(negFeedback(['a','a','b','c','d'], ['a','b','b','c','d'])),
-    ['correct','not_needed','correct','correct','correct']);
+    ['correct','wrong_person','correct','correct','correct']);
 });
 
 test('negFeedback: HAR example turn1 (petroleum correct)', () => {
@@ -162,4 +178,18 @@ test('omitted slotId in interrupted HAR means slot zero, not an impossible resul
  assert.ok(filtered.length>0);
  assert.deepEqual(JSON.parse(JSON.stringify(filtered)),JSON.parse(JSON.stringify(negFilter(negAllCandidates(goods),guess,feedback.map((s,i)=>({...s,slotId:i}))))));
  assert.ok(Array.isArray(negBestGuess(filtered,goods,new Array(5).fill(null))));
+});
+
+test('real interrupted negotiation history retains candidates after repeated wrong_person offers',()=>{
+ const goods=['coke','supplies','whaleoil','fertilizer','textiles','rubber'];
+ const guesses=[['coke','supplies','rubber','fertilizer','whaleoil'],['supplies','whaleoil','whaleoil','supplies','rubber']];
+ const states=[['not_needed','wrong_person','wrong_person','not_needed','wrong_person'],['wrong_person','wrong_person','wrong_person','wrong_person','correct']];
+ let candidates=negAllCandidates(goods);
+ for(let turn=0;turn<2;turn++){
+  const feedback=guesses[turn].map((resourceId,i)=>({...i?{slotId:i}:{},resourceId,state:states[turn][i]}));
+  candidates=negFilter(candidates,guesses[turn],feedback);
+  assert.ok(candidates.length>0,'history must not eliminate all candidates');
+ }
+ assert.ok(candidates.every(c=>c[2]==='supplies'&&c[4]==='rubber'));
+ assert.ok(Array.isArray(negBestGuess(candidates,goods,[null,null,null,null,'rubber'])));
 });

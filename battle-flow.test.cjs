@@ -24,7 +24,7 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
   const ctx={window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
-  return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
+  return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve,automatic=reserve!==undefined){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve,automatic}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
 }
 test('fresh reserve check: 196/200 fights once; 197/200 stops without army mutation',async()=>{
   const h=harness();const first=await h.fight(3);assert.equal(first.won,true);assert.equal(first.refreshed,true);
@@ -58,7 +58,7 @@ function controller(){
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>sent.push(m)};
   const context=vm.createContext({$,window,location:{origin:'test'},document:{createElement:element},localStorage:{getItem:()=>null,setItem(){}},battle:{},FoeModel:{rows:()=>({rows:[{id:7,until:0,sector:'A1M'}]})},crypto:{randomUUID:()=>String(++seq)},paintOpenSectors(){},setInterval(){},setTimeout:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)});
   const source=fs.readFileSync(__dirname+'/panel.js','utf8');
-  vm.runInContext(source.slice(source.indexOf("    const autoKey="),source.indexOf('    function paintOpenSectors()'))+`;globalThis.control={start(){battleReady=true;autoSector=7;lossStreak=0;startFight(7)},stop(){stopAuto()},state(){return {autoSector,fights,wins,lossStreak}}};`,context);
+  vm.runInContext(source.slice(source.indexOf("    const autoKey="),source.indexOf('    function paintOpenSectors()'))+`;globalThis.control={start(){battleReady=true;autoSector=7;lossStreak=0;startFight(7,true)},stop(){stopAuto()},state(){return {autoSector,fights,wins,lossStreak}}};`,context);
   return {context,timers,sent,result(won,extra={}){const token=sent.filter(m=>m.channel==='foe-quick-battle').at(-1).token;listeners.forEach(fn=>fn({source:window,origin:'test',data:{channel:'foe-quick-battle-result',token,ok:true,provinceId:7,nextWave:false,refreshed:true,won,...extra}}));},tick(){const [id,t]=timers.entries().next().value;timers.delete(id);t.fn();}};
 }
 test('controller stops after three consecutive losses and counts manual fights',()=>{
@@ -90,4 +90,17 @@ test('negotiation starts for attack, defense and omitted battle type; locked sec
 test('auto negotiation reserves space for its two progress points',async()=>{
  const blocked=harness({progress:197,max:200});await blocked.negotiate(2);assert.deepEqual(blocked.calls,['getBattleground']);
  const allowed=harness({progress:196,max:200});await allowed.negotiate(2);assert.ok(allowed.calls.includes('startNegotiation'));
+});
+
+test('manual battle ignores reserve even if supplied accidentally',async()=>{
+ const h=harness({progress:199,max:200});const r=await h.fight(3,false);
+ assert.equal(r.ok,true);assert.ok(h.calls.includes('startByBattleType'));
+ const auto=harness({progress:199,max:200});assert.equal((await auto.fight(3,true)).ok,false);
+ assert.ok(!auto.calls.includes('startByBattleType'));
+});
+test('manual UI action sends explicit manual mode and no reserve',()=>{
+ const h=controller();h.context.control.start();h.result(true);h.context.control.stop();
+ vm.runInContext('startFight(7)',h.context);
+ const request=h.sent.filter(m=>m.channel==='foe-quick-battle').at(-1);
+ assert.equal(request.automatic,false);assert.equal(request.reserve,undefined);
 });

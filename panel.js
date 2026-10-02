@@ -941,13 +941,14 @@ Otwórz mapę Pól Chwały w grze.
         paintOpenSectors();
       }
     });
-    function startFight(id){
+    function startFight(id,automatic=false){
+      if(!automatic&&autoSector!==null)stopAuto();
       if(!battleReady||battlePending){if(autoSector!==null)stopAuto('Brak gotowego połączenia.');return;}
       const row=FoeModel.rows(battle,true).rows.find(r=>r.id===id&&r.until<=Date.now()/1000);
       if(!row){stopAuto('Sektor nie jest już dostępny.');return;}
       battlePending=crypto.randomUUID();battlePendingSector=id;
       $('battle-feedback').textContent=(battleWaveSector===id?'Kolejna fala: ':'Pobieranie i wymiana armii: ')+row.sector+'…';
-      window.postMessage({channel:'foe-quick-battle',token:battlePending,provinceId:id,...(autoSector!==null?{reserve:autoSettings.reserve}:{})},location.origin);paintOpenSectors();
+      window.postMessage({channel:'foe-quick-battle',token:battlePending,provinceId:id,automatic,...(automatic?{reserve:autoSettings.reserve}:{})},location.origin);paintOpenSectors();
     }
     let battleReady=false,battlePending=null,battlePendingSector=null,battleLastSector=null,battleLastUntil=0,battleLastOK=false,battleWaveSector=null,battleReadyReason='Oczekiwanie na moduł połączenia. Przeładuj rozszerzenie i odśwież grę, jeśli komunikat nie znika.';
     window.addEventListener('message',event=>{
@@ -973,7 +974,7 @@ Otwórz mapę Pól Chwały w grze.
           else{
             const id=autoSector;
             const delay=(autoSettings.min+Math.random()*(autoSettings.max-autoSettings.min))*1000;
-            autoTimer=setTimeout(()=>{if(autoSector===id)startFight(id);},delay);
+            autoTimer=setTimeout(()=>{if(autoSector===id)startFight(id,true);},delay);
           }
         }
         paintOpenSectors();
@@ -1017,7 +1018,7 @@ Otwórz mapę Pól Chwały w grze.
         if(!isNegOnly){
           auto.textContent=autoSector===row.id?'⏹':'▶';auto.title=autoSector===row.id?'Zatrzymaj autoatak':'Autoatak na tym sektorze';
           auto.disabled=autoSector!==row.id&&(!battleReady||!!battlePending||autoSector!==null||autoNegSector!==null||negPending!==null||(battleWaveSector!==null&&battleWaveSector!==row.id));
-          auto.onclick=()=>{if(autoSector===row.id){stopAuto('Autoatak zatrzymany.');return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id);};
+          auto.onclick=()=>{if(autoSector===row.id){stopAuto('Autoatak zatrzymany.');return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id,true);};
         } else {
           auto.style.display='none';
         }

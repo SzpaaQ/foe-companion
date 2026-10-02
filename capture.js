@@ -122,7 +122,7 @@
   }
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quick-battle')return;
-    const {token,provinceId,reserve}=event.data;
+    const {token,provinceId,reserve,automatic}=event.data;
     const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quick-battle-result',token,ok,message,...extra},location.origin);
     if(battleBusy||paymentBusy||collectBusy)return answer(false,'Trwa inne żądanie.');
     if(!battleTransport||battleUncertain)return answer(false,'Brak zweryfikowanego połączenia. Odśwież grę i otwórz mapę.');
@@ -133,7 +133,7 @@
     const connection=battleTransport;let changed=false,fightSent=false,stage='pobranie armii';
     try{
       if(!nextWave){
-        if(Number.isInteger(reserve)&&reserve>=0){
+        if(automatic===true&&Number.isInteger(reserve)&&reserve>=0){
           const fresh=await battleCall(connection,'GuildBattlegroundService','getBattleground',[]);
           let province=fresh.map?.provinces?.find(p=>(p.id??0)===provinceId);
           let conquest=province?.conquestProgress?.find(c=>c.participantId===fresh.currentParticipantId);

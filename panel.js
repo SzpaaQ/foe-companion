@@ -984,7 +984,7 @@ Otwórz mapę Pól Chwały w grze.
     function paintOpenSectors(){
       const list=$('open-sectors');list.replaceChildren();
       if(!battle){list.textContent='Otwórz mapę Pól Chwały w grze.';return;}
-      const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>Number(a.ignored)-Number(b.ignored));
+      const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>Number(a.ignored)-Number(b.ignored)||(a.progress??0)-(b.progress??0)||a.id-b.id);
       if(!open.length){list.textContent='Brak otwartych sektorów sąsiadujących z naszymi polami.';return;}
       for(const row of open){
         const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #345058';

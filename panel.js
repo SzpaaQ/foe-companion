@@ -412,21 +412,13 @@ window.addEventListener('message', event => {
           role="tabpanel"
           hidden
         >
-          <h2>Pola Chwały</h2>
+          <div id="gbg-title"><h2>Pola Chwały</h2></div>
 
           <h3>Otwarte sektory</h3>
           <div id="open-sectors"></div>
           <p id="battle-feedback" role="status"></p>
 
-          <h3>Rozpiska</h3>
-          <label>
-            <input
-              id="frontier"
-              type="checkbox"
-              checked
-            >
-            Sąsiedzi naszych sektorów
-          </label>
+          <div id="schedule-heading"><h3>Rozpiska</h3><label><input id="frontier" type="checkbox" checked> tylko sąsiedzi</label></div>
 
           <p id="notice"></p>
 
@@ -601,6 +593,27 @@ Otwórz mapę Pól Chwały w grze.
       #neg-panel{height:160px;box-sizing:border-box;overflow-y:scroll;overflow-x:hidden;overflow-wrap:anywhere}
       #battle-feedback{height:64px;overflow-y:scroll;overflow-wrap:anywhere;margin:8px 0}
     `;
+    style.textContent+=`
+      #gbg-title{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+      #gbg-title h2{margin:0;font-size:16px;white-space:nowrap}
+      #gbg-title td{padding:0 5px}
+      #gbg h3{font-size:13px;margin:6px 0}
+      #gbg-controls{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px;padding:2px 0}
+      #gbg-stop-controls{height:28px;gap:4px}
+      #gbg-stop-controls button{font-size:10px;padding:2px}
+      #open-sectors{height:144px;font-size:12px}
+      #open-sectors>div{padding:3px 0!important;gap:5px!important}
+      #open-sectors button{font-size:12px;padding:3px}
+      #schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:6px}
+      #schedule-heading label{font-size:11px;white-space:nowrap;margin:0;display:flex;align-items:center;gap:4px}
+      #schedule-heading input{margin:0}
+      #list{margin:4px 0;padding:6px;font-size:11px;max-height:100px}
+      #copy{font-size:11px;padding:4px 8px}
+      #notice:empty,#feedback:empty{display:none}
+      #notes-dock{display:block;margin-top:4px;padding-top:4px;max-height:300px}
+      #notes-dock summary{cursor:pointer;line-height:24px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #notes-dock:not([open]) #notes-text,#notes-dock:not([open]) #notes-status{display:none}
+    `;
     root.append(style);
     const qtab=document.createElement('button');qtab.dataset.page='quantum';qtab.setAttribute('role','tab');qtab.setAttribute('aria-selected','false');qtab.title='Najazdy kwantowe';qtab.setAttribute('aria-label','Najazdy kwantowe');qtab.textContent='⚛️';
     root.querySelector('nav').insertBefore(qtab,root.querySelector('[data-page="settings"]'));
@@ -612,7 +625,7 @@ Otwórz mapę Pól Chwały w grze.
     $('pearl-status').before(totalLabel);
     const pearlTotals=new Map();let totalTarget=null;
     $('pearl-total').addEventListener('input',()=>{pearlTotals.set(totalTarget,$('pearl-total').value);paintPearl();});
-    const dock=document.createElement('div');dock.id='notes-dock';dock.innerHTML='<label for="notes-text">Notatki <small id="notes-context"></small></label><textarea id="notes-text" placeholder="Twoje notatki…"></textarea><div id="notes-status" role="status"></div>';
+    const dock=document.createElement('details');dock.id='notes-dock';dock.innerHTML='<summary>Notatki <small id="notes-context"></small></summary><textarea id="notes-text" placeholder="Twoje notatki…"></textarea><div id="notes-status" role="status"></div>';
     root.querySelector('aside').append(dock);
     const notes=FoeNotes.createStore(localStorage);let noteKey=null,noteSection=null,notePearl=null;
     function pearlType(){
@@ -858,7 +871,7 @@ Otwórz mapę Pól Chwały w grze.
     }
     let autoSector=null,autoTimer=null,lossStreak=0,fights=0,wins=0;
     const stats=document.createElement('td');stats.title='Wygrane / zakończone walki przyciskami rozszerzenia w tej sesji';stats.textContent='🏆 0/0';$('open-sectors').before(stats);
-    const stopButton=document.createElement('button');stopButton.textContent='⏹ Zatrzymaj autoatak';stopButton.hidden=true;stats.after(stopButton);stopButton.onclick=()=>stopAuto('Autoatak zatrzymany. Rozpoczęte żądanie zostanie dokończone.');
+    const stopButton=document.createElement('button');stopButton.textContent='⏹ Stop walk';stopButton.hidden=true;stats.after(stopButton);stopButton.onclick=()=>stopAuto('Autoatak zatrzymany. Rozpoczęte żądanie zostanie dokończone.');
     function stopAuto(message){clearTimeout(autoTimer);autoTimer=null;autoSector=null;stopButton.hidden=true;if(message)$('battle-feedback').textContent=message;paintOpenSectors();}
 
     // --- Negocjacje UI --- (negStats/stopNegButton/negPanel zdefiniowane poniżej, montowane tu)
@@ -866,18 +879,18 @@ Otwórz mapę Pól Chwały w grze.
     let negPending=null,negPendingSector=null,negLastSector=null,negLastUntil=0,negLastOK=false;
     let autoNegSector=null,autoNegTimer=null,negWins=0,negDone=0;
     const negStats=document.createElement('td');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
-    const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Zatrzymaj auto-negocjację';stopNegButton.hidden=true;
+    const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Stop nego';stopNegButton.hidden=true;
     // Panel tury negocjacji — wyświetlany pod listą sektorów podczas aktywnej negocjacji.
     const negPanel=document.createElement('div');negPanel.id='neg-panel';negPanel.style.cssText='background:#0b191e;border-radius:6px;padding:10px;margin:8px 0;font-size:13px';negPanel.textContent='Przebieg negocjacji pojawi się tutaj.';
     // Montuj w DOM: negStats i stopNegButton za stopButton, negPanel przed listą sektorów.
-    const counters=document.createElement('table');counters.style.cssText='width:100%;margin:6px 0;border-collapse:collapse';
+    const counters=document.createElement('table');counters.style.cssText='width:auto;margin:0;border-collapse:collapse;text-align:center;font-size:12px;white-space:nowrap';
     const counterBody=document.createElement('tbody'),counterRow=document.createElement('tr');
-    stats.before(counters);counterRow.append(stats,negStats);counterBody.append(counterRow);counters.append(counterBody);
+    $('gbg-title').append(counters);counterRow.append(stats,negStats);counterBody.append(counterRow);counters.append(counterBody);
     const controls=document.createElement('div');controls.id='gbg-controls';
     const stops=document.createElement('div');stops.id='gbg-stop-controls';
     stopButton.before(controls);stops.append(stopButton,stopNegButton);controls.append(stops);
     stopNegButton.onclick=()=>stopAutoNeg('Auto-negocjacja zatrzymana. Trwająca negocjacja zostanie dokończona.');
-    $('open-sectors').after(negPanel);
+    $('feedback').after(negPanel);negPanel.after($('battle-feedback'));
     const negStatus=document.createElement('div');negStatus.id='neg-status';negStatus.textContent='ready';negStatus.style.cssText='font-size:12px';controls.append(negStatus);
     function stopAutoNeg(message){
       clearTimeout(autoNegTimer);autoNegTimer=null;autoNegSector=null;stopNegButton.hidden=true;

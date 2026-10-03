@@ -591,6 +591,7 @@ Otwórz mapę Pól Chwały w grze.
       #list{max-height:100px;box-sizing:border-box;overflow-y:auto}
       #open-sectors{height:180px;overflow-y:scroll;overflow-x:hidden}
       #neg-panel{height:160px;box-sizing:border-box;overflow-y:scroll;overflow-x:hidden;overflow-wrap:anywhere}
+      #neg-panel:empty{overflow:hidden}
       #battle-feedback{height:18px;min-height:18px;line-height:18px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;scrollbar-gutter:auto;margin:2px 0;overflow-wrap:normal}
     `;
     style.textContent+=`
@@ -894,7 +895,7 @@ Otwórz mapę Pól Chwały w grze.
     const negStats=document.createElement('td');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
     const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Stop nego';stopNegButton.hidden=true;
     // Panel tury negocjacji — wyświetlany pod listą sektorów podczas aktywnej negocjacji.
-    const negPanel=document.createElement('div');negPanel.id='neg-panel';negPanel.style.cssText='background:#0b191e;border-radius:6px;padding:10px;margin:8px 0;font-size:13px';negPanel.textContent='Przebieg negocjacji pojawi się tutaj.';
+    const negPanel=document.createElement('div');negPanel.id='neg-panel';negPanel.style.cssText='background:transparent;padding:10px;margin:8px 0;font-size:13px';
     // Montuj w DOM: negStats i stopNegButton za stopButton, negPanel przed listą sektorów.
     const counters=document.createElement('table');counters.style.cssText='width:auto;margin:0;border-collapse:collapse;text-align:center;font-size:12px;white-space:nowrap';
     const counterBody=document.createElement('tbody'),counterRow=document.createElement('tr');
@@ -947,6 +948,7 @@ Otwórz mapę Pól Chwały w grze.
         }
       }
       if(d?.channel==='foe-negotiate-result'&&d.token===negPending){
+        if(!negPanel.querySelector('#neg-turns')?.children.length)negPanel.replaceChildren();
         negLastSector=negPendingSector;negLastUntil=Date.now()+1800;negLastOK=d.ok===true;
         negPending=null;negPendingSector=null;negStatus.textContent=d.won===true?'wygrana':d.won===false?'przegrana':'ready';
         setBattleFeedback(d.message);

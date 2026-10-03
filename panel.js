@@ -591,7 +591,7 @@ Otwórz mapę Pól Chwały w grze.
       #list{max-height:100px;box-sizing:border-box;overflow-y:auto}
       #open-sectors{height:180px;overflow-y:scroll;overflow-x:hidden}
       #neg-panel{height:160px;box-sizing:border-box;overflow-y:scroll;overflow-x:hidden;overflow-wrap:anywhere}
-      #battle-feedback{height:64px;overflow-y:scroll;overflow-wrap:anywhere;margin:8px 0}
+      #battle-feedback{height:18px;min-height:18px;line-height:18px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;scrollbar-gutter:auto;margin:2px 0;overflow-wrap:normal}
     `;
     style.textContent+=`
       #gbg-title{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
@@ -872,7 +872,20 @@ Otwórz mapę Pól Chwały w grze.
     let autoSector=null,autoTimer=null,lossStreak=0,fights=0,wins=0;
     const stats=document.createElement('td');stats.title='Wygrane / zakończone walki przyciskami rozszerzenia w tej sesji';stats.textContent='🏆 0/0';$('open-sectors').before(stats);
     const stopButton=document.createElement('button');stopButton.textContent='⏹ Stop walk';stopButton.hidden=true;stats.after(stopButton);stopButton.onclick=()=>stopAuto('Autoatak zatrzymany. Rozpoczęte żądanie zostanie dokończone.');
-    function stopAuto(message){clearTimeout(autoTimer);autoTimer=null;autoSector=null;stopButton.hidden=true;if(message)$('battle-feedback').textContent=message;paintOpenSectors();}
+    function setBattleFeedback(message){
+      const full=String(message||'');
+      let short=full;
+      if(full.includes('3 kolejnych porażkach'))short='Autoatak: STOP — 3 porażki z rzędu.';
+      else if(full.includes('Osiągnięto ustawiony zapas')||full.includes('Osiągnięto zapas:'))short='STOP — osiągnięto ustawiony zapas walk.';
+      else if(full.includes('Wyczerpano limit tur. Negocjacja poddana.'))short='Przegrana — koniec tur, negocjacja poddana.';
+      else if(full.startsWith('Negocjacja zakończona sukcesem'))short=full.replace('Negocjacja zakończona sukcesem','Wygrana');
+      else if(full.startsWith('Auto-negocjacja zatrzymana.'))short='Auto-negocjacje: STOP.';
+      else if(full.startsWith('Autoatak zatrzymany.'))short='Autoatak: STOP.';
+      else if(full.includes('Auto-negocjacje zatrzymane.'))short='Auto-negocjacje: STOP — błąd; sprawdź towary.';
+      else if(full.startsWith('Pobieranie i wymiana armii:'))short=full.replace('Pobieranie i wymiana armii:','Wymiana armii:');
+      const feedback=$('battle-feedback');feedback.textContent=short;feedback.title=full;feedback.setAttribute('aria-label',full);
+    }
+    function stopAuto(message){clearTimeout(autoTimer);autoTimer=null;autoSector=null;stopButton.hidden=true;if(message)setBattleFeedback(message);paintOpenSectors();}
 
     // --- Negocjacje UI --- (negStats/stopNegButton/negPanel zdefiniowane poniżej, montowane tu)
     // Montaż następuje po deklaracji zmiennych negocjacyjnych w kolejnym bloku.
@@ -890,11 +903,11 @@ Otwórz mapę Pól Chwały w grze.
     const stops=document.createElement('div');stops.id='gbg-stop-controls';
     stopButton.before(controls);stops.append(stopButton,stopNegButton);controls.append(stops);
     stopNegButton.onclick=()=>stopAutoNeg('Auto-negocjacja zatrzymana. Trwająca negocjacja zostanie dokończona.');
-    $('feedback').after(negPanel);negPanel.after($('battle-feedback'));
+    $('feedback').after(negPanel);$('open-sectors').before($('battle-feedback'));
     const negStatus=document.createElement('div');negStatus.id='neg-status';negStatus.textContent='ready';negStatus.style.cssText='font-size:12px';controls.append(negStatus);
     function stopAutoNeg(message){
       clearTimeout(autoNegTimer);autoNegTimer=null;autoNegSector=null;stopNegButton.hidden=true;
-      if(message)$('battle-feedback').textContent=message;paintOpenSectors();
+      if(message)setBattleFeedback(message);paintOpenSectors();
     }
     function startNeg(id){
       if(negPending){if(autoNegSector!==null)stopAutoNeg('Negocjacja w toku.');return;}
@@ -903,7 +916,7 @@ Otwórz mapę Pól Chwały w grze.
       if(!row){stopAutoNeg('Sektor nie jest już dostępny.');return;}
       negPending=crypto.randomUUID();negPendingSector=id;negStatus.textContent='start nego';
       negPanel.style.display='block';negPanel.innerHTML='<em>Uruchamiam negocjację: '+row.sector+'…</em>';
-      $('battle-feedback').textContent='Negocjacja: '+row.sector+'…';
+      setBattleFeedback('Negocjacja: '+row.sector+'…');
       window.postMessage({channel:'foe-negotiate',token:negPending,provinceId:id,...(autoNegSector!==null?{reserve:autoSettings.reserve}:{})},location.origin);
       paintOpenSectors();
     }
@@ -936,7 +949,7 @@ Otwórz mapę Pól Chwały w grze.
       if(d?.channel==='foe-negotiate-result'&&d.token===negPending){
         negLastSector=negPendingSector;negLastUntil=Date.now()+1800;negLastOK=d.ok===true;
         negPending=null;negPendingSector=null;negStatus.textContent=d.won===true?'wygrana':d.won===false?'przegrana':'ready';
-        $('battle-feedback').textContent=d.message;
+        setBattleFeedback(d.message);
         if(typeof d.won==='boolean'){negDone++;if(d.won)negWins++;negStats.textContent='🤝 '+negWins+'/'+negDone;}
         if(d.ok&&d.refreshed){// progres odświeżony — model jest już zaktualizowany przez emit
         }
@@ -960,14 +973,14 @@ Otwórz mapę Pól Chwały w grze.
       const row=FoeModel.rows(battle,true).rows.find(r=>r.id===id&&r.until<=Date.now()/1000);
       if(!row){stopAuto('Sektor nie jest już dostępny.');return;}
       battlePending=crypto.randomUUID();battlePendingSector=id;
-      $('battle-feedback').textContent=(battleWaveSector===id?'Kolejna fala: ':'Pobieranie i wymiana armii: ')+row.sector+'…';
+      setBattleFeedback((battleWaveSector===id?'Kolejna fala: ':'Pobieranie i wymiana armii: ')+row.sector+'…');
       window.postMessage({channel:'foe-quick-battle',token:battlePending,provinceId:id,automatic,...(automatic?{reserve:autoSettings.reserve}:{})},location.origin);paintOpenSectors();
     }
     let battleReady=false,battlePending=null,battlePendingSector=null,battleLastSector=null,battleLastUntil=0,battleLastOK=false,battleWaveSector=null,battleReadyReason='Oczekiwanie na moduł połączenia. Przeładuj rozszerzenie i odśwież grę, jeśli komunikat nie znika.';
     window.addEventListener('message',event=>{
       if(event.source!==window||event.origin!==location.origin)return;
       const data=event.data;
-      if(data?.channel==='foe-map-refresh-error')$('battle-feedback').textContent=data.message;
+      if(data?.channel==='foe-map-refresh-error')setBattleFeedback(data.message);
       if(data?.channel==='foe-battle-ready'){
         battleReady=data.ready===true;battleReadyReason=data.reason||'';
         const d=data.diagnostics;
@@ -978,7 +991,7 @@ Otwórz mapę Pól Chwały w grze.
         battlePending=null;battlePendingSector=null;if(data.uncertain)battleReady=false;
         if(data.invalidWave)battleWaveSector=null;
         else if(data.ok)battleWaveSector=data.nextWave?data.provinceId:null;
-        $('battle-feedback').textContent=data.message;
+        setBattleFeedback(data.message);
         if(data.ok&&!data.nextWave&&typeof data.won==='boolean'){
           fights++;if(data.won)wins++;lossStreak=data.won?0:lossStreak+1;stats.textContent='🏆 '+wins+'/'+fights;
         }

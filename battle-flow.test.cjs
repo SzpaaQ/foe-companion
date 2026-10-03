@@ -3,11 +3,11 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 
-function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0}={}){
+function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>messages.push(m)};
-  const map=()=>({currentParticipantId:1,map:{provinces:[{id:7,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
+  const map=()=>({currentParticipantId:1,map:{provinces:[{id:provinceId,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
   window.fetch=async(url,options)=>{
     const [r]=JSON.parse(options.body);calls.push(r.requestMethod);
     let data={};
@@ -17,14 +17,14 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
     if(r.requestMethod==='startByBattleType'){
       battleCount++;const more=waves&&battleCount===1;
       if(!more&&winner===1)progress++;
-      data={__class__:'BattleRealm',battleId:battleCount,battleType:{provinceId:7},state:{winnerBit:winner,ranking_data:more?{nextArmy:{units:[{}]}}:{}}};
+      data={__class__:'BattleRealm',battleId:battleCount,battleType:omitProvince?{}:{provinceId},state:{winnerBit:winner,ranking_data:more?{nextArmy:{units:[{}]}}:{}}};
     }
     return {ok:true,json:async()=>[{...r,requestMethod:r.requestMethod==='updatePools'?'getArmyInfo':r.requestMethod,responseData:data}]};
   };
   const ctx={window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
-  return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve,automatic=reserve!==undefined){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId:7,reserve,automatic}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
+  return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve,automatic=reserve!==undefined){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId,reserve,automatic}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
 }
 test('fresh reserve check: 196/200 fights once; 197/200 stops without army mutation',async()=>{
   const h=harness();const first=await h.fight(3);assert.equal(first.won,true);assert.equal(first.refreshed,true);
@@ -103,4 +103,20 @@ test('manual UI action sends explicit manual mode and no reserve',()=>{
  vm.runInContext('startFight(7)',h.context);
  const request=h.sent.filter(m=>m.channel==='foe-quick-battle').at(-1);
  assert.equal(request.automatic,false);assert.equal(request.reserve,undefined);
+});
+
+test('two waves in sector zero accept omitted provinceId and exchange army only once',async()=>{
+ const h=harness({waves:true,provinceId:0,omitProvince:true});
+ const first=await h.fight();assert.equal(first.ok,true);assert.equal(first.nextWave,true);
+ const second=await h.fight();assert.equal(second.ok,true);assert.equal(second.nextWave,false);
+ assert.equal(h.calls.filter(x=>x==='updatePools').length,1);
+ assert.equal(h.calls.filter(x=>x==='startByBattleType').length,2);
+});
+test('omitted provinceId still rejects a wave for a nonzero sector',async()=>{
+ const h=harness({waves:true,provinceId:7,omitProvince:true});
+ const r=await h.fight();assert.equal(r.ok,false);assert.equal(r.uncertain,false);
+ assert.match(r.message,/invalid wave/);
+ assert.equal(r.invalidWave,true);
+ const retry=await h.fight();assert.equal(retry.ok,true);
+ assert.equal(h.calls.filter(x=>x==='getArmyInfo').length,2);
 });

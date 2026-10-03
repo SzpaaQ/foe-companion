@@ -963,7 +963,8 @@ Otwórz mapę Pól Chwały w grze.
       if(data?.channel==='foe-quick-battle-result'&&data.token===battlePending){
         battleLastSector=battlePendingSector;battleLastUntil=Date.now()+1800;battleLastOK=data.ok===true;
         battlePending=null;battlePendingSector=null;if(data.uncertain)battleReady=false;
-        if(data.ok)battleWaveSector=data.nextWave?data.provinceId:null;
+        if(data.invalidWave)battleWaveSector=null;
+        else if(data.ok)battleWaveSector=data.nextWave?data.provinceId:null;
         $('battle-feedback').textContent=data.message;
         if(data.ok&&!data.nextWave&&typeof data.won==='boolean'){
           fights++;if(data.won)wins++;lossStreak=data.won?0:lossStreak+1;stats.textContent='🏆 '+wins+'/'+fights;

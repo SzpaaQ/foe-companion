@@ -169,8 +169,13 @@
       const realm=await battleCall(connection,'BattlefieldService','startByBattleType',[type,true]);
       if(realm?.__class__!=='BattleRealm'||!realm.state?.ranking_data)throw Error('unconfirmed');
       const more=!!realm.state.ranking_data.nextArmy;
-      nextWave=more?realm.battleType:null;
-      if(more&&(!nextWave||nextWave.provinceId!==provinceId))throw Error('invalid wave');
+      const returnedType=realm.battleType;
+      // Serializacja gry pomija liczbowe zera, w tym provinceId dla sektora 0.
+      const returnedProvince=returnedType?.provinceId===undefined?0:returnedType.provinceId;
+      if(more&&(!returnedType||returnedProvince!==provinceId)){
+        const error=Error('invalid wave');error.invalidWave=true;throw error;
+      }
+      nextWave=more?{...returnedType,provinceId:returnedProvince}:null;
       const winner=realm.state.winnerBit;
       const won=winner===1?true:winner===2?false:null;
       let refreshed=false;
@@ -183,8 +188,10 @@
       }
       answer(true,more?'Fala zakończona — pozostała kolejna.':(won===true?'Wygrana.':won===false?'Przegrana.':'Nie rozpoznano wyniku walki.')+(refreshed?' Progres odświeżony.':' Nie potwierdzono aktualnego progresu — autoatak zatrzymany.'),{provinceId,nextWave:more,won,refreshed,battleId:realm.battleId});
     }catch(error){
-      battleUncertain=fightSent;
-      answer(false,'Etap: '+stage+'. '+error.message+(fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; można spróbować ponownie.'),{uncertain:fightSent});
+      const invalidWave=error.invalidWave===true;
+      if(invalidWave)nextWave=null;
+      battleUncertain=fightSent&&!invalidWave;
+      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; można spróbować ponownie.'),{uncertain:battleUncertain,invalidWave});
     }finally{battleBusy=false;}
   });
   // Wire IDs share one sequence. Restore the game's IDs before its callbacks read a response.

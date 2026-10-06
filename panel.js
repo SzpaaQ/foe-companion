@@ -1491,14 +1491,14 @@ Otwórz mapę Pól Chwały w grze.
       for (const b of rows) {
         const row = document.createElement('div');
         row.style.cssText =
-          'display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid #243d45';
+          'display:flex;align-items:baseline;gap:6px;padding:2px 0;border-bottom:1px solid #1a2d33';
 
         const time = document.createElement('span');
         time.style.cssText = 'font-size:10px;white-space:nowrap;color:#f1d69a;font-variant-numeric:tabular-nums';
         time.textContent = b.ready?'Gotowe':b.until?fmt(b.until):'—';
         const collectionTime=b.raw.state?.next_state_transition_at||b.until;
         const titleTime=collectionTime>0&&collectionTime!==2147483647?new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(collectionTime*1000):(b.ready?'Gotowe':'Brak godziny zbioru');
-        row.title=titleTime+' | '+b.tooltip;
+        row.title='⏰ '+titleTime+'\n'+b.tooltip;
 
         const name = document.createElement('span');
         name.style.cssText='flex:1;min-width:0;display:flex;align-items:baseline;gap:4px';

@@ -422,6 +422,7 @@ window.addEventListener('message', event => {
           </small>
 
           <p id="pearl-feedback"></p>
+          <p style="font-size:10px;color:#7a9099;margin-top:6px">Po wpłacie z panelu stan PR na perle w grze może nie być widoczny do czasu kolejnej akcji. Aby odświeżyć: wpłać dodatkowe 1 PR, poczekaj na wpłatę innej osoby lub odśwież stronę.</p>
         </section>
 
         <section
@@ -1546,6 +1547,18 @@ Otwórz mapę Pól Chwały w grze.
         collect.onclick=()=>{if(collectPending)return;collectPending=crypto.randomUUID();attemptedCollections.set(b.id,stamp);collectFeedback='Zbieranie: '+b.name+'…';window.postMessage({channel:'foe-collect',token:collectPending,entityId:b.id},location.origin);paintCity();};
         controls.append(time,star,collect);row.append(name,controls);
         listEl.append(row);
+      }
+      // Przycisk resetowania własnych nazw na końcu listy
+      if(rows.length){
+        const resetBtn=document.createElement('button');
+        resetBtn.textContent='Resetuj nazwy';
+        resetBtn.title='Usuwa wszystkie własne nazwy budynków zapisane lokalnie. Po resecie widoczne będą nazwy pobrane z gry lub automatycznie rozpoznane.';
+        resetBtn.style.cssText='margin-top:10px;font-size:11px;padding:3px 8px;opacity:0.6';
+        resetBtn.onclick=()=>{
+          try{localStorage.removeItem(cityNamesKey);}catch{}
+          paintCity();
+        };
+        listEl.append(resetBtn);
       }
     };
 

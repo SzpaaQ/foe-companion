@@ -1294,9 +1294,19 @@ Otwórz mapę Pól Chwały w grze.
       };
       return button;
     }
+    let contributionDismissTimer=null;
     window.addEventListener('message',event=>{
       if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-contribution-result'||event.data.token!==contributionPending)return;
-      contributionPending=null;contributionMessage=event.data.message;
+      contributionPending=null;
+      if(contributionDismissTimer){clearTimeout(contributionDismissTimer);contributionDismissTimer=null;}
+      if(event.data.ok){
+        // #7: widok gry może być nieaktualny po wpłacie
+        contributionMessage=event.data.message+'\nWidok perły w grze może być nieaktualny — odświeży się po kolejnej wpłacie lub przeładowaniu strony.';
+        // #6: komunikat znika po 8 sekundach
+        contributionDismissTimer=setTimeout(()=>{contributionMessage='';contributionDismissTimer=null;paintPearl();},8000);
+      }else{
+        contributionMessage=event.data.message;
+      }
       if(!event.data.ok&&/odśwież/.test(contributionMessage))contributionBlocked=true;
       paintPearl();
     });

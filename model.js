@@ -119,14 +119,29 @@ function line(row) {
   }
 
   // Przeszukuje payload w poszukiwaniu par name + cityentity_id / city_entity_id.
+  // Przyrostki zestawów/ulepszeń — to ekwipunek, jeszcze nie budynek na mapie.
+  const KIT_SUFFIX=/\s*-\s*(zestaw|ulepszenie|srebrn\w*|z[łl]ot\w*)/i;
   function learnNames(payload) {
     const queue = [payload];
     for (let i = 0; i < queue.length && i < 200000; i++) {
       const v = queue[i];
       if (!v || typeof v !== 'object') continue;
+      // Bezpośrednia para name + ceid (GenericCityEntity, CityMapEntity)
       const ceid = v.cityentity_id || v.city_entity_id || (v.__class__==='GenericCityEntity'?v.id:null);
       if (ceid && typeof v.name === 'string' && v.name.trim()) {
-        buildingNames[ceid] = v.name.trim();
+        const name = v.name.trim();
+        // Preferuj nazwy bez przyrostka zestawu/ulepszenia
+        if (!buildingNames[ceid] || KIT_SUFFIX.test(buildingNames[ceid]))
+          buildingNames[ceid] = name;
+      }
+      // Opcja zestawu wyboru: {name: "Budynek - poz. N" / "Budynek - zestaw", item: {cityEntityId: "W_..."}}
+      // "poz. N" to właściwa nazwa budynku; "zestaw/ulepszenie" to ekwipunek — ignorujemy go jako źródło nazwy.
+      if (typeof v.name === 'string' && v.item?.cityEntityId) {
+        const c2 = v.item.cityEntityId;
+        const raw = v.name.trim();
+        const isKit = KIT_SUFFIX.test(raw);
+        if (!isKit && (!buildingNames[c2] || KIT_SUFFIX.test(buildingNames[c2])))
+          buildingNames[c2] = raw;
       }
       for (const child of Object.values(v)) {
         if (child && typeof child === 'object') queue.push(child);

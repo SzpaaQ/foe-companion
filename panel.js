@@ -778,8 +778,18 @@ Otwórz mapę Pól Chwały w grze.
       text($('quantum-groups'),'Zbiory','strong');
       for(const group of summary.groups){
         const details=document.createElement('details');details.className='quantum-group';$('quantum-groups').append(details);
-        const label=document.createElement('summary');label.textContent=(group.at<=Date.now()/1000?'Gotowe':clockTime(group.at))+' '+formatResources(group.production);details.append(label);
-        for(const item of FoeQuantum.groupedBuildings(group.items))text(details,`${item.count}× ${item.name} · ${formatResources(item.production)}`);
+        // Nagłówek grupy: pogrubiona godzina + produkcja wyrównana do prawej
+        const label=document.createElement('summary');label.style.cssText='display:flex;justify-content:space-between;align-items:baseline;gap:8px';
+        const timeSpan=document.createElement('strong');timeSpan.textContent=group.at<=Date.now()/1000?'Gotowe':clockTime(group.at);label.append(timeSpan);
+        const prodSpan=document.createElement('span');prodSpan.style.cssText='text-align:right;font-variant-numeric:tabular-nums';prodSpan.textContent=formatResources(group.production);label.append(prodSpan);
+        details.append(label);
+        // Wiersze budynków: pogrubiona liczebność, nazwa, produkcja do prawej
+        for(const item of FoeQuantum.groupedBuildings(group.items)){
+          const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;padding:1px 2px';
+          const nameSpan=document.createElement('span');const bold=document.createElement('strong');bold.textContent=item.count+'×';nameSpan.append(bold,' '+item.name);row.append(nameSpan);
+          const rSpan=document.createElement('span');rSpan.style.cssText='text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap';rSpan.textContent=formatResources(item.production);row.append(rSpan);
+          details.append(row);
+        }
       }
       if(summary.builds.length){
         text($('quantum-groups'),'W budowie','strong');

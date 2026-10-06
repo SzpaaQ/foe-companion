@@ -808,6 +808,23 @@ Otwórz mapę Pól Chwały w grze.
           }
         }
       }
+      // Zestawienie budynków i sumarycznej produkcji (domyślnie rozwinięte)
+      if(summary.groups.length){
+        const allItems=summary.groups.flatMap(g=>g.items);
+        const grouped=FoeQuantum.groupedBuildings(allItems);
+        const sec=document.createElement('details');sec.open=true;sec.style.cssText='margin-top:8px';$('quantum-groups').append(sec);
+        const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
+        const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
+        // Nagłówki
+        for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
+        for(const item of grouped){
+          const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name);nameCell.style.cssText='padding:1px 0';tbl.append(nameCell);
+          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e');tbl.append(c);}
+        }
+        // Suma
+        const totalsRow=document.createElement('span');totalsRow.textContent='Suma';totalsRow.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(totalsRow);
+        for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=summary.totals[k]?summary.totals[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(c);}
+      }
       const emojiTitles={'🪙':'Monety kwantowe','🔨':'Zaopatrzenie kwantowe (młotki)','🔩':'Chronostopy','👑':'Poziom trudności najazdu','⌛':'Termin zakończenia najazdu','✨':'Mnożnik produkcji wynikający z zadowolenia','⚡':'Produkcja działań kwantowych na godzinę','⚔️':'Walki na godzinę przy koszcie 3500 działań za walkę'};
       const walker=document.createTreeWalker($('quantum'),NodeFilter.SHOW_TEXT),nodes=[];
       while(walker.nextNode())nodes.push(walker.currentNode);

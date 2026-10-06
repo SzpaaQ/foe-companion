@@ -46,7 +46,16 @@
     if(e.cityentity_id.includes('Impediment'))continue;
     const def=definitions.get(e.cityentity_id),c=component(e),s=e.state||{},name=e.cityentity_id==='H_GuildRaidsEarlyMiddleAge_Townhall'||e.type==='main_building'?'Ratusz':def?.name||e.cityentity_id;
     if(!def&&e.type!=='main_building')missing.add(e.cityentity_id);
-    if(s.__class__==='ConstructionState'){builds.push({name,at:s.next_state_transition_at||null});continue;}
+    if(s.__class__==='ConstructionState'){
+     const labels={guild_raids_happiness:'zadowolenia',guild_raids_population:'populacji'},benefits=[];
+     for(const [key,value] of Object.entries(c?.staticResources?.resources?.resources||{}))if(labels[key])benefits.push(value+' '+labels[key]);
+     for(const boost of c?.boosts?.boosts||[]){
+      if(boost.type==='guild_raids_action_points_collection')benefits.push(boost.value+' działań / h');
+      if(boost.type==='guild_raids_coins_production')benefits.push('Monety +'+boost.value+'%');
+      if(boost.type==='guild_raids_supplies_production')benefits.push('Zaopatrzenie +'+boost.value+'%');
+     }
+     builds.push({name,cityentity_id:e.cityentity_id,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
+    }
     const ready=s.__class__==='ProductionFinishedState'||s.__class__==='ProductionReadyState';
     if(s.__class__!=='ProducingState'&&!ready)continue;
     let raw=products(s.productionOption);

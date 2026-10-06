@@ -2,7 +2,7 @@
   'use strict';
   const LIMIT = 24000000;
   let collectBusy=false,cityOwner=null;const ownBuildings=new Map(),collectedStates=new Map();
-  let transport=null,lastRequestId=0,paymentBusy=false;
+  let transport=null,lastRequestId=0,paymentBusy=false,paymentUncertain=false;
   let battleTransport=null,battleBusy=false,battleUncertain=false,nextWave=null;
   let mapRefreshTimer=null,mapRefreshing=false;
   function scheduleMapRefresh(){
@@ -66,6 +66,7 @@
       body=bodyText(body);
       if (typeof data === 'string') { if (data.length > LIMIT) return; data = JSON.parse(data); }
       if (!data || typeof data !== 'object') return;
+      observeOpenNegotiation(data,body);
       if(!battleBusy&&(Array.isArray(data)?data:[data]).some(r=>r.requestClass==='BattlefieldService'&&r.requestMethod==='startByBattleType'&&r.responseData?.state?.ranking_data))scheduleMapRefresh();
       const queue=[data];for(let i=0;i<queue.length&&i<200000;i++){
         const v=queue[i];if(!v||typeof v!=='object')continue;
@@ -301,23 +302,36 @@
   };
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-contribute')return;
-    const {token,request}=event.data;
+    const {token,request,desiredTotal,lock}=event.data;
     const answer=(ok,message)=>window.postMessage({channel:'foe-contribution-result',token,ok,message},location.origin);
-    if(paymentBusy||battleBusy||collectBusy)return answer(false,'Trwa inne żądanie. Nie wysłano wpłaty.');
-    if(!transport||transport.blocked)return answer(false,'Brak gotowego połączenia do wpłaty. Otwórz perłę ponownie.');
+    if(paymentBusy||battleBusy||collectBusy||negBusy)return answer(false,'Trwa inne żądanie. Nie wysłano wpłaty.');
+    if(paymentUncertain)return answer(false,'Poprzednia wpłata niepotwierdzona. Sprawdź stan i odśwież grę.');
+    if(!battleTransport||battleUncertain)return answer(false,'Brak podpisanego połączenia do wpłaty. Otwórz perłę ponownie.');
     const values=request?.requestData;
     if(request?.requestClass!=='GreatBuildingsService'||request?.requestMethod!=='contributeForgePoints'||!Array.isArray(values)||values.length!==5||!values.slice(0,4).every(Number.isSafeInteger)||values[0]<0||values[1]<=0||values[2]<0||values[3]<=0||values[4]!==false)return answer(false,'Nieprawidłowa wpłata.');
     paymentBusy=true;
-    const item={__class__:'ServerRequest',requestClass:'GreatBuildingsService',requestMethod:'contributeForgePoints',requestData:values,requestId:++lastRequestId};
+    let sent=false;
     try{
-      const headers={...transport.headers};if(!Object.keys(headers).some(k=>k.toLowerCase()==='content-type'))headers['Content-Type']='application/json';
-      const response=await Reflect.apply(originalFetch,window,[transport.url,{method:'POST',headers,credentials:'same-origin',body:JSON.stringify([item])}]);
-      const data=await response.json();emit(transport.url,JSON.stringify([item]),data);
-      const list=Array.isArray(data)?data:[data];
-      const error=list.find(r=>/error/i.test(r?.__class__||'')||r?.error);
-      const accepted=list.some(r=>r?.requestId===item.requestId && r.requestClass==='GreatBuildingsService' && r.requestMethod==='contributeForgePoints' && r.responseData!==false && r.responseData!=null);
-      answer(response.ok&&!error&&accepted,response.ok&&!error&&accepted?'Serwer potwierdził wpłatę.':'Brak jednoznacznego potwierdzenia. Sprawdź stan w grze przed ponowną wpłatą.');
-    }catch{answer(false,'Nie udało się potwierdzić wpłaty. Sprawdź stan w grze; nie ponawiam automatycznie.');}
+      if(!Number.isSafeInteger(cityOwner)||!Number.isSafeInteger(desiredTotal)||desiredTotal<=0)throw Error('Brak danych do sprawdzenia Twojej wpłaty. Otwórz miasto i perłę.');
+      const fresh=await battleCall(battleTransport,'GreatBuildingsService','getConstruction',values.slice(0,2));
+      if(!Array.isArray(fresh?.rankings))throw Error('Nie odczytano bieżących wpłat.');
+      const paid=fresh.rankings.find(r=>r.player?.player_id===cityOwner)?.forge_points??0;
+      if(!Number.isSafeInteger(paid)||paid<0)throw Error('Nieprawidłowy stan Twojej wpłaty.');
+      let remaining=Math.max(0,desiredTotal-paid);
+      if(lock){
+        if(values[1]!==cityOwner||![lock.total,lock.rank,lock.amount].every(Number.isSafeInteger)||lock.total<0||lock.rank<1||lock.rank>5||lock.amount<0)throw Error('Nieprawidłowe dane bloku.');
+        if(fresh.rankings.some(r=>!Number.isSafeInteger(r.forge_points??0)||(r.forge_points??0)<0))throw Error('Nieprawidłowy ranking.');
+        const rest=Math.max(0,lock.total-fresh.rankings.reduce((sum,r)=>sum+(r.forge_points??0),0));
+        const actual=fresh.rankings.find(r=>r.rank===lock.rank&&r.player?.player_id!==cityOwner)?.forge_points??0;
+        remaining=Math.max(0,rest-(actual>0?actual:2*lock.amount));
+      }
+      if(!remaining){answer(true,'Docelowa kwota jest już wpłacona. Nie wysłano wpłaty.');return;}
+      if(remaining>values[3])throw Error('Stan wpłat zmienił się. Sprawdź aktualne kwoty przed ponowieniem.');
+      const updated=[...values];updated[3]=remaining;sent=true;
+      const result=await battleCall(battleTransport,'GreatBuildingsService','contributeForgePoints',updated);
+      if(!Array.isArray(result))throw Error('Nieoczekiwane potwierdzenie wpłaty.');
+      answer(true,'Serwer potwierdził wpłatę '+remaining+' PR.');
+    }catch(error){if(sent)paymentUncertain=true;answer(false,sent?'Nie udało się potwierdzić wpłaty. Sprawdź stan w grze i odśwież kartę przed ponowieniem.':error.message);}
     finally{paymentBusy=false;}
   });
 
@@ -399,6 +413,113 @@
   }
 
   let negBusy = false;
+  let openNegotiation=null;
+  let questNegotiation=null;
+  const questStates=new Map();
+  function questNegotiationStatus(){
+    if(!questNegotiation||questNegotiation.type!=='quest')return '';
+    const quest=questStates.get(questNegotiation.id);
+    if(!quest)return '';
+    if(quest.state==='collectReward')return 'Misja ukończona — odbierz nagrodę w grze.';
+    if(['closed','expired','aborted'].includes(quest.state))return 'Ta misja nie jest już aktywna. Otwórz nową negocjację.';
+    const condition=quest.conditions.find(c=>c.id===questNegotiation.condition);
+    if(condition&&condition.maxProgress>0&&condition.currentProgress>=condition.maxProgress)return 'Warunek negocjacji ukończony. Wybierz kolejne zadanie w grze.';
+    return '';
+  }
+  function observeOpenNegotiation(data,body){
+    let requests=[];try{requests=JSON.parse(body||'[]');if(!Array.isArray(requests))requests=[];}catch{}
+    const responses=Array.isArray(data)?data:[data];
+    for(const response of responses){
+      if(response?.requestClass==='QuestService'&&response.requestMethod==='getUpdates'&&Array.isArray(response.responseData)){
+        for(const quest of response.responseData){
+          if(!Number.isSafeInteger(quest?.id))continue;
+          questStates.set(quest.id,{state:quest.state,conditions:(quest.successConditions||[]).map(c=>({id:c.id,currentProgress:c.currentProgress??0,maxProgress:c.maxProgress}))});
+        }
+      }
+    }
+    for(const response of responses){
+      const value=response?.responseData;
+      const game=value?.__class__==='NegotiationGame'?value:value?.game;
+      if(game?.__class__==='NegotiationGame'){
+        if(response.requestClass==='QuestService'&&response.requestMethod==='startNegotiation'){
+          const request=requests.find(r=>r.requestClass==='QuestService'&&r.requestMethod==='startNegotiation'&&r.requestId===response.requestId);
+          const args=request?.requestData;
+          questNegotiation=Array.isArray(args)?{id:args[0],condition:args[1],type:args[2]}:null;
+        }else if(game.context!=='quest')questNegotiation=null;
+        const reason=game.context==='quest'?questNegotiationStatus():'';
+        const active=!reason&&game.context&&game.context!=='guildBattleground'&&(!value.state||value.state==='ongoing');
+        const changed=openNegotiation?.context!==game.context||value===game;
+        openNegotiation=active?game:null;
+        window.postMessage({channel:'foe-open-negotiation',game:openNegotiation,detected:active&&changed,reason},location.origin);
+      }else if(response?.requestClass==='NegotiationGameService'&&((response.requestMethod==='giveUp'&&value?.__class__==='Success')||['won','out_of_turns'].includes(value?.state))){
+        openNegotiation=null;window.postMessage({channel:'foe-open-negotiation',game:null},location.origin);
+      }
+    }
+    const reason=questNegotiationStatus();
+    if(reason){openNegotiation=null;window.postMessage({channel:'foe-open-negotiation',game:null,reason},location.origin);}
+  }
+  window.addEventListener('message',async event=>{
+    if(event.source!==window||event.origin!==location.origin)return;
+    if(event.data?.channel==='foe-open-negotiation-query'){
+      window.postMessage({channel:'foe-open-negotiation',game:openNegotiation,reason:questNegotiationStatus()},location.origin);return;
+    }
+    if(event.data?.channel!=='foe-open-negotiate')return;
+    const {token}=event.data;
+    const send=(kind,extra)=>window.postMessage({channel:'foe-open-nego-'+kind,token,...extra},location.origin);
+    if(questNegotiationStatus())return send('result',{message:questNegotiationStatus()});
+    if(negBusy||battleBusy||paymentBusy||collectBusy)return send('result',{message:'Trwa inne żądanie.'});
+    if(!battleTransport||battleUncertain)return send('result',{message:'Brak zweryfikowanego połączenia. Odśwież grę.'});
+    negBusy=true;
+    const connection=battleTransport;
+    let context=null;
+    const surrender=async()=>{
+      const current=await battleCall(connection,'NegotiationGameService','getRunning',[]);
+      if(current?.game?.context!==context||!['ongoing','out_of_turns'].includes(current.state))return;
+      const result=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+      if(result?.__class__!=='Success')throw Error('Nie potwierdzono poddania.');
+    };
+    try{
+      const running=await battleCall(connection,'NegotiationGameService','getRunning',[]);
+      const game=running?.game;
+      if(!game?.context||game.context==='guildBattleground'||running.state!=='ongoing')throw Error('Otwórz aktywną negocjację poza Polami Chwały.');
+      const goods=Object.keys(game.possibleCosts?.resources||{});
+      if(!goods.length||goods.length>10||!Array.isArray(running.history))throw Error('Nieobsługiwany format negocjacji.');
+      let candidates=negAllCandidates(goods),locked=Array(5).fill(null);
+      const apply=feedback=>{
+        const guess=[...locked];
+        for(const slot of feedback){
+          const id=slot.slotId??0;
+          if(!Number.isInteger(id)||id<0||id>4||!goods.includes(slot.resourceId)||!['correct','wrong_person','not_needed'].includes(slot.state))throw Error('Nieobsługiwany wynik tury.');
+          guess[id]=slot.resourceId;
+        }
+        if(guess.some(v=>v===null))throw Error('Niepełna historia negocjacji.');
+        candidates=negFilter(candidates,guess,feedback.map(s=>({...s,slotId:s.slotId??0})));
+        for(const s of feedback)if(s.state==='correct')locked[s.slotId??0]=s.resourceId;
+      };
+      for(const turn of running.history)apply(turn.slots||[]);
+      context=game.context;
+      send('started',{goods,context,history:running.history});
+      for(let turn=running.history.length+1;turn<=10;turn++){
+        await new Promise(resolve=>setTimeout(resolve,0));
+        const guess=negBestGuess(candidates,goods,locked);
+        if(!Array.isArray(guess))throw Error('Brak zgodnego rozwiązania.');
+        const slots=guess.map((resourceId,slotId)=>({__class__:'NegotiationGameSlot',slotId,resourceId})).filter(s=>locked[s.slotId]===null);
+        send('turn',{turn,guess});
+        const result=await battleCall(connection,'NegotiationGameService','submitTurn',[slots,turn]);
+        if(result?.__class__!=='NegotiationGameResult')throw Error('Nieoczekiwany wynik tury.');
+        send('feedback',{turn,feedback:result.turnResult?.slots||[],state:result.state});
+        if(result.state==='won'){send('result',{won:true,message:questNegotiationStatus()||'Wygrana.'});return;}
+        if(result.state==='out_of_turns'){await surrender();send('result',{won:false,message:'Przegrana — negocjacja poddana.'});return;}
+        if(result.state!=='ongoing')throw Error('Nieznany stan negocjacji.');
+        apply(result.turnResult?.slots||[]);
+      }
+      throw Error('Osiągnięto limit tur.');
+    }catch(error){
+      let cleanup='';
+      if(context)try{await surrender();cleanup=' Negocjacja zamknięta.';}catch{cleanup=' Sprawdź stan negocjacji w grze.';}
+      send('result',{message:error.message+cleanup});
+    }finally{negBusy=false;}
+  });
   window.addEventListener('message', async event => {
     if (event.source !== window || event.origin !== location.origin || event.data?.channel !== 'foe-negotiate') return;
     const {token, provinceId, reserve} = event.data;

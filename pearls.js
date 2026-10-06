@@ -108,7 +108,8 @@
   const ownerId=construction.target?.playerId;
   const row=rankings.find(r=>ownerId!=null&&r.player?.player_id===ownerId)
    ||rankings.find(r=>r.rank===0&&(ownerId==null||r.player?.player_id==null||r.player.player_id===ownerId));
-  if(!row)return null;
+  // W odczytanym rankingu gracz bez wpłaty nie ma własnego wiersza.
+  if(!row)return Number.isSafeInteger(ownerId)?0:null;
   const amount=row.forge_points??0;
   return Number.isSafeInteger(amount)&&amount>=0?amount:null;
  }
@@ -123,6 +124,19 @@
    return {additional,cumulative};
   });
  }
- const api={findConstruction,pearlAmounts,createTracker,contributionRequest,lockAmounts,lockStages,ownerContribution};root.FoePearls=api;
+ function liveLocks(total,rows,construction){
+  const paid=ownerContribution(construction),rankings=construction?.rankings;
+  if(!Number.isSafeInteger(total)||total<0||paid===null||!Array.isArray(rankings))return null;
+  if(rankings.some(r=>!Number.isSafeInteger(r.forge_points??0)||(r.forge_points??0)<0))return null;
+  const remaining=Math.max(0,total-rankings.reduce((sum,r)=>sum+(r.forge_points??0),0));
+  return rows.map(row=>{
+   const actual=rankings.find(r=>r.rank===row.rank&&r.player?.player_id!==construction.target?.playerId)?.forge_points??0;
+   if(!Number.isSafeInteger(row.amount)||row.amount<0)return null;
+   // Zajęte miejsce: rzeczywista wpłata. Wolne: planowana wpłata inwestora.
+   const additional=Math.max(0,remaining-(actual>0?actual:2*row.amount));
+   return {additional,cumulative:paid+additional};
+  });
+ }
+ const api={findConstruction,pearlAmounts,createTracker,contributionRequest,lockAmounts,lockStages,liveLocks,ownerContribution};root.FoePearls=api;
  if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

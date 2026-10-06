@@ -41,6 +41,16 @@ Po wykorzystaniu tur przegrana negocjacja jest poddawana. Automatyzacja może ro
 
 Przy błędzie żądania rozszerzenie sprawdza trwającą negocjację Pól Chwały, poddaje ją i zatrzymuje automatyzację. Dotyczy to również braku towarów, choć ogólne `Error` nie zawsze pozwala ustalić przyczynę. Solver ma ograniczony koszt obliczeń i nie gwarantuje wygranej. Brak zgodnego rozwiązania kończy się poddaniem i zatrzymaniem.
 
+## Negocjacje poza Polami Chwały
+
+Po otwarciu standardowej negocjacji w grze pojawia się zakładka **🤝 Nego**. Obsługuje negocjacje misji (`quest`) oraz inne konteksty korzystające z tego samego protokołu pięciu rozmówców i maksymalnie dziesięciu towarów. Pola Chwały mają osobną obsługę.
+
+Przycisk **Negocjuj** odczytuje bieżący stan i historię, a następnie rozgrywa pozostałe tury. Zakładka pokazuje towary, propozycje, odpowiedzi i wynik. Po wyczerpaniu tur negocjacja jest poddawana; dodatkowe tury nie są kupowane. Podczas pracy solvera nie wykonuj równocześnie tur w oknie gry.
+
+W ustawieniach można wyłączyć automatyczne wysuwanie panelu po wykryciu negocjacji. Samo wykrycie nie uruchamia solvera. Obsługa pozostałych kontekstów wymaga zgodnego formatu odpowiedzi; testy offline nie zastępują weryfikacji w grze.
+
+Alerty Pól Chwały mają wybór pięciu zapamiętywanych sygnałów: trzy piknięcia, ding-dong, pojedynczy sygnał, melodyjka i alarm. Przycisk **Test dźwięku** odtwarza wybrany wariant.
+
 ## Kalkulator pereł
 
 Po otwarciu perły panel pokazuje pięć nagród i kwoty inwestorów. Domyślny przelicznik to 1,9; kwoty są zaokrąglane w górę, a miejsca bez nagrody otrzymują 1 PR. Przy kwotach znajdują się przyciski kopiowania.
@@ -101,6 +111,6 @@ Repozytorium: [SzpaaQ/foe-companion](https://github.com/SzpaaQ/foe-companion). P
 
 ## Testy
 
-Testy regresji: `node --test *.test.cjs`. Dostępne są też skrypty `tests.cjs`, `tests-pearls.cjs` i `tests-quantum-notes.cjs`. Test watchera `test-dev.cjs` uruchamiaj przy wyłączonym START-DEV.
+Testy regresji: `node --test *.test.cjs`. Obejmują transport, walki, solver i negocjacje poza Polami Chwały.
 
 Testy offline używają atrap komunikacji i nie wykonują operacji na koncie. Nie zastępują sprawdzenia w zalogowanej sesji Brave. Obserwator fetch/XHR nie obejmuje wszystkich kanałów komunikacji gry.

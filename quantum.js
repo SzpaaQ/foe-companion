@@ -47,12 +47,19 @@
     const def=definitions.get(e.cityentity_id),c=component(e),s=e.state||{},name=e.cityentity_id==='H_GuildRaidsEarlyMiddleAge_Townhall'||e.type==='main_building'?'Ratusz':def?.name||e.cityentity_id;
     if(!def&&e.type!=='main_building')missing.add(e.cityentity_id);
     if(s.__class__==='ConstructionState'){
-     const labels={guild_raids_happiness:'zadowolenia',guild_raids_population:'populacji'},benefits=[];
-     for(const [key,value] of Object.entries(c?.staticResources?.resources?.resources||{}))if(labels[key])benefits.push(value+' '+labels[key]);
+     const emoji={guild_raids_happiness:'😊',guild_raids_population:'👥'},benefits=[];
+     for(const [key,value] of Object.entries(c?.staticResources?.resources?.resources||{}))if(emoji[key])benefits.push(emoji[key]+' '+value);
      for(const boost of c?.boosts?.boosts||[]){
-      if(boost.type==='guild_raids_action_points_collection')benefits.push(boost.value+' działań / h');
-      if(boost.type==='guild_raids_coins_production')benefits.push('Monety +'+boost.value+'%');
-      if(boost.type==='guild_raids_supplies_production')benefits.push('Zaopatrzenie +'+boost.value+'%');
+      if(boost.type==='guild_raids_action_points_collection')benefits.push('⚡ '+boost.value);
+      if(boost.type==='guild_raids_coins_production')benefits.push('🪙 +'+boost.value+'%');
+      if(boost.type==='guild_raids_supplies_production')benefits.push('🔨 +'+boost.value+'%');
+     }
+     // Bazowa produkcja z opcji produkcyjnych definicji
+     const prodEmoji={guild_raids_money:'🪙',guild_raids_supplies:'🔨',guild_raids_chrono_alloy:'🔩'};
+     for(const opt of c?.production?.options||[]){
+      const sum=products(opt);
+      const time=opt.time?(opt.time>=3600?(opt.time/3600)+'h':(opt.time/60)+'min'):'';
+      for(const k of KEYS)if(sum[k])benefits.push(prodEmoji[k]+' '+sum[k].toLocaleString('pl')+(time?' / '+time:''));
      }
      builds.push({name,cityentity_id:e.cityentity_id,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
     }

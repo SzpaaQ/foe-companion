@@ -630,7 +630,28 @@ Otwórz mapę Pól Chwały w grze.
       if(d.channel==='foe-open-nego-turn'){$('standalone-status').textContent=`Status: ${d.turn} tura`;appendNego(`Tura ${d.turn}: ${d.guess.join(' · ')}`);}
       if(d.channel==='foe-open-nego-feedback')appendNego(feedbackText(d.feedback));
       if(d.channel==='foe-open-nego-result'){
-        standaloneToken=null;$('standalone-status').textContent=d.message;$('standalone-start').disabled=!standaloneGame;
+        standaloneToken=null;$('standalone-status').textContent=d.message;
+        // Jeśli misja-negocjacja zakończona z kolejną misją — pokaż przycisk NEXT
+        const existingNext=$('standalone-next');if(existingNext)existingNext.remove();
+        if(d.won&&d.nextQuest){
+          const nextBtn=document.createElement('button');nextBtn.id='standalone-next';nextBtn.textContent='▶ Następna misja: '+d.nextQuest.title;
+          nextBtn.style.cssText='margin-top:6px;font-size:12px';
+          nextBtn.onclick=()=>{
+            nextBtn.disabled=true;nextBtn.textContent='Uruchamiam…';
+            const t='quest-next-'+Date.now();
+            window.postMessage({channel:'foe-quest-next',token:t,quest:d.nextQuest},location.origin);
+            const handler=ev=>{
+              if(ev.source!==window||ev.origin!==location.origin||ev.data?.channel!=='foe-quest-next-result'||ev.data.token!==t)return;
+              window.removeEventListener('message',handler);
+              nextBtn.remove();
+              $('standalone-status').textContent=ev.data.message;
+              if(ev.data.ok){standaloneGame=ev.data.game;$('standalone-start').disabled=false;}
+            };
+            window.addEventListener('message',handler);
+          };
+          $('standalone-history').after(nextBtn);
+        }
+        $('standalone-start').disabled=!!standaloneToken||!standaloneGame;
       }
     });
     window.postMessage({channel:'foe-open-negotiation-query'},location.origin);

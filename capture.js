@@ -508,7 +508,35 @@
         const result=await battleCall(connection,'NegotiationGameService','submitTurn',[slots,turn]);
         if(result?.__class__!=='NegotiationGameResult')throw Error('Nieoczekiwany wynik tury.');
         send('feedback',{turn,feedback:result.turnResult?.slots||[],state:result.state});
-        if(result.state==='won'){send('result',{won:true,message:questNegotiationStatus()||'Wygrana.'});return;}
+        if(result.state==='won'){
+          // Dla misji (quest): automatycznie odbierz nagrodę i wykryj następną
+          if(context==='quest'&&questNegotiation){
+            const qid=questNegotiation.id;
+            try{
+              const item={__class__:'ServerRequest',requestClass:'QuestService',requestMethod:'advanceQuest',requestData:[qid],requestId:++lastRequestId};
+              const body=JSON.stringify([item]),headers={'Content-Type':'application/json',Signature:FoeRequestSignature.sign(connection.h,body)};
+              if(connection.client)headers['Client-Identification']=connection.client;
+              const resp=await Reflect.apply(originalFetch,window,[connection.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(20000)}]);
+              const batch=await resp.json();emit(connection.url,body,batch,true);
+              const list=Array.isArray(batch)?batch:[batch];
+              const updates=list.find(r=>r.requestClass==='QuestService'&&r.requestMethod==='getUpdates')?.responseData;
+              let nextQuest=null;
+              if(Array.isArray(updates)){
+                for(const q of updates){
+                  if(!Number.isSafeInteger(q?.id)||q.id===qid||q.state!=='accepted')continue;
+                  const negCond=(q.successConditions||[]).find(c=>c.flags?.includes('negotiate_condition')&&(c.currentProgress??0)<(c.maxProgress??1));
+                  if(negCond){nextQuest={id:q.id,condition:negCond.id,title:q.title||String(q.id)};break;}
+                }
+              }
+              send('result',{won:true,message:'Wygrana. Nagroda odebrana.',nextQuest});
+            }catch(advErr){
+              send('result',{won:true,message:'Wygrana. Nie udało się odebrać nagrody: '+advErr.message});
+            }
+          }else{
+            send('result',{won:true,message:'Wygrana.'});
+          }
+          return;
+        }
         if(result.state==='out_of_turns'){await surrender();send('result',{won:false,message:'Przegrana — negocjacja poddana.'});return;}
         if(result.state!=='ongoing')throw Error('Nieznany stan negocjacji.');
         apply(result.turnResult?.slots||[]);
@@ -731,5 +759,57 @@
     }catch(err){
       upd('Błąd: '+err.message,null,true);
     }finally{questAutoBusy=false;questAutoAbort=false;}
+  });
+
+  // Rozpoczęcie kolejnej misji-negocjacji po odebraniu nagrody (przycisk NEXT w panelu Nego)
+  window.addEventListener('message',async event=>{
+    if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-next')return;
+    const {token,quest}=event.data;
+    const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quest-next-result',token,ok,message,...extra},location.origin);
+    if(!Number.isSafeInteger(quest?.id)||!Number.isSafeInteger(quest?.condition))return answer(false,'Brak danych kolejnej misji.');
+    if(negBusy||battleBusy||paymentBusy||collectBusy)return answer(false,'Trwa inne żądanie.');
+    if(!battleTransport||battleUncertain)return answer(false,'Brak połączenia. Odśwież grę.');
+    negBusy=true;
+    const conn=battleTransport;
+    try{
+      const item={__class__:'ServerRequest',requestClass:'QuestService',requestMethod:'startNegotiation',requestData:[quest.id,quest.condition,'quest'],requestId:++lastRequestId};
+      const body=JSON.stringify([item]),headers={'Content-Type':'application/json',Signature:FoeRequestSignature.sign(conn.h,body)};
+      if(conn.client)headers['Client-Identification']=conn.client;
+      const resp=await Reflect.apply(originalFetch,window,[conn.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(20000)}]);
+      const batch=await resp.json();emit(conn.url,body,batch,true);
+      const list=Array.isArray(batch)?batch:[batch];
+      const serverError=list.map(r=>/error/i.test(r?.responseData?.__class__||'')?r.responseData:r).find(r=>/error/i.test(r?.__class__||'')||r?.error);
+      if(!resp.ok||serverError){const code=serverError?.code??serverError?.__class__??'brak kodu';throw Error('HTTP '+resp.status+', kod '+String(code).slice(0,80)+'.');}
+      const game=list.find(r=>r.requestClass==='QuestService'&&r.requestMethod==='startNegotiation')?.responseData;
+      if(game?.__class__!=='NegotiationGame')throw Error('Nieoczekiwana odpowiedź startNegotiation.');
+      answer(true,'Kolejna misja-negocjacja rozpoczęta.',{game});
+    }catch(err){answer(false,'Nie udało się rozpocząć kolejnej misji: '+err.message);}
+    finally{negBusy=false;}
+  });
+
+  // Rozpoczęcie kolejnej misji-negocjacji po odebraniu nagrody (przycisk NEXT w panelu Nego)
+  window.addEventListener('message',async event=>{
+    if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-next')return;
+    const {token,quest}=event.data;
+    const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quest-next-result',token,ok,message,...extra},location.origin);
+    if(!Number.isSafeInteger(quest?.id)||!Number.isSafeInteger(quest?.condition))return answer(false,'Brak danych kolejnej misji.');
+    if(negBusy||battleBusy||paymentBusy||collectBusy)return answer(false,'Trwa inne żądanie.');
+    if(!battleTransport||battleUncertain)return answer(false,'Brak połączenia. Odśwież grę.');
+    negBusy=true;
+    const conn=battleTransport;
+    try{
+      const item={__class__:'ServerRequest',requestClass:'QuestService',requestMethod:'startNegotiation',requestData:[quest.id,quest.condition,'quest'],requestId:++lastRequestId};
+      const body=JSON.stringify([item]),headers={'Content-Type':'application/json',Signature:FoeRequestSignature.sign(conn.h,body)};
+      if(conn.client)headers['Client-Identification']=conn.client;
+      const resp=await Reflect.apply(originalFetch,window,[conn.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(20000)}]);
+      const batch=await resp.json();emit(conn.url,body,batch,true);
+      const list=Array.isArray(batch)?batch:[batch];
+      const serverError=list.map(r=>/error/i.test(r?.responseData?.__class__||'')?r.responseData:r).find(r=>/error/i.test(r?.__class__||'')||r?.error);
+      if(!resp.ok||serverError){const code=serverError?.code??serverError?.__class__??'brak kodu';throw Error('HTTP '+resp.status+', kod '+String(code).slice(0,80)+'.');}
+      const game=list.find(r=>r.requestClass==='QuestService'&&r.requestMethod==='startNegotiation')?.responseData;
+      if(game?.__class__!=='NegotiationGame')throw Error('Nieoczekiwana odpowiedź startNegotiation.');
+      answer(true,'Kolejna misja-negocjacja rozpoczęta.',{game});
+    }catch(err){answer(false,'Nie udało się rozpocząć kolejnej misji: '+err.message);}
+    finally{negBusy=false;}
   });
 })();

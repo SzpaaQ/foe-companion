@@ -536,8 +536,9 @@ Otwórz mapę Pól Chwały w grze.
     negoSection.innerHTML='<h2>Negocjacje</h2><p id="standalone-kind"></p><button id="standalone-start" disabled>🤝 Negocjuj</button><p id="standalone-status" role="status" style="height:32px;font-size:12px">Otwórz negocjację w grze.</p><div id="standalone-history" style="max-height:300px;overflow:auto;font-size:12px"></div>';
     root.querySelector('aside').append(negoSection);
 
-    // Zakładka Inne
+    // Zakładka Inne — tymczasowo ukryta
     const inneTab=document.createElement('button');inneTab.dataset.page='inne';inneTab.setAttribute('role','tab');inneTab.setAttribute('aria-selected','false');inneTab.title='Inne';inneTab.setAttribute('aria-label','Inne');inneTab.textContent='🧩';
+    inneTab.hidden=true;
     root.querySelector('nav').insertBefore(inneTab,root.querySelector('[data-page="settings"]'));
     const inneSection=document.createElement('section');inneSection.id='inne';inneSection.hidden=true;inneSection.setAttribute('role','tabpanel');
     inneSection.innerHTML=`

@@ -908,7 +908,11 @@ Otwórz mapę Pól Chwały w grze.
       if(summary.missing.length)text(box,'Niepełne dane: brakuje definicji '+summary.missing.length+' budynków.');
       if(summary.bonuses.unhappy)text(box,'Prognoza nie uwzględnia kary za niezadowolenie.');
       const clockTime=(at,seconds=true)=>new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',...(seconds?{second:'2-digit'}:{})}).format(at*1000);
-      text($('quantum-groups'),'Zbiory','strong');
+      const addSection=(label,first=false)=>{
+        if(!first){const hr=document.createElement('hr');hr.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hr);}
+        const h=document.createElement('strong');h.textContent=label;h.style.cssText='display:block;font-size:12px;color:#8fcfcf;margin-bottom:4px';$('quantum-groups').append(h);
+      };
+      addSection('Zbiory',true);
       // Jeden grid dla wszystkich grup — kolumny wyrównane jak w Zestawieniu
       const zbGrid=document.createElement('div');
       zbGrid.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;margin-bottom:4px';
@@ -950,7 +954,7 @@ Otwórz mapę Pól Chwały w grze.
         };
       }
       if(summary.builds.length){
-        text($('quantum-groups'),'W budowie','strong');
+        addSection('W budowie');
         const groups=[];
         for(const build of [...summary.builds].sort((a,b)=>(a.at??Infinity)-(b.at??Infinity))){
           let group=groups.at(-1);
@@ -970,8 +974,10 @@ Otwórz mapę Pól Chwały w grze.
       if(summary.groups.length){
         const allItems=summary.groups.flatMap(g=>g.items);
         const grouped=FoeQuantum.groupedBuildings(allItems);
-        const sec=document.createElement('details');sec.open=true;sec.style.cssText='margin-top:8px';$('quantum-groups').append(sec);
-        const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
+        const sec=document.createElement('details');sec.open=true;sec.style.cssText='';
+        const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
+        $('quantum-groups').append(sec);
+        const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
         const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
         // Nagłówki
         for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
@@ -997,8 +1003,10 @@ Otwórz mapę Pól Chwały w grze.
         ];
         const activeCols=extraColDefs.filter(col=>grouped.some(g=>g.effects[col.key]!==0));
         if(activeCols.length){
-          const sec2=document.createElement('details');sec2.open=true;sec2.style.cssText='margin-top:8px';$('quantum-groups').append(sec2);
-          const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
+          const sec2=document.createElement('details');sec2.open=true;sec2.style.cssText='';
+          const hrP=document.createElement('hr');hrP.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrP);
+          $('quantum-groups').append(sec2);
+          const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
           const tbl2=document.createElement('div');
           tbl2.style.cssText=`display:grid;grid-template-columns:1fr ${activeCols.map(()=>'auto').join(' ')};gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;`;
           sec2.append(tbl2);

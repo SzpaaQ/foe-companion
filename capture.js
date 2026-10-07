@@ -689,6 +689,15 @@
     const bag=list.find(r=>r.requestClass==='ResourceService'&&r.requestMethod==='getPlayerResourceBag')?.responseData;
     return bag?.resources?.resources||bag?.resources||null;
   }
+  function questRewardLabel(rewards){
+    if(!Array.isArray(rewards)||!rewards.length)return '';
+    const parts=rewards.map(r=>{
+      if(!r||r.flags?.includes('hidden'))return null;
+      const name=r.name||r.subType||'';
+      return name||null;
+    }).filter(Boolean);
+    return parts.length?(' → '+parts.join(', ')):'';
+  }
   window.addEventListener('message',event=>{if(event.source===window&&event.origin===location.origin&&event.data?.channel==='foe-quest-auto-stop')questAutoAbort=true;});
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-auto')return;
@@ -728,7 +737,7 @@
         // Sprawdź czy wszystkie warunki to pay_condition z money/supplies
         const payable=conds.every(c=>c.flags?.includes('pay_condition')&&c.payload?.some(p=>p.type==='pay'&&(p.cost?.resources?.money||p.cost?.resources?.supplies)));
         if(!payable){
-          upd(`Pomijam: ${quest.title||quest.id}`,'Abort: '+( quest.title||quest.id));
+          upd(`Pomijam: ${quest.title||quest.id}`,`⏭️ ${quest.title||quest.id}`);
           const {ok,list}=await questBatchCall(conn,'QuestService','abortQuest',[quest.id]);
           if(!ok||questFindError(list))throw Error('Błąd przy pomijaniu misji '+quest.id+'.');
           aborted++;
@@ -758,7 +767,9 @@
           money-=totalMoney;supplies-=totalSupplies;done++;
           const fresh=questGetUpdates(list);
           if(Array.isArray(fresh)){const ids=new Set(quests.map(q=>q.id));quests=[...quests,...fresh.filter(q=>q?.type==='generic'&&q?.state==='accepted'&&!ids.has(q.id))];}
-          upd(`Wykonano: ${quest.title||quest.id}`,`✅ ${quest.title||quest.id}`,false);
+          const doneQuest=Array.isArray(fresh)?fresh.find(q=>q?.id===quest.id):null;
+          const rewardLabel=questRewardLabel(doneQuest?.genericRewards);
+          upd(`Wykonano: ${quest.title||quest.id}${rewardLabel}`,`✅ ${quest.title||quest.id}${rewardLabel}`,false);
         }
       }
       upd(`Zakończono. Wykonano: ${done}, pominięto: ${aborted}.`,null,true);

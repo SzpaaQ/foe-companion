@@ -555,6 +555,7 @@ Otwórz mapę Pól Chwały w grze.
       <button id="quest-auto-stop" disabled>⏹ Zatrzymaj</button>
       <p id="quest-auto-status" role="status" style="font-size:12px;min-height:18px;margin-top:6px"></p>
       <div id="quest-auto-log" style="max-height:200px;overflow:auto;font-size:11px;color:#a5b8bc;margin-top:4px"></div>
+      <div id="quest-auto-rewards" style="display:none;margin-top:6px;padding:4px 6px;background:#1a2a2a;border-radius:4px;font-size:11px;color:#c8e0e0"></div>
     `;
     root.querySelector('aside').append(inneSection);
 
@@ -571,12 +572,41 @@ Otwórz mapę Pól Chwały w grze.
     let questAutoRunning=false,questAutoToken=null;
     const questLog=msg=>{const line=document.createElement('div');line.textContent=msg;$('quest-auto-log').append(line);line.scrollIntoView?.({block:'nearest'});};
     const questStatus=msg=>$('quest-auto-status').textContent=msg;
+    // Grupowanie nagród wg typu — emoji na podstawie subType/iconAssetName
+    const rewardEmoji=key=>{
+      if(/money|coin/i.test(key))return'🪙';
+      if(/supplies|supply/i.test(key))return'🔨';
+      if(/strategy|forgepoint|fp/i.test(key))return'🔵';
+      if(/good|wire|lumber|marble|ebony|granite|cloth|dye|iron/i.test(key))return'📦';
+      if(/gem|klejnot|diamond/i.test(key))return'💎';
+      if(/medal/i.test(key))return'🏅';
+      if(/fragment/i.test(key))return'🧩';
+      if(/ally|sojuszni/i.test(key))return'⚔️';
+      return'🎁';
+    };
+    const renderQuestRewards=rewards=>{
+      const el=$('quest-auto-rewards');
+      el.replaceChildren();
+      const header=document.createElement('div');
+      header.textContent='Zdobyte nagrody:';
+      header.style.cssText='font-weight:bold;margin-bottom:4px;color:#8fcfcf';
+      el.append(header);
+      for(const [key,{name,amount}] of Object.entries(rewards)){
+        const row=document.createElement('div');
+        const emoji=rewardEmoji(key);
+        // Wyodrębnij samą nazwę bez liczby (serwer podaje np. "66 500 Monet")
+        const label=name.replace(/^\d[\d\s]*/,'').trim()||key;
+        row.textContent=`${emoji} ${amount.toLocaleString('pl-PL')} ${label}`;
+        el.append(row);
+      }
+      el.style.display='block';
+    };
 
     $('quest-auto-start').onclick=()=>{
       if(questAutoRunning)return;
       questAutoRunning=true;questAutoToken='quest-auto-'+Date.now();
       $('quest-auto-start').disabled=true;$('quest-auto-stop').disabled=false;
-      $('quest-auto-log').replaceChildren();questStatus('Uruchamiam…');
+      $('quest-auto-log').replaceChildren();$('quest-auto-rewards').style.display='none';$('quest-auto-rewards').replaceChildren();questStatus('Uruchamiam…');
       const minMoney=Math.max(0,Number($('quest-min-money').value)||0);
       const minSupplies=Math.max(0,Number($('quest-min-supplies').value)||0);
       window.postMessage({channel:'foe-quest-auto',token:questAutoToken,minMoney,minSupplies},location.origin);
@@ -592,7 +622,10 @@ Otwórz mapę Pól Chwały w grze.
       if(d?.channel==='foe-quest-auto-update'&&d.token===questAutoToken){
         questStatus(d.status||'');
         if(d.log)questLog(d.log);
-        if(d.done){questAutoRunning=false;questAutoToken=null;$('quest-auto-start').disabled=false;$('quest-auto-stop').disabled=true;}
+        if(d.done){
+          questAutoRunning=false;questAutoToken=null;$('quest-auto-start').disabled=false;$('quest-auto-stop').disabled=true;
+          if(d.rewards&&Object.keys(d.rewards).length)renderQuestRewards(d.rewards);
+        }
       }
     });
     const negoOpenKey='foe-companion.autoOpenNego';

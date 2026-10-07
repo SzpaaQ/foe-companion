@@ -690,19 +690,25 @@
     return bag?.resources?.resources||bag?.resources||null;
   }
   function questRewardLabel(rewards){
-    if(!Array.isArray(rewards)||!rewards.length)return '';
-    const parts=rewards.map(r=>{
-      if(!r||r.flags?.includes('hidden'))return null;
-      const name=r.name||r.subType||'';
-      return name||null;
-    }).filter(Boolean);
-    return parts.length?(' → '+parts.join(', ')):'';
+    // Akumuluje nagrody do mapy subType→{name,amount} — używana do zbierania sum
+    if(!Array.isArray(rewards))return;
+    // (zastąpiona przez questAccumRewards — zachowana jako stub)
+  }
+  function questAccumRewards(acc,rewards){
+    // acc: Map subType → {name, amount}
+    if(!Array.isArray(rewards))return;
+    for(const r of rewards){
+      if(!r||r.flags?.includes('hidden')||!r.subType)continue;
+      const key=r.subType;
+      if(acc.has(key)){acc.get(key).amount+=Number(r.amount)||0;}
+      else{acc.set(key,{name:r.name||r.subType,amount:Number(r.amount)||0,iconAssetName:r.iconAssetName||''});}
+    }
   }
   window.addEventListener('message',event=>{if(event.source===window&&event.origin===location.origin&&event.data?.channel==='foe-quest-auto-stop')questAutoAbort=true;});
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-auto')return;
     const {token,minMoney,minSupplies}=event.data;
-    const upd=(status,log,done=false)=>window.postMessage({channel:'foe-quest-auto-update',token,status,log,done},location.origin);
+    const upd=(status,log,done=false,rewards=null)=>window.postMessage({channel:'foe-quest-auto-update',token,status,log,done,...(rewards?{rewards:Object.fromEntries(rewards)}:{})},location.origin);
     if(questAutoBusy||battleBusy||paymentBusy||collectBusy||negBusy)return upd('Trwa inne żądanie.',null,true);
     if(!battleTransport||battleUncertain)return upd('Brak zweryfikowanego połączenia. Odśwież grę.',null,true);
     questAutoBusy=true;questAutoAbort=false;
@@ -729,6 +735,7 @@
         upd(`Zasoby: 🪙 ${money.toLocaleString('pl-PL')} · 🔨 ${supplies.toLocaleString('pl-PL')}`);
       }
       let done=0,aborted=0;
+      const rewardsAcc=new Map();
       // Pętla misji
       outer: while(quests.length&&!questAutoAbort){
         const quest=quests[0];
@@ -754,11 +761,19 @@
           return;
         }
         upd(`Wykonuję: ${quest.title||quest.id} (🪙 ${totalMoney} · 🔨 ${totalSupplies})`);
-        // Wykonaj warunki pay_condition
+        // Wykonaj warunki pay_condition — nagroda pojawia się po ostatnim paySuccessCondition
+        let lastPayList=null;
         for(const c of conds){
           if(questAutoAbort)break outer;
           const {ok,list}=await questBatchCall(conn,'QuestService','paySuccessCondition',[quest.id,c.id,'quest']);
           if(!ok||questFindError(list))throw Error('Błąd paySuccessCondition misja '+quest.id+' warunek '+c.id+'.');
+          lastPayList=list;
+        }
+        // Zbierz nagrodę z odpowiedzi ostatniego paySuccessCondition (stan collectReward)
+        {
+          const fresh=questGetUpdates(lastPayList);
+          const doneQuest=Array.isArray(fresh)?fresh.find(q=>q?.id===quest.id&&q?.state==='collectReward'):null;
+          questAccumRewards(rewardsAcc,doneQuest?.genericRewards);
         }
         // Odbierz nagrodę
         {
@@ -767,12 +782,10 @@
           money-=totalMoney;supplies-=totalSupplies;done++;
           const fresh=questGetUpdates(list);
           if(Array.isArray(fresh)){const ids=new Set(quests.map(q=>q.id));quests=[...quests,...fresh.filter(q=>q?.type==='generic'&&q?.state==='accepted'&&!ids.has(q.id))];}
-          const doneQuest=Array.isArray(fresh)?fresh.find(q=>q?.id===quest.id):null;
-          const rewardLabel=questRewardLabel(doneQuest?.genericRewards);
-          upd(`Wykonano: ${quest.title||quest.id}${rewardLabel}`,`✅ ${quest.title||quest.id}${rewardLabel}`,false);
+          upd(`Wykonano: ${quest.title||quest.id}`,`✅ ${quest.title||quest.id}`,false);
         }
       }
-      upd(`Zakończono. Wykonano: ${done}, pominięto: ${aborted}.`,null,true);
+      upd(`Zakończono. Wykonano: ${done}, pominięto: ${aborted}.`,null,true,rewardsAcc);
     }catch(err){
       upd('Błąd: '+err.message,null,true);
     }finally{questAutoBusy=false;questAutoAbort=false;}

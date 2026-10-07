@@ -421,7 +421,7 @@ window.addEventListener('message', event => {
 
           </small>
 
-          <p id="pearl-feedback"></p>
+          <p id="pearl-feedback" style="font-size:11px"></p>
           <p style="font-size:10px;color:#7a9099;margin-top:6px">Po wpłacie z panelu stan PR na perle w grze może nie być widoczny do czasu kolejnej akcji. Aby odświeżyć: wpłać dodatkowe 1 PR, poczekaj na wpłatę innej osoby lub odśwież stronę.</p>
         </section>
 
@@ -1415,8 +1415,8 @@ Otwórz mapę Pól Chwały w grze.
       contributionPending=null;
       if(contributionDismissTimer){clearTimeout(contributionDismissTimer);contributionDismissTimer=null;}
       if(event.data.ok){
-        // #7: widok gry może być nieaktualny po wpłacie
-        contributionMessage=event.data.message+'\nWidok perły w grze może być nieaktualny — odświeży się po kolejnej wpłacie lub przeładowaniu strony.';
+        // #7: komunikat ok z emoji, bez drugiego zdania (notka niżej)
+        contributionMessage='✅ '+event.data.message;
         // #6: komunikat znika po 8 sekundach
         contributionDismissTimer=setTimeout(()=>{contributionMessage='';contributionDismissTimer=null;paintPearl();},8000);
       }else{

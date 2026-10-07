@@ -892,20 +892,33 @@ Otwórz mapę Pól Chwały w grze.
       if(summary.bonuses.unhappy)text(box,'Prognoza nie uwzględnia kary za niezadowolenie.');
       const clockTime=(at,seconds=true)=>new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',...(seconds?{second:'2-digit'}:{})}).format(at*1000);
       text($('quantum-groups'),'Zbiory','strong');
+      // Jeden grid dla wszystkich grup — kolumny wyrównane jak w Zestawieniu
+      const zbGrid=document.createElement('div');
+      zbGrid.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;margin-bottom:4px';
+      $('quantum-groups').append(zbGrid);
+      // Nagłówki kolumn
+      const zbHdr=document.createElement('span');zbHdr.style.cssText='padding:1px 0;border-bottom:1px solid #4a3525';zbGrid.append(zbHdr);
+      for(const [,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩']]){
+        const hd=document.createElement('span');hd.textContent=icon;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';zbGrid.append(hd);
+      }
       for(const group of summary.groups){
-        const details=document.createElement('details');details.className='quantum-group';$('quantum-groups').append(details);
-        // Nagłówek grupy: pogrubiona godzina + produkcja wyrównana do prawej
-        const label=document.createElement('summary');label.style.cssText='display:flex;justify-content:space-between;align-items:baseline;gap:8px';
-        const timeSpan=document.createElement('strong');timeSpan.textContent=group.at<=Date.now()/1000?'Gotowe':clockTime(group.at);label.append(timeSpan);
-        const prodSpan=document.createElement('span');prodSpan.style.cssText='text-align:right;font-variant-numeric:tabular-nums';prodSpan.textContent=formatResources(group.production);label.append(prodSpan);
-        details.append(label);
-        // Wiersze budynków: pogrubiona liczebność, nazwa, produkcja do prawej
+        // Nagłówek grupy — cały wiersz, klikalny toggle
+        const groupId='qg-'+group.at;
+        const hRow=document.createElement('span');hRow.style.cssText='grid-column:1/-1;display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;cursor:pointer;margin-top:4px';
+        hRow.dataset.group=groupId;
+        const timeCell=document.createElement('strong');timeCell.textContent=group.at<=Date.now()/1000?'▾ Gotowe':'▾ '+clockTime(group.at);timeCell.style.cssText='padding:1px 0';hRow.append(timeCell);
+        for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=num(group.production[k])||'—';c.style.cssText='text-align:right;padding:1px 0;font-weight:bold;color:'+(group.production[k]?'#f0e6d2':'#6a7a7e');hRow.append(c);}
+        zbGrid.append(hRow);
+        // Wiersze budynków
+        const rows=[];
         for(const item of FoeQuantum.groupedBuildings(group.items)){
-          const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;padding:1px 2px';
-          const nameSpan=document.createElement('span');const bold=document.createElement('strong');bold.textContent=item.count+'×';nameSpan.append(bold,' '+item.name);row.append(nameSpan);
-          const rSpan=document.createElement('span');rSpan.style.cssText='text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap';rSpan.textContent=formatResources(item.production);row.append(rSpan);
-          details.append(row);
+          const nameCell=document.createElement('span');const bold=document.createElement('strong');bold.textContent=item.count+'×';nameCell.append(bold,' '+item.name);nameCell.style.cssText='padding:1px 4px;color:#c8d8dc';
+          zbGrid.append(nameCell);
+          rows.push(nameCell);
+          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e');zbGrid.append(c);rows.push(c);}
         }
+        // Toggle: kliknięcie w nagłówek grupy chowa/pokazuje wiersze budynków
+        hRow.onclick=()=>{const hide=rows[0]?.style.display!=='none';rows.forEach(r=>r.style.display=hide?'none':'');timeCell.textContent=(hide?'▸ ':'▾ ')+(group.at<=Date.now()/1000?'Gotowe':clockTime(group.at));};
       }
       if(summary.builds.length){
         text($('quantum-groups'),'W budowie','strong');

@@ -17,6 +17,18 @@
  }
  const categoryOrder=['main_building','residential','production','goods','culture','decoration'];
  function groupedBuildings(items){const groups=new Map();for(const item of items){const key=item.cityentity_id||item.name;let g=groups.get(key);if(!g){g={name:item.name,category:item.category,count:0,production:empty()};groups.set(key,g);}g.count++;for(const k of KEYS)g.production[k]+=item.production[k];}return [...groups.values()].sort((a,b)=>(categoryOrder.indexOf(a.category)<0?99:categoryOrder.indexOf(a.category))-(categoryOrder.indexOf(b.category)<0?99:categoryOrder.indexOf(b.category))||a.name.localeCompare(b.name,'pl'));}
+ const EXTRA_KEYS=['guild_raids_happiness','guild_raids_population','guild_raids_action_points_collection','guild_raids_action_points_capacity','att_def_boost_attacker','att_def_boost_defender'];
+ const emptyExtra=()=>Object.fromEntries(EXTRA_KEYS.map(k=>[k,0]));
+ function groupedExtras(items){
+  const groups=new Map();
+  for(const item of items){
+   const key=item.cityentity_id||item.name;let g=groups.get(key);
+   if(!g){g={name:item.name,category:item.category,count:0,effects:emptyExtra()};groups.set(key,g);}
+   g.count++;
+   for(const k of EXTRA_KEYS)g.effects[k]+=item.effects[k]||0;
+  }
+  return [...groups.values()].sort((a,b)=>(categoryOrder.indexOf(a.category)<0?99:categoryOrder.indexOf(a.category))-(categoryOrder.indexOf(b.category)<0?99:categoryOrder.indexOf(b.category))||a.name.localeCompare(b.name,'pl'));
+ }
  function isSettlementResponse(data){return (Array.isArray(data)?data:[data]).some(r=>r?.requestClass==='CityMapService'&&r.requestMethod==='getCityMap'&&r.responseData?.gridId==='guild_raids');}
  function walk(data,fn){const q=[data];for(let i=0;i<q.length&&i<250000;i++){const v=q[i];if(!v||typeof v!=='object')continue;fn(v);for(const c of Object.values(v))if(c&&typeof c==='object')q.push(c);}}
  function products(option){const sum=empty();for(const p of option?.products||[]){const r=p.playerResources?.resources;if(r)for(const k of KEYS)sum[k]+=Number(r[k])||0;}return sum;}
@@ -41,7 +53,7 @@
   function component(e){return definitions.get(e.cityentity_id)?.components?.AllAge;}
   function summary(now=Date.now()/1000){
    if(!map)return null;
-   const missing=new Set(),items=[],builds=[];
+   const missing=new Set(),items=[],builds=[],extras=[];
    for(const e of map.entities){
     if(e.cityentity_id.includes('Impediment'))continue;
     const def=definitions.get(e.cityentity_id),c=component(e),s=e.state||{},name=e.cityentity_id==='H_GuildRaidsEarlyMiddleAge_Townhall'||e.type==='main_building'?'Ratusz':def?.name||e.cityentity_id;
@@ -63,8 +75,22 @@
      }
      builds.push({name,cityentity_id:e.cityentity_id,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
     }
+    // Budynki nieprodukcyjne (stałe efekty) — zbierane jako extras
+    const extraEffects=emptyExtra();
+    const sr=c?.staticResources?.resources?.resources||{};
+    for(const k of ['guild_raids_happiness','guild_raids_population'])if(sr[k])extraEffects[k]=Number(sr[k])||0;
+    for(const b of c?.boosts?.boosts||[]){
+     if(b.type==='guild_raids_action_points_collection')extraEffects.guild_raids_action_points_collection=Number(b.value)||0;
+     if(b.type==='guild_raids_action_points_capacity')extraEffects.guild_raids_action_points_capacity=Number(b.value)||0;
+     if(b.type==='att_def_boost_attacker')extraEffects.att_def_boost_attacker=Number(b.value)||0;
+     if(b.type==='att_def_boost_defender')extraEffects.att_def_boost_defender=Number(b.value)||0;
+    }
+    const hasExtras=EXTRA_KEYS.some(k=>extraEffects[k]!==0);
     const ready=s.__class__==='ProductionFinishedState'||s.__class__==='ProductionReadyState';
-    if(s.__class__!=='ProducingState'&&!ready)continue;
+    if(s.__class__!=='ProducingState'&&!ready){
+     if(hasExtras&&e.connected!==0)extras.push({id:e.id,name,cityentity_id:e.cityentity_id,category:e.type==='main_building'?'main_building':c?.constructionMenu?.category,effects:extraEffects});
+     continue;
+    }
     let raw=products(s.productionOption);
     if(!KEYS.some(k=>raw[k])){
      const r=s.current_product?.product?.resources;
@@ -98,9 +124,9 @@
    }}}
    let actionsPerHour=5000;
    for(const e of map.entities){if(e.connected===0)continue;for(const b of component(e)?.boosts?.boosts||[])if(b.type==='guild_raids_action_points_collection')actionsPerHour+=Number(b.value)||0;}
-   return {groups,totals,builds,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
+   return {groups,totals,builds,extras,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
   }
   return {consume,summary,definitions,get map(){return map;}};
  }
- const api={createTracker,KEYS,groupedBuildings,isSettlementResponse,calculationVersion:2};root.FoeQuantum=api;if(typeof module!=='undefined')module.exports=api;
+ const api={createTracker,KEYS,EXTRA_KEYS,groupedBuildings,groupedExtras,isSettlementResponse,calculationVersion:2};root.FoeQuantum=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

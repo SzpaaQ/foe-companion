@@ -941,6 +941,46 @@ Otwórz mapę Pól Chwały w grze.
         const totalsRow=document.createElement('span');totalsRow.textContent='Suma';totalsRow.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(totalsRow);
         for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=summary.totals[k]?summary.totals[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(c);}
       }
+      // Sekcja: Pozostałe budynki (nieprodukcyjne — stałe efekty)
+      if(summary.extras&&summary.extras.length){
+        const grouped=FoeQuantum.groupedExtras(summary.extras);
+        // Ustal dynamicznie które kolumny mają jakiekolwiek wartości != 0
+        const extraColDefs=[
+          {key:'guild_raids_happiness',    label:'😊', title:'Zadowolenie'},
+          {key:'guild_raids_population',   label:'👥', title:'Populacja'},
+          {key:'guild_raids_action_points_collection', label:'⚡', title:'Produkcja działań/h'},
+          {key:'guild_raids_action_points_capacity',   label:'🔋', title:'Pojemność działań'},
+          {key:'att_def_boost_attacker',   label:'🗡️', title:'Bonus ataku atakującego %'},
+          {key:'att_def_boost_defender',   label:'🛡️', title:'Bonus obrony obrońcy %'},
+        ];
+        const activeCols=extraColDefs.filter(col=>grouped.some(g=>g.effects[col.key]!==0));
+        if(activeCols.length){
+          const sec2=document.createElement('details');sec2.open=true;sec2.style.cssText='margin-top:8px';$('quantum-groups').append(sec2);
+          const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
+          const tbl2=document.createElement('div');
+          tbl2.style.cssText=`display:grid;grid-template-columns:1fr ${activeCols.map(()=>'auto').join(' ')};gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;`;
+          sec2.append(tbl2);
+          // Nagłówki
+          const hName=document.createElement('span');hName.style.cssText='font-weight:bold;padding:1px 0;border-bottom:1px solid #4a3525';tbl2.append(hName);
+          for(const col of activeCols){const hd=document.createElement('span');hd.textContent=col.label;hd.title=col.title;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl2.append(hd);}
+          // Wiersze
+          const extTotals=Object.fromEntries(FoeQuantum.EXTRA_KEYS.map(k=>[k,0]));
+          for(const item of grouped){
+            const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name);nameCell.style.cssText='padding:1px 0';tbl2.append(nameCell);
+            for(const col of activeCols){
+              const v=item.effects[col.key]||0;
+              const c=document.createElement('span');
+              c.textContent=v?(item.count>1&&col.key!=='guild_raids_happiness'&&col.key!=='guild_raids_population'?v.toLocaleString('pl-PL'):v.toLocaleString('pl-PL')):'—';
+              c.style.cssText='text-align:right;padding:1px 0;color:'+(v!==0?(v<0?'#e57373':'#f0e6d2'):'#6a7a7e');
+              tbl2.append(c);
+              extTotals[col.key]+=v;
+            }
+          }
+          // Suma
+          const sumName=document.createElement('span');sumName.textContent='Suma';sumName.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl2.append(sumName);
+          for(const col of activeCols){const c=document.createElement('span');const v=extTotals[col.key];c.textContent=v?v.toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525;color:'+(v<0?'#e57373':'#f0e6d2');tbl2.append(c);}
+        }
+      }
       const emojiTitles={'🪙':'Monety kwantowe','🔨':'Zaopatrzenie kwantowe (młotki)','🔩':'Chronostopy','👑':'Poziom trudności najazdu','⌛':'Termin zakończenia najazdu','✨':'Mnożnik produkcji wynikający z zadowolenia','⚡':'Produkcja działań kwantowych na godzinę','⚔️':'Walki na godzinę przy koszcie 3500 działań za walkę'};
       const walker=document.createTreeWalker($('quantum'),NodeFilter.SHOW_TEXT),nodes=[];
       while(walker.nextNode())nodes.push(walker.currentNode);

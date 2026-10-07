@@ -699,20 +699,26 @@
     questAutoBusy=true;questAutoAbort=false;
     const conn=battleTransport;
     try{
-      // Pobierz stan zasobów i listę misji
-      let resources=null,quests=[];
+      // Pobierz listę misji
+      let quests=[];
       {
         const {ok,list}=await questBatchCall(conn,'QuestService','getUpdates',[]);
         if(!ok||questFindError(list))throw Error('Nie udało się pobrać listy misji.');
         const raw=questGetUpdates(list);
         if(!Array.isArray(raw))throw Error('Nieoczekiwany format getUpdates.');
         quests=raw.filter(q=>q?.type==='generic'&&q?.state==='accepted');
-        resources=questGetResources(list);
         upd(`Pobrano ${quests.length} misji powtarzalnych.`);
       }
-      if(!resources)throw Error('Nie udało się odczytać zasobów gracza.');
-      let money=Number(resources.money)||0,supplies=Number(resources.supplies)||0;
-      upd(`Zasoby: 🪙 ${money.toLocaleString('pl-PL')} · 🔨 ${supplies.toLocaleString('pl-PL')}`);
+      // Pobierz zasoby osobnym żądaniem — getUpdates nie zawiera ResourceService w odpowiedzi
+      let money=0,supplies=0;
+      {
+        const {ok,list}=await questBatchCall(conn,'ResourceService','getPlayerResourceBag',[]);
+        if(!ok||questFindError(list))throw Error('Nie udało się odczytać zasobów gracza.');
+        const res=questGetResources(list);
+        if(!res)throw Error('Nieoczekiwany format zasobów gracza.');
+        money=Number(res.money)||0;supplies=Number(res.supplies)||0;
+        upd(`Zasoby: 🪙 ${money.toLocaleString('pl-PL')} · 🔨 ${supplies.toLocaleString('pl-PL')}`);
+      }
       let done=0,aborted=0;
       // Pętla misji
       outer: while(quests.length&&!questAutoAbort){

@@ -867,6 +867,23 @@ Otwórz mapę Pól Chwały w grze.
     const formatResources=r=>`🪙 ${r.guild_raids_money.toLocaleString('pl-PL')}   🔨 ${r.guild_raids_supplies.toLocaleString('pl-PL')}   🔩 ${r.guild_raids_chrono_alloy.toLocaleString('pl-PL')}`;
     const formatTime=t=>new Date(t*1000).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
     paintQuantum=()=>{
+      // Nie rerenderuj jeśli dane się nie zmieniły
+      const curVer=quantumTracker.consume({});
+      if(paintQuantum._lastVer===curVer){
+        // Tylko aktualizuj etykiety "Gotowe" bez niszczenia DOM
+        const now=Date.now()/1000;
+        $('quantum-groups').querySelectorAll('[data-groupat]').forEach(el=>{
+          const at=Number(el.dataset.groupat);
+          if(at&&at<=now&&!el.dataset.ready){el.dataset.ready='1';const s=el.querySelector('strong');if(s)s.textContent=(el.dataset.collapsed==='1'?'▸ ':'▾ ')+'Gotowe';}
+        });
+        return;
+      }
+      paintQuantum._lastVer=curVer;
+      // Zachowaj stan zwinięcia przed rerenderem
+      if(!paintQuantum._collapsed)paintQuantum._collapsed=new Map();
+      $('quantum-groups').querySelectorAll('[data-groupat]').forEach(el=>{
+        paintQuantum._collapsed.set(el.dataset.groupat, el.dataset.collapsed!=='0');
+      });
       const summary=quantumTracker.summary();$('quantum-summary').replaceChildren();$('quantum-groups').replaceChildren();
       const text=(parent,value,tag='p',className='')=>{const node=document.createElement(tag);node.textContent=value;node.className=className;parent.append(node);return node;};
       if(!summary){text($('quantum-summary'),'Otwórz osadę kwantową w grze.');return;}
@@ -898,27 +915,39 @@ Otwórz mapę Pól Chwały w grze.
       $('quantum-groups').append(zbGrid);
       // Nagłówki kolumn
       const zbHdr=document.createElement('span');zbHdr.style.cssText='padding:1px 0;border-bottom:1px solid #4a3525';zbGrid.append(zbHdr);
-      for(const [,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩']]){
-        const hd=document.createElement('span');hd.textContent=icon;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';zbGrid.append(hd);
-      }
+      for(const icon of ['🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=icon;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';zbGrid.append(hd);}
       for(const group of summary.groups){
-        // Nagłówek grupy — cały wiersz, klikalny toggle
-        const groupId='qg-'+group.at;
-        const hRow=document.createElement('span');hRow.style.cssText='grid-column:1/-1;display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;cursor:pointer;margin-top:4px';
-        hRow.dataset.group=groupId;
-        const timeCell=document.createElement('strong');timeCell.textContent=group.at<=Date.now()/1000?'▾ Gotowe':'▾ '+clockTime(group.at);timeCell.style.cssText='padding:1px 0';hRow.append(timeCell);
+        const atKey=String(group.at);
+        // Stan zwinięcia: domyślnie true (zwinięte), przywróć jeśli był wcześniej rozwinięty
+        const collapsed=paintQuantum._collapsed?.has(atKey)?paintQuantum._collapsed.get(atKey):true;
+        // Wiersz nagłówka grupy
+        const hRow=document.createElement('span');
+        hRow.dataset.groupat=atKey;hRow.dataset.collapsed=collapsed?'1':'0';
+        hRow.style.cssText='grid-column:1/-1;display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;cursor:pointer;margin-top:4px';
+        const isReady=group.at<=Date.now()/1000;
+        if(isReady)hRow.dataset.ready='1';
+        const timeCell=document.createElement('strong');
+        timeCell.textContent=(collapsed?'▸ ':'▾ ')+(isReady?'Gotowe':clockTime(group.at));
+        timeCell.style.cssText='padding:1px 0';hRow.append(timeCell);
         for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=num(group.production[k])||'—';c.style.cssText='text-align:right;padding:1px 0;font-weight:bold;color:'+(group.production[k]?'#f0e6d2':'#6a7a7e');hRow.append(c);}
         zbGrid.append(hRow);
         // Wiersze budynków
         const rows=[];
         for(const item of FoeQuantum.groupedBuildings(group.items)){
-          const nameCell=document.createElement('span');const bold=document.createElement('strong');bold.textContent=item.count+'×';nameCell.append(bold,' '+item.name);nameCell.style.cssText='padding:1px 4px;color:#c8d8dc';
-          zbGrid.append(nameCell);
-          rows.push(nameCell);
-          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e');zbGrid.append(c);rows.push(c);}
+          const nameCell=document.createElement('span');const bold=document.createElement('strong');bold.textContent=item.count+'×';nameCell.append(bold,' '+item.name);
+          nameCell.style.cssText='padding:1px 4px;color:#c8d8dc'+(collapsed?';display:none':'');
+          zbGrid.append(nameCell);rows.push(nameCell);
+          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e')+(collapsed?';display:none':'');zbGrid.append(c);rows.push(c);}
         }
-        // Toggle: kliknięcie w nagłówek grupy chowa/pokazuje wiersze budynków
-        hRow.onclick=()=>{const hide=rows[0]?.style.display!=='none';rows.forEach(r=>r.style.display=hide?'none':'');timeCell.textContent=(hide?'▸ ':'▾ ')+(group.at<=Date.now()/1000?'Gotowe':clockTime(group.at));};
+        // Toggle
+        hRow.onclick=()=>{
+          const nowCollapsed=hRow.dataset.collapsed!=='0';
+          hRow.dataset.collapsed=nowCollapsed?'0':'1';
+          rows.forEach(r=>r.style.display=nowCollapsed?'':'none');
+          timeCell.textContent=(nowCollapsed?'▾ ':'▸ ')+(group.at<=Date.now()/1000?'Gotowe':clockTime(group.at));
+          if(!paintQuantum._collapsed)paintQuantum._collapsed=new Map();
+          paintQuantum._collapsed.set(atKey,!nowCollapsed);
+        };
       }
       if(summary.builds.length){
         text($('quantum-groups'),'W budowie','strong');

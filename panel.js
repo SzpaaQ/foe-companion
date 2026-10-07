@@ -535,6 +535,66 @@ Otwórz mapę Pól Chwały w grze.
     const negoSection=document.createElement('section');negoSection.id='nego';negoSection.hidden=true;negoSection.setAttribute('role','tabpanel');
     negoSection.innerHTML='<h2>Negocjacje</h2><p id="standalone-kind"></p><button id="standalone-start" disabled>🤝 Negocjuj</button><p id="standalone-status" role="status" style="height:32px;font-size:12px">Otwórz negocjację w grze.</p><div id="standalone-history" style="max-height:300px;overflow:auto;font-size:12px"></div>';
     root.querySelector('aside').append(negoSection);
+
+    // Zakładka Inne
+    const inneTab=document.createElement('button');inneTab.dataset.page='inne';inneTab.setAttribute('role','tab');inneTab.setAttribute('aria-selected','false');inneTab.title='Inne';inneTab.setAttribute('aria-label','Inne');inneTab.textContent='🧩';
+    root.querySelector('nav').insertBefore(inneTab,root.querySelector('[data-page="settings"]'));
+    const inneSection=document.createElement('section');inneSection.id='inne';inneSection.hidden=true;inneSection.setAttribute('role','tabpanel');
+    inneSection.innerHTML=`
+      <h2>Inne</h2>
+      <h3>Misje powtarzalne</h3>
+      <div style="font-size:12px;color:#a5b8bc;margin-bottom:8px">
+        Wykonuje misje powtarzalne wymagające wpłaty monet lub zaopatrzenia.<br>
+        Pomija misje z innymi warunkami. Zatrzymuje się gdy brakuje zasobów.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <label style="font-size:12px">🪙 min zapas <input id="quest-min-money" type="number" min="0" step="1000" value="50000" style="width:90px;padding:3px 5px;margin-left:4px" aria-label="Minimalny zapas monet"></label>
+        <label style="font-size:12px">🔨 min zapas <input id="quest-min-supplies" type="number" min="0" step="1000" value="50000" style="width:90px;padding:3px 5px;margin-left:4px" aria-label="Minimalny zapas zaopatrzenia"></label>
+      </div>
+      <button id="quest-auto-start">▶ Wykonuj misje</button>
+      <button id="quest-auto-stop" disabled>⏹ Zatrzymaj</button>
+      <p id="quest-auto-status" role="status" style="font-size:12px;min-height:18px;margin-top:6px"></p>
+      <div id="quest-auto-log" style="max-height:200px;overflow:auto;font-size:11px;color:#a5b8bc;margin-top:4px"></div>
+    `;
+    root.querySelector('aside').append(inneSection);
+
+    // Ustawienia automisji z localStorage
+    const LS_QUEST_MONEY='foe-companion.questMinMoney',LS_QUEST_SUPPLIES='foe-companion.questMinSupplies';
+    const loadQuestSettings=()=>{
+      const m=Number(localStorage.getItem(LS_QUEST_MONEY));const s=Number(localStorage.getItem(LS_QUEST_SUPPLIES));
+      if(m>=0)$('quest-min-money').value=m;if(s>=0)$('quest-min-supplies').value=s;
+    };
+    loadQuestSettings();
+    $('quest-min-money').onchange=()=>localStorage.setItem(LS_QUEST_MONEY,$('quest-min-money').value);
+    $('quest-min-supplies').onchange=()=>localStorage.setItem(LS_QUEST_SUPPLIES,$('quest-min-supplies').value);
+
+    let questAutoRunning=false,questAutoToken=null;
+    const questLog=msg=>{const line=document.createElement('div');line.textContent=msg;$('quest-auto-log').append(line);line.scrollIntoView?.({block:'nearest'});};
+    const questStatus=msg=>$('quest-auto-status').textContent=msg;
+
+    $('quest-auto-start').onclick=()=>{
+      if(questAutoRunning)return;
+      questAutoRunning=true;questAutoToken='quest-auto-'+Date.now();
+      $('quest-auto-start').disabled=true;$('quest-auto-stop').disabled=false;
+      $('quest-auto-log').replaceChildren();questStatus('Uruchamiam…');
+      const minMoney=Math.max(0,Number($('quest-min-money').value)||0);
+      const minSupplies=Math.max(0,Number($('quest-min-supplies').value)||0);
+      window.postMessage({channel:'foe-quest-auto',token:questAutoToken,minMoney,minSupplies},location.origin);
+    };
+    $('quest-auto-stop').onclick=()=>{
+      questAutoRunning=false;questAutoToken=null;
+      $('quest-auto-start').disabled=false;$('quest-auto-stop').disabled=true;questStatus('Zatrzymano.');
+      window.postMessage({channel:'foe-quest-auto-stop'},location.origin);
+    };
+    window.addEventListener('message',event=>{
+      if(event.source!==window||event.origin!==location.origin)return;
+      const d=event.data;
+      if(d?.channel==='foe-quest-auto-update'&&d.token===questAutoToken){
+        questStatus(d.status||'');
+        if(d.log)questLog(d.log);
+        if(d.done){questAutoRunning=false;questAutoToken=null;$('quest-auto-start').disabled=false;$('quest-auto-stop').disabled=true;}
+      }
+    });
     const negoOpenKey='foe-companion.autoOpenNego';
     $('auto-open-nego').checked=localStorage.getItem(negoOpenKey)!=='0';
     $('auto-open-nego').onchange=()=>localStorage.setItem(negoOpenKey,$('auto-open-nego').checked?'1':'0');

@@ -639,4 +639,97 @@
   // Panel wysyła foe-negotiate-auto z {token, provinceId} żeby uruchomić jeden cykl.
   // Po zakończeniu (wygrana/porażka) panel decyduje czy kontynuować.
   // (Cykl = jedna kompletna negocjacja prowincji, identyczna z foe-negotiate.)
+
+  // ─── Automisje powtarzalne ────────────────────────────────────────────────
+  // Wykonuje misje generyczne z warunkami wpłaty monet/zaopatrzenia (pay_condition).
+  // Misje z innymi warunkami są przerywane. Pętla trwa dopóki są zasoby lub panel nie zatrzyma.
+  let questAutoBusy=false,questAutoAbort=false;
+  function questBatchCall(conn,requestClass,requestMethod,requestData){
+    const item={__class__:'ServerRequest',requestClass,requestMethod,requestData,requestId:++lastRequestId};
+    const body=JSON.stringify([item]),headers={'Content-Type':'application/json',Signature:FoeRequestSignature.sign(conn.h,body)};
+    if(conn.client)headers['Client-Identification']=conn.client;
+    return Reflect.apply(originalFetch,window,[conn.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(20000)}])
+      .then(r=>r.json().then(data=>{emit(conn.url,body,data,true);return {ok:r.ok,list:Array.isArray(data)?data:[data]};}));
+  }
+  function questFindError(list){
+    return list.map(r=>/error/i.test(r?.responseData?.__class__||'')?r.responseData:r).find(r=>/error/i.test(r?.__class__||'')||r?.error);
+  }
+  function questGetUpdates(list){
+    return list.find(r=>r.requestClass==='QuestService'&&r.requestMethod==='getUpdates')?.responseData;
+  }
+  function questGetResources(list){
+    const bag=list.find(r=>r.requestClass==='ResourceService'&&r.requestMethod==='getPlayerResourceBag')?.responseData;
+    return bag?.resources?.resources||bag?.resources||null;
+  }
+  window.addEventListener('message',event=>{if(event.source===window&&event.origin===location.origin&&event.data?.channel==='foe-quest-auto-stop')questAutoAbort=true;});
+  window.addEventListener('message',async event=>{
+    if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-auto')return;
+    const {token,minMoney,minSupplies}=event.data;
+    const upd=(status,log,done=false)=>window.postMessage({channel:'foe-quest-auto-update',token,status,log,done},location.origin);
+    if(questAutoBusy||battleBusy||paymentBusy||collectBusy||negBusy)return upd('Trwa inne żądanie.',null,true);
+    if(!battleTransport||battleUncertain)return upd('Brak zweryfikowanego połączenia. Odśwież grę.',null,true);
+    questAutoBusy=true;questAutoAbort=false;
+    const conn=battleTransport;
+    try{
+      // Pobierz stan zasobów i listę misji
+      let resources=null,quests=[];
+      {
+        const {ok,list}=await questBatchCall(conn,'QuestService','getUpdates',[]);
+        if(!ok||questFindError(list))throw Error('Nie udało się pobrać listy misji.');
+        const raw=questGetUpdates(list);
+        if(!Array.isArray(raw))throw Error('Nieoczekiwany format getUpdates.');
+        quests=raw.filter(q=>q?.type==='generic'&&q?.state==='accepted');
+        resources=questGetResources(list);
+        upd(`Pobrano ${quests.length} misji powtarzalnych.`);
+      }
+      if(!resources)throw Error('Nie udało się odczytać zasobów gracza.');
+      let money=Number(resources.money)||0,supplies=Number(resources.supplies)||0;
+      upd(`Zasoby: 🪙 ${money.toLocaleString('pl-PL')} · 🔨 ${supplies.toLocaleString('pl-PL')}`);
+      let done=0,aborted=0;
+      // Pętla misji
+      outer: while(quests.length&&!questAutoAbort){
+        const quest=quests[0];
+        quests=quests.slice(1);
+        const conds=quest.successConditions||[];
+        // Sprawdź czy wszystkie warunki to pay_condition z money/supplies
+        const payable=conds.every(c=>c.flags?.includes('pay_condition')&&c.payload?.some(p=>p.type==='pay'&&(p.cost?.resources?.money||p.cost?.resources?.supplies)));
+        if(!payable){
+          upd(`Pomijam: ${quest.title||quest.id}`,'Abort: '+( quest.title||quest.id));
+          const {ok,list}=await questBatchCall(conn,'QuestService','abortQuest',[quest.id]);
+          if(!ok||questFindError(list))throw Error('Błąd przy pomijaniu misji '+quest.id+'.');
+          aborted++;
+          // Zaktualizuj listę misji z odpowiedzi
+          const fresh=questGetUpdates(list);
+          if(Array.isArray(fresh)){const ids=new Set(quests.map(q=>q.id));quests=[...quests,...fresh.filter(q=>q?.type==='generic'&&q?.state==='accepted'&&!ids.has(q.id))];}
+          continue;
+        }
+        // Sprawdź czy mamy wystarczająco zasobów
+        let totalMoney=0,totalSupplies=0;
+        for(const c of conds){for(const p of c.payload||[])if(p.type==='pay'){totalMoney+=p.cost?.resources?.money||0;totalSupplies+=p.cost?.resources?.supplies||0;}}
+        if(money-totalMoney<minMoney||supplies-totalSupplies<minSupplies){
+          upd(`Zatrzymano — niewystarczające zasoby (${quest.title||quest.id}).`,null,true);
+          return;
+        }
+        upd(`Wykonuję: ${quest.title||quest.id} (🪙 ${totalMoney} · 🔨 ${totalSupplies})`);
+        // Wykonaj warunki pay_condition
+        for(const c of conds){
+          if(questAutoAbort)break outer;
+          const {ok,list}=await questBatchCall(conn,'QuestService','paySuccessCondition',[quest.id,c.id,'quest']);
+          if(!ok||questFindError(list))throw Error('Błąd paySuccessCondition misja '+quest.id+' warunek '+c.id+'.');
+        }
+        // Odbierz nagrodę
+        {
+          const {ok,list}=await questBatchCall(conn,'QuestService','advanceQuest',[quest.id]);
+          if(!ok||questFindError(list))throw Error('Błąd advanceQuest misja '+quest.id+'.');
+          money-=totalMoney;supplies-=totalSupplies;done++;
+          const fresh=questGetUpdates(list);
+          if(Array.isArray(fresh)){const ids=new Set(quests.map(q=>q.id));quests=[...quests,...fresh.filter(q=>q?.type==='generic'&&q?.state==='accepted'&&!ids.has(q.id))];}
+          upd(`Wykonano: ${quest.title||quest.id}`,`✅ ${quest.title||quest.id}`,false);
+        }
+      }
+      upd(`Zakończono. Wykonano: ${done}, pominięto: ${aborted}.`,null,true);
+    }catch(err){
+      upd('Błąd: '+err.message,null,true);
+    }finally{questAutoBusy=false;questAutoAbort=false;}
+  });
 })();

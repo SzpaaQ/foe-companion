@@ -1,6 +1,27 @@
 (() => {
   'use strict';
   const LIMIT = 24000000;
+  // Dynamiczne wyciąganie soli z pliku JS gry — uruchamia się gdy gra załaduje ForgeHX-*.js
+  (function autoUpdateSalt(){
+    const extract=async url=>{
+      try{
+        const text=await fetch(url).then(r=>r.text());
+        const m=text.match(/_signatureHash\s*\+\s*"([A-Za-z0-9+/]{40,}={0,2})"\s*\+/);
+        if(m&&m[1]&&globalThis.FoeRequestSignature){
+          globalThis.FoeRequestSignature.updateSalt(m[1]);
+          console.debug('[foe-helper] Sól podpisu zaktualizowana z',url.split('/').pop());
+        }
+      }catch(e){console.debug('[foe-helper] Nie udało się pobrać soli:',e.message);}
+    };
+    // Sprawdź skrypty już załadowane
+    for(const s of document.querySelectorAll('script[src*="ForgeHX"]'))extract(s.src);
+    // Obserwuj nowe
+    new MutationObserver(mutations=>{
+      for(const m of mutations)for(const node of m.addedNodes){
+        if(node.nodeName==='SCRIPT'&&node.src?.includes('ForgeHX'))extract(node.src);
+      }
+    }).observe(document.documentElement,{childList:true,subtree:true});
+  })();
   let collectBusy=false,cityOwner=null;const ownBuildings=new Map(),collectedStates=new Map();
   let transport=null,lastRequestId=0,paymentBusy=false,paymentUncertain=false;
   let battleTransport=null,battleBusy=false,battleUncertain=false,nextWave=null;

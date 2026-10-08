@@ -755,7 +755,7 @@ Otwórz mapę Pól Chwały w grze.
       #gbg-stop-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px;height:38px;align-items:stretch}
       #gbg-stop-controls button{margin:0;padding:4px;font-size:11px;min-width:0}
       #gbg-stop-controls button[hidden]{display:block!important;visibility:hidden;pointer-events:none}
-      #neg-status{height:24px;line-height:24px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #neg-status{height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       #neg-status::before{content:'Status: ';font-weight:bold}
       #list{max-height:100px;box-sizing:border-box;overflow-y:auto}
       #open-sectors{overflow-y:auto;overflow-x:hidden}
@@ -769,7 +769,8 @@ Otwórz mapę Pól Chwały w grze.
       #gbg-title td{padding:0 5px}
       #gb button,#gb button:hover{background:transparent;border:0;box-shadow:none}
       #gbg h3{font-size:13px;margin:6px 0}
-      #gbg-controls{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px;padding:2px 0}
+      #gbg-controls{display:grid;grid-template-columns:1fr;align-items:center;gap:2px;padding:2px 0}
+      #neg-status{grid-column:1/-1;text-align:left}
       #gbg-stop-controls{height:28px;gap:4px}
       #gbg-stop-controls button{font-size:10px;padding:2px}
       #open-sectors{font-size:11px}
@@ -786,7 +787,7 @@ Otwórz mapę Pól Chwały w grze.
       #gbg> *{flex-shrink:0;box-sizing:border-box}
       #gbg-title{height:26px}
       #open-sectors-heading{height:28px}
-      #gbg-controls{position:static;height:32px}
+      #gbg-controls{position:static;height:auto;min-height:32px}
       #gbg #open-sectors{flex:1 0 80px;min-height:80px;height:auto}
       #schedule-heading{height:28px}
       #gbg #list{height:100px;min-height:100px;max-height:100px;flex:none}

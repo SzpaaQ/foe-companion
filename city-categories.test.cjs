@@ -16,5 +16,5 @@ test('mixed production belongs to FP and army; fragments are not units',()=>{
   assert.equal(matches(row,'other'),false);
   assert.equal(matches({...row,type:'greatbuilding'},'pearls'),true);
   assert.equal(matches({...row,type:'greatbuilding'},'fp'),false);
-  assert.equal(matches({...row,productionFP:0,productionUnits:0},'other'),true);
+  assert.equal(matches({...row,productionFP:0,productionUnits:0,producesFP:false,producesUnits:false},'other'),true);
 });

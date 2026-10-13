@@ -92,7 +92,7 @@
       const queue=[data];for(let i=0;i<queue.length&&i<200000;i++){
         const v=queue[i];if(!v||typeof v!=='object')continue;
         if(v.requestClass==='StartupService'&&v.responseData?.city_map?.entities){cityOwner=v.responseData.user_data?.player_id;ownBuildings.clear();for(const e of v.responseData.city_map.entities)if(e.player_id===cityOwner)ownBuildings.set(e.id,e);}
-        if(v.__class__==='CityMapEntity'&&ownBuildings.has(v.id)&&(v.player_id==null||v.player_id===cityOwner)&&!(/GuildRaids/.test(v.cityentity_id||'')))ownBuildings.set(v.id,{...ownBuildings.get(v.id),...v});
+        if(v.__class__==='CityMapEntity'&&(ownBuildings.has(v.id)?(v.player_id==null||v.player_id===cityOwner):(cityOwner!=null&&v.player_id===cityOwner&&typeof v.cityentity_id==='string'&&typeof v.type==='string'))&&!(/GuildRaids/.test(v.cityentity_id||'')))ownBuildings.set(v.id,{...ownBuildings.get(v.id),...v});
         for(const child of Object.values(v))if(child&&typeof child==='object')queue.push(child);
       }
       // Only method metadata is retained from requests; no cookies, headers or tokens.

@@ -521,7 +521,7 @@ Otwórz mapę Pól Chwały w grze.
           <div id="gbg-automation-settings"></div>
           </details>
 
-          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
+          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.5.02</strong></p><ul><li>Zbiory: domyślna karta Ulubione, zapis wybranych budynków i przyciski dodawania/usuwania.</li><li>Zbierz wszystkie: równoległe żądania dla gotowych ulubionych i osobna kontrola wyniku każdego zbioru.</li><li>Potwierdzenie zbioru wymaga zmiany stanu budynku; brak fałszywego sukcesu przy odrzuconym zbiorze.</li></ul><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
 <p><strong>0.4.21</strong> · automatyczna aktualizacja soli podpisu z pliku JS gry</p>
 <p><strong>0.4.20</strong> · aktualizacja soli podpisu do wersji gry 1.345</p>
 <p><strong>0.4.19</strong> · separatory między sekcjami kwantowymi</p>
@@ -1808,9 +1808,12 @@ Otwórz mapę Pól Chwały w grze.
     let collectPending=null;const attemptedCollections=new Map();let collectFeedback='';
     const collectionBonusBar=document.createElement('div');collectionBonusBar.id='collection-bonuses';collectionBonusBar.style.cssText='display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:11px;color:#f1d69a;margin:6px 0';
     $('city-list').before(collectionBonusBar);
-    let cityCategory='fp';
-    const cityCategories=[['fp','+PR','🔬'],['pearls','Perły','🏛️'],['army','Wojsko','⚔️'],['other','Pozostałe','📦']];
-    const inCityCategory=(b,key)=>key==='pearls'?b.type==='greatbuilding':key==='army'?b.productionUnits>0:key==='fp'?b.type!=='greatbuilding'&&b.productionFP>0:b.type!=='greatbuilding'&&!b.productionFP&&!b.productionUnits;
+    const favoritesKey=()=> 'foe-companion.favorites.'+(ownPlayerId??'unknown');
+    function readFavorites(){try{const v=JSON.parse(localStorage.getItem(favoritesKey())||'[]');return new Set(Array.isArray(v)?v:[]);}catch{return new Set();}}
+    const favoriteId=b=>b.id+':'+b.ceid;
+    let cityCategory='favorites';
+    const cityCategories=[['favorites','Ulubione','⭐'],['fp','+PR','🔬'],['pearls','Perły','🏛️'],['army','Wojsko','⚔️'],['other','Pozostałe','📦']];
+    const inCityCategory=(b,key)=>key==='favorites'?readFavorites().has(favoriteId(b)):key==='pearls'?b.type==='greatbuilding':key==='army'?b.productionUnits>0:key==='fp'?b.type!=='greatbuilding'&&b.productionFP>0:b.type!=='greatbuilding'&&!b.productionFP&&!b.productionUnits;
     const cityTabs=document.createElement('div');cityTabs.setAttribute('role','tablist');cityTabs.setAttribute('aria-label','Kategorie zbiorów');cityTabs.style.cssText='display:flex;gap:5px;margin:6px 0 10px';
     const cityTabButtons=new Map();
     for(const [key,label,emoji] of cityCategories){
@@ -1818,6 +1821,18 @@ Otwórz mapę Pól Chwały w grze.
       button.onclick=()=>{cityCategory=key;hideTip();paintCity();};cityTabButtons.set(key,button);cityTabs.append(button);
     }
     $('city-list').before(cityTabs);$('city-list').setAttribute('role','tabpanel');
+    const collectAll=document.createElement('button');collectAll.textContent='🤲 Zbierz wszystkie';collectAll.style.cssText='font-size:11px;margin:0 0 6px';$('city-list').before(collectAll);
+    const canCollect=b=>b.ready&&attemptedCollections.get(b.id)!==JSON.stringify(b.raw.state);
+    function startCollection(buildings){
+      if(collectPending)return;
+      const selected=buildings.filter(canCollect);if(!selected.length)return;
+      const token=crypto.randomUUID();collectPending=token;
+      for(const b of selected)attemptedCollections.set(b.id,JSON.stringify(b.raw.state));
+      collectFeedback='Zbieranie: '+selected.length+'…';
+      window.postMessage({channel:'foe-collect',token,entityIds:selected.map(b=>b.id)},location.origin);paintCity();
+      setTimeout(()=>{if(collectPending!==token)return;collectPending=null;collectFeedback='Brak potwierdzenia zbiorów. Sprawdź stan w grze przed ponowieniem.';paintCity();},25000);
+    }
+    collectAll.onclick=()=>startCollection(FoeModel.cityRows().filter(b=>inCityCategory(b,'favorites')));
     const cityNamesKey='foe-companion.customBuildingNames';
     const resetNames=document.createElement('button');resetNames.id='reset-building-names';resetNames.type='button';resetNames.textContent='Resetuj nazwy';resetNames.style.cssText='margin:10px 0 20px;font-size:11px;padding:3px 8px;cursor:pointer';
     $('city-list').after(resetNames);
@@ -1827,7 +1842,7 @@ Otwórz mapę Pól Chwały w grze.
       paintCity();
     };
     function readCityNames(){try{const value=JSON.parse(localStorage.getItem(cityNamesKey)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}}
-    window.addEventListener('message',event=>{if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-collect-result'||event.data.token!==collectPending)return;collectPending=null;collectFeedback=event.data.message;paintCity();});
+    window.addEventListener('message',event=>{if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-collect-result'||event.data.token!==collectPending)return;collectPending=null;for(const r of event.data.results||[])if(!r.ok&&r.retryable)attemptedCollections.delete(r.entityId);collectFeedback=event.data.message;paintCity();});
     setInterval(()=>paintCity(),1000);
     paintCity = () => {
       const bonuses=FoeModel.getCollectionBonuses();
@@ -1858,12 +1873,13 @@ Otwórz mapę Pól Chwały w grze.
         button.style.cssText='flex:1;padding:5px 4px;font-size:12px;border-bottom:2px solid '+(selected?'#f1d69a':'transparent')+';background:'+(selected?'#243d45':'transparent')+';color:'+(ready?'#ffd76a':'#dce8ec')+';font-weight:'+(ready?'bold':'normal');
       }
       const rows=allRows.filter(b=>inCityCategory(b,cityCategory));
+      collectAll.hidden=cityCategory!=='favorites';collectAll.disabled=!!collectPending||!rows.some(canCollect);
       $('city-list').setAttribute('aria-labelledby','city-tab-'+cityCategory);
       const statusEl = $('city-status');
       const listEl = $('city-list');
 
       if (!rows.length) {
-        statusEl.textContent = 'Brak budynków z produkcją w tej kategorii.';
+        statusEl.textContent = collectFeedback||(cityCategory==='favorites'?'Dodaj budynki przyciskiem 🤍 na pozostałych listach.':'Brak budynków z produkcją w tej kategorii.');
         listEl.replaceChildren();
         return;
       }
@@ -1923,8 +1939,10 @@ Otwórz mapę Pól Chwały w grze.
         const collect=document.createElement('button');collect.textContent='🤲';collect.title=b.ready?'Zbierz produkcję':'Produkcja jeszcze niegotowa';collect.setAttribute('aria-label','Zbierz: '+b.name);
         const stamp=JSON.stringify(b.raw.state);collect.disabled=!b.ready||!!collectPending||attemptedCollections.get(b.id)===stamp;
         collect.style.opacity=collect.disabled?'0.2':'1';
-        collect.onclick=()=>{if(collectPending)return;collectPending=crypto.randomUUID();attemptedCollections.set(b.id,stamp);collectFeedback='Zbieranie: '+b.name+'…';window.postMessage({channel:'foe-collect',token:collectPending,entityId:b.id},location.origin);paintCity();};
-        controls.append(time,star,collect);row.append(name,controls);
+        collect.onclick=()=>startCollection([b]);
+        const favorite=document.createElement('button'),isFavorite=readFavorites().has(favoriteId(b));favorite.textContent=isFavorite?'❤️':'🤍';favorite.dataset.tooltip=isFavorite?'Usuń z ulubionych':'Dodaj do ulubionych';favorite.setAttribute('aria-label',favorite.dataset.tooltip);favorite.style.cssText='border:0;background:transparent;padding:0;font-size:12px';
+        favorite.onclick=()=>{const saved=readFavorites();if(saved.has(favoriteId(b)))saved.delete(favoriteId(b));else saved.add(favoriteId(b));try{localStorage.setItem(favoritesKey(),JSON.stringify([...saved]));}catch{collectFeedback='Nie udało się zapisać ulubionych.';}hideTip();paintCity();};
+        controls.append(time,star,favorite,collect);row.append(name,controls);
         listEl.append(row);
       }
     };

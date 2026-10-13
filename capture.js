@@ -113,17 +113,31 @@
   const originalFetch = window.fetch;
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-collect')return;
-    const {token,entityId}=event.data,answer=(ok,message)=>window.postMessage({channel:'foe-collect-result',token,entityId,ok,message},location.origin);
+    const {token}=event.data;
+    const ids=[...new Set(Array.isArray(event.data.entityIds)?event.data.entityIds:[event.data.entityId])];
+    const answer=(ok,message,results=ids.map(entityId=>({entityId,ok:false,retryable:true})))=>window.postMessage({channel:'foe-collect-result',token,ok,message,results},location.origin);
     if(collectBusy||battleBusy||paymentBusy)return answer(false,'Trwa inne żądanie.');
     if(!battleTransport)return answer(false,'Brak zweryfikowanego podpisu żądań.');
-    const e=ownBuildings.get(entityId),s=e?.state,stamp=JSON.stringify(s);
-    const ready=['ProductionFinishedState','ProductionReadyState'].includes(s?.__class__)||(s?.__class__==='ProducingState'&&s.next_state_transition_at>0&&s.next_state_transition_at<=Date.now()/1000);
-    if(!e||!ready||e.connected===0||collectedStates.get(entityId)===stamp)return answer(false,'Budynek nie jest gotowy lub ten zbiór już wysłano.');
-    collectBusy=true;collectedStates.set(entityId,stamp);
+    if(!ids.length||ids.some(id=>!Number.isSafeInteger(id)||id<0))return answer(false,'Nieprawidłowe budynki.');
+    collectBusy=true;
     try{
-      const data=await battleCall(battleTransport,'CityProductionService','pickupProduction',[[entityId]]);
-      answer(true,'Serwer potwierdził odbiór zbioru.');
-    }catch{answer(false,'Nie potwierdzono zbioru. Sprawdź budynek w grze; brak automatycznego ponawiania.');}
+      const ready=s=>['ProductionFinishedState','ProductionReadyState'].includes(s?.__class__)||(s?.__class__==='ProducingState'&&s.next_state_transition_at>0&&s.next_state_transition_at<=Date.now()/1000);
+      const results=await Promise.all(ids.map(async entityId=>{
+        const e=ownBuildings.get(entityId),stamp=JSON.stringify(e?.state);
+        if(!e||/GuildRaids/.test(e.cityentity_id||'')||!ready(e.state)||e.connected===0||collectedStates.get(entityId)===stamp)return {entityId,ok:false,retryable:false};
+        collectedStates.set(entityId,stamp);
+        try{
+          const data=await battleCall(battleTransport,'CityProductionService','pickupProduction',[[entityId]]);
+          const updated=data?.updatedEntities?.find(v=>v.id===entityId&&(v.player_id==null||v.player_id===cityOwner));
+          const ok=!!updated?.state&&typeof updated.state.__class__==='string'&&!ready(updated.state)&&JSON.stringify(updated.state)!==stamp;
+          const retryable=(!!updated?.state&&ready(updated.state))||(Array.isArray(data?.updatedEntities)&&data.updatedEntities.length===0);
+          if(retryable)collectedStates.delete(entityId);
+          return {entityId,ok,retryable};
+        }catch{return {entityId,ok:false,retryable:false};}
+      }));
+      const collected=results.filter(r=>r.ok).length;
+      answer(collected===ids.length,'Zebrano: '+collected+'/'+ids.length+'.'+(collected<ids.length?' Pozostałych zbiorów nie potwierdzono — sprawdź magazyn PR i stan budynków w grze.':''),results);
+    }
     finally{collectBusy=false;}
   });
   async function battleCall(connection,requestClass,requestMethod,requestData,responseMethod=requestMethod){

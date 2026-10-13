@@ -282,7 +282,11 @@
       const names=[];
       for(const item of Array.isArray(data)?data:[data]){
         const id=item?.id||item?.asset_id;
-        if(typeof id==='string'&&/^[A-Z]+_[A-Za-z0-9_]+$/.test(id)&&typeof item.name==='string'&&item.name.trim())names.push({id,name:item.name.trim()});
+        if(typeof id==='string'&&/^[A-Z]+_[A-Za-z0-9_]+$/.test(id)&&typeof item.name==='string'&&item.name.trim()){
+          const entry={id,name:item.name.trim()};
+          if(item.components)entry.producesFP=Object.values(item.components).some(c=>/"strategy_points"\s*:\s*[1-9]/.test(JSON.stringify(c?.production)||''));
+          names.push(entry);
+        }
       }
       if(names.length)window.postMessage({channel:'foe-building-names',names},location.origin);
     }catch{}

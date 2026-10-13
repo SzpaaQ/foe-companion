@@ -177,6 +177,8 @@ function line(row) {
   // Lista pomija ulice i dekoracje; budynki bez aktywnej produkcji pozostają widoczne.
 
   let cityOwner=null;
+  const fpBuildingTypes=new Set();
+  function seedProductionType(id,producesFP){if(producesFP===true)fpBuildingTypes.add(id);}
   let collectionBonuses=null;
   function updateCollectionBonuses(payload){
     let changed=false;
@@ -205,10 +207,10 @@ function line(row) {
   }
   function parseCity(entities,playerId){cityOwner=playerId;cityBuildings=new Map();for(const e of entities){if(!e||e.player_id!==playerId||/GuildRaids/.test(e.cityentity_id||''))continue;cityBuildings.set(e.id,cityBuilding(e));if(e.type==='greatbuilding'&&Number.isSafeInteger(e.level)&&Number.isSafeInteger(e.state?.forge_points_for_level_up))saveOwnPearl(e.cityentity_id,e.level,e.state.forge_points_for_level_up);}return cityBuildings;}
   function updateCity(payload){let changed=false;const q=[payload];for(let i=0;i<q.length&&i<200000;i++){const v=q[i];if(!v||typeof v!=='object')continue;if(v.__class__==='CityMapEntity'&&(cityBuildings.has(v.id)?(v.player_id==null||v.player_id===cityOwner):(cityOwner!=null&&v.player_id===cityOwner&&typeof v.cityentity_id==='string'&&typeof v.type==='string'))&&!(/GuildRaids/.test(v.cityentity_id||''))){const previous=cityBuildings.get(v.id),old=previous?.raw;const next=cityBuilding({...old,...v});if(old?.cityentity_id===next.ceid&&!v.state?.productionOption&&!v.state?.current_product){next.producesFP ||= previous.producesFP;next.producesUnits ||= previous.producesUnits;}cityBuildings.set(v.id,next);changed=true;}for(const child of Object.values(v))if(child&&typeof child==='object')q.push(child);}return {changed,buildings:cityBuildings};}
-  function cityRows(){return [...cityBuildings.values()].filter(b=>!['street','decoration'].includes(b.type)).sort((a,b)=>Number(a.type==='greatbuilding')-Number(b.type==='greatbuilding')||b.productionFP-a.productionFP||(a.until??Infinity)-(b.until??Infinity)||a.id-b.id).map(b=>({...b,name:buildingLabel(b.ceid),ready:b.collectible&&(b.finished||(b.until!==null&&b.until<=Date.now()/1000))}));}
+  function cityRows(){return [...cityBuildings.values()].filter(b=>!['street','decoration'].includes(b.type)).sort((a,b)=>Number(a.type==='greatbuilding')-Number(b.type==='greatbuilding')||b.productionFP-a.productionFP||(a.until??Infinity)-(b.until??Infinity)||a.id-b.id).map(b=>({...b,producesFP:b.producesFP||fpBuildingTypes.has(b.ceid),name:buildingLabel(b.ceid),ready:b.collectible&&(b.finished||(b.until!==null&&b.until<=Date.now()/1000))}));}
   const {findConstruction,pearlAmounts}=typeof module!=='undefined'?require('./pearls.js'):root.FoePearls;
   const api = {sector,findBattle,rows,line,setTopology,updateBattle,findConstruction,pearlAmounts,
-    learnNames,seedName,buildingLabel,parseCity,updateCity,cityRows,loadOwnPearls,ceidLabel,updateCollectionBonuses,getCollectionBonuses};
+    learnNames,seedName,seedProductionType,buildingLabel,parseCity,updateCity,cityRows,loadOwnPearls,ceidLabel,updateCollectionBonuses,getCollectionBonuses};
   root.FoeModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

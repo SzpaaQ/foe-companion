@@ -1,0 +1,20 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const model=require('./model.js');
+test('mixed production belongs to FP and army; fragments are not units',()=>{
+  const source=fs.readFileSync(__dirname+'/panel.js','utf8');
+  const matches=vm.runInNewContext(source.match(/const inCityCategory=[^;]+;/)[0]+'inCityCategory');
+  const products=[{playerResources:{resources:{strategy_points:51}}},{isRandom:true,reward:{type:'unit',amount:40}},{reward:{type:'consumable',subType:'fragment',amount:5,assembledReward:{type:'unit',amount:10}}}];
+  model.parseCity([{id:1,player_id:1,cityentity_id:'W_MultiAge_GR25J1',type:'generic_building',state:{__class__:'ProductionFinishedState',productionOption:{products}}}],1);
+  const row=model.cityRows()[0];
+  assert.equal(row.productionUnits,40);
+  assert.equal(row.ready,true);
+  assert.equal(matches(row,'fp'),true);
+  assert.equal(matches(row,'army'),true);
+  assert.equal(matches(row,'other'),false);
+  assert.equal(matches({...row,type:'greatbuilding'},'pearls'),true);
+  assert.equal(matches({...row,type:'greatbuilding'},'fp'),false);
+  assert.equal(matches({...row,productionFP:0,productionUnits:0},'other'),true);
+});

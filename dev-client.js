@@ -6,9 +6,9 @@
    const result=await chrome.runtime.sendMessage({type:'DEV_VERSION'});
    if(result?.project==='foe-companion' && typeof result.version==='string'){
     if(version && version!==result.version){
-     stopped=true;
-     setTimeout(()=>location.reload(),1800);
-     await chrome.runtime.sendMessage({type:'DEV_RELOAD'});return;
+     const answer=await chrome.runtime.sendMessage({type:'DEV_RELOAD'});
+     if(answer?.ok){stopped=true;return;}
+     setTimeout(poll,2000);return;
     }
     version=result.version;
    }

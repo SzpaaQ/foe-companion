@@ -29,6 +29,10 @@
     paintCity = () => {};
 
   let ownPlayerId = null;
+  const metadataNamesKey='foe-companion.metadataBuildingNames';
+  let metadataNames={};
+  try{const stored=JSON.parse(localStorage.getItem(metadataNamesKey)||'{}');if(stored&&typeof stored==='object'&&!Array.isArray(stored))metadataNames=stored;}catch{}
+  for(const [id,name] of Object.entries(metadataNames))if(/^[A-Z]+_[A-Za-z0-9_]+$/.test(id)&&typeof name==='string')FoeModel.seedName(id,name);
 
   const pearlTracker = FoePearls.createTracker();
   const quantumTracker = FoeQuantum.createTracker();
@@ -57,6 +61,16 @@ window.addEventListener('message', event => {
   }
 
   const channel = event.data?.channel;
+  if(channel==='foe-building-names'){
+    let changed=false;
+    for(const item of Array.isArray(event.data.names)?event.data.names:[]){
+      if(!item||typeof item.id!=='string'||!/^[A-Z]+_[A-Za-z0-9_]+$/.test(item.id)||typeof item.name!=='string'||!item.name.trim())continue;
+      const name=item.name.trim();if(metadataNames[item.id]===name)continue;
+      metadataNames[item.id]=name;FoeModel.seedName(item.id,name);changed=true;
+    }
+    if(changed){try{localStorage.setItem(metadataNamesKey,JSON.stringify(metadataNames));}catch{}paintCity();paintPearl();}
+    return;
+  }
 
   // --- foe-companion-v1: dane gry ---
   if (channel !== 'foe-companion-v1') return;
@@ -65,6 +79,7 @@ window.addEventListener('message', event => {
 
   const data = event.data.data;
   const responses = Array.isArray(data) ? data : [data];
+  if(FoeModel.updateCollectionBonuses(data))paintCity();
   const attrition=readPlayerAttrition(responses);
   if(attrition!==undefined){playerAttrition=attrition;paintAttrition();}
 
@@ -347,7 +362,7 @@ window.addEventListener('message', event => {
           <h1>
             FOE Companion
             <small style="font-size:11px;font-weight:400">
-              v.${chrome.runtime.getManifest().version}
+              v.${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}
             </small>
           </h1>
 
@@ -470,7 +485,8 @@ Otwórz mapę Pól Chwały w grze.
           role="tabpanel"
           hidden
         >
-          <h2>Ustawienia</h2>
+          <details id="settings-general" open><summary>Ustawienia</summary>
+          <details id="settings-pearls" open><summary>Perły</summary>
 
           <label>
             Przelicznik
@@ -485,35 +501,52 @@ Otwórz mapę Pól Chwały w grze.
           </label>
 
           <label><input id="auto-copy" type="checkbox" checked> Kopiuj kwotę (klawisze 1–5)</label>
-          <h3>Wysuwaj panel</h3>
+          </details><details id="settings-open" open><summary>Wysuwaj panel</summary>
           <div class="settings-open">
             <label><input id="auto-open" type="checkbox" checked> Otwarcie perły</label>
             <label><input id="auto-open-gbg" type="checkbox" checked> Pola Chwały</label>
             <label><input id="auto-open-quantum" type="checkbox" checked> Osada kwantowa</label>
             <label><input id="auto-open-nego" type="checkbox" checked> Negocjacje</label>
           </div>
-          <h3>Pola Chwały</h3>
+          </details></details>
+          <details id="settings-gbg" open><summary>Pola chwały</summary>
           <div class="settings-alert">
             <label><input id="gbg-sound-enabled" type="checkbox"> Alert</label>
             <select id="gbg-sound-kind" aria-label="Sygnał alertu"><option value="classic">Trzy piknięcia</option><option value="ding">Ding-dong</option><option value="single">Pojedynczy</option><option value="melody">Melodyjka</option><option value="alarm">Alarm</option></select>
             <input id="gbg-sound-minutes" type="number" min="1" max="60" step="1" value="2" aria-label="Wyprzedzenie w minutach" title="Wyprzedzenie alertu (minuty)"><span>min</span>
             <button id="gbg-sound-test" title="Odsłuch sygnału" aria-label="Odsłuch sygnału">▶</button>
           </div>
-          <p id="gbg-sound-status" role="status"></p>
+          <label>Ukrywaj powiadomienie po 10 s <input id="gbg-popup-auto" type="checkbox"></label>
+          <label>Pokaż odliczanie <input id="gbg-popup-countdown" type="checkbox" checked></label>
+          <div id="gbg-automation-settings"></div>
+          </details>
 
-          <details id="changelog"><summary>Changelog · 0.4.1</summary>
-            <p><strong>0.4.1</strong></p><ul>
-            <li>Zwięzłe ustawienia, szybkie tooltipy i widok Najazdów.</li>
-            <li>Alerty sektorów z wyborem sygnału.</li>
-            <li>PCh: autoatak, negocjacje, opór i kopiowanie otwartych sektorów.</li>
-            <li>Negocjacje misji: historia tur i rozpoznawanie ukończonych warunków.</li>
-            <li>Perły: koszt poziomu, rzeczywiste wpłaty, bloki i dopłaty z kontrolą powtórzeń.</li>
-            <li>Zbiory: własne nazwy, godziny, motywacja i zbieranie.</li>
-            <li>Rozwijane notatki i stabilniejsze odświeżanie list.</li></ul></details>
+          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
+<p><strong>0.4.21</strong> · automatyczna aktualizacja soli podpisu z pliku JS gry</p>
+<p><strong>0.4.20</strong> · aktualizacja soli podpisu do wersji gry 1.345</p>
+<p><strong>0.4.19</strong> · separatory między sekcjami kwantowymi</p>
+<p><strong>0.4.18</strong> · zbiory kwantowe — domyślnie zwinięte, stan zachowany przy odświeżaniu danych</p>
+<p><strong>0.4.17</strong> · zbiory kwantowe — wsp&#243;lny grid 4-kolumnowy wyr&#243;wnany z zestawieniem</p>
+<p><strong>0.4.16</strong> · zestawienie pozostałych budynk&#243;w kwantowych z dynamicznymi kolumnami efekt&#243;w</p>
+<p><strong>0.4.15</strong> · ukrycie zakładki Inne (automisje) — ostrożność po ostrzeżeniu</p>
+<p><strong>0.4.14</strong> · potwierdzenie wpłaty perły — emoji check, mniejszy font, bez drugiego zdania</p>
+<p><strong>0.4.13</strong> · podsumowanie nagr&#243;d po automisji — grupowanie i sumowanie</p>
+<p><strong>0.4.12</strong> · nagroda w logu misji + emoji zamiast Abort</p>
+<p><strong>0.4.11</strong> · fix misji powtarzalnych — osobne żądanie getPlayerResourceBag</p>
+<p><strong>0.4.10</strong> · odbi&#243;r nagrody misji-negocjacji + przycisk Następna misja</p>
+<p><strong>0.4.9</strong> · zakładka Inne + automisje powtarzalne</p>
+<p><strong>0.4.8</strong> · przycisk &#39;Resetuj nazwy&#39; w Zbiorach + info o odświeżeniu perły</p>
+<p><strong>0.4.7</strong> · potwierdzenie wpłaty perły znika po chwili + info o widoku gry</p>
+<p><strong>0.4.6</strong> · rozpoznawanie nazw budynk&#243;w z zestaw&#243;w wyboru (cityEntityId)</p>
+<p><strong>0.4.5</strong> · zbiory miejskie — tooltip emoji bez tekstu, ciaśniejsza lista</p>
+<p><strong>0.4.4</strong> · zestawienie budynk&#243;w kwantowych po zbiorach</p>
+<p><strong>0.4.3</strong> · zbiory kwantowe — produkcja do prawej, pogrubione godziny i liczebności</p>
+<p><strong>0.4.2</strong> · tooltipy budynk&#243;w kwantowych — produkcja z emoji, 1 linia na pozycję</p>
+<p><strong>0.4.1</strong> · perły, negocjacje misji, uzycie w polu chwały, testy</p><p><strong>0.3.0</strong> · Pierwsza wersja w historii Git: panel, perły, Pola Chwały i osada kwantowa. Kolejne poprawki tej wersji: solver i zamykanie negocjacji, obsługa brakujących towarów, rezerwa walk tylko w automacie, odblokowanie po invalid wave, sortowanie sektorów, stabilny układ, rozpiska do 100 px, zwijane notatki i komunikaty.</p></div></details>
           <details id="diagnostics"><summary id="diagnostics-heading">Diagnostyka</summary>
 
           <small>
-            Wersja ${chrome.runtime.getManifest().version} · odczyt gry
+            Wersja ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)} · odczyt gry
             <span id="quantum-calculation-version"></span>
           </small>
 
@@ -532,6 +565,11 @@ Otwórz mapę Pól Chwały w grze.
     `;
 
     const $ = id => root.getElementById(id);
+    const sectorStatus=document.createElement('p');sectorStatus.id='gbg-sound-status';sectorStatus.setAttribute('role','status');
+    $('open-sectors-heading').before(sectorStatus);
+    const sectorPopup=document.createElement('div');sectorPopup.id='sector-popup';sectorPopup.hidden=true;
+    sectorPopup.innerHTML='<strong id="sector-popup-title">Wkrótce otwarcie</strong><button id="sector-popup-close" aria-label="Zamknij powiadomienia sektorów">×</button><div id="sector-popup-list"></div>';
+    root.append(sectorPopup);
     const negoSection=document.createElement('section');negoSection.id='nego';negoSection.hidden=true;negoSection.setAttribute('role','tabpanel');
     negoSection.innerHTML='<h2>Negocjacje</h2><p id="standalone-kind"></p><button id="standalone-start" disabled>🤝 Negocjuj</button><p id="standalone-status" role="status" style="height:32px;font-size:12px">Otwórz negocjację w grze.</p><div id="standalone-history" style="max-height:300px;overflow:auto;font-size:12px"></div>';
     root.querySelector('aside').append(negoSection);
@@ -638,7 +676,7 @@ Otwórz mapę Pól Chwały w grze.
     $('standalone-start').onclick=()=>{
       if(standaloneToken||!standaloneGame)return;
       standaloneToken='open-nego-'+Date.now();$('standalone-start').disabled=true;$('standalone-history').replaceChildren();$('standalone-status').textContent='Status: odczyt negocjacji…';
-      window.postMessage({channel:'foe-open-negotiate',token:standaloneToken},location.origin);
+      window.postMessage({channel:'foe-open-negotiate',token:standaloneToken,turnDelay:negTurnSettings},location.origin);
     };
     window.addEventListener('message',event=>{
       if(event.source!==window||event.origin!==location.origin)return;
@@ -700,6 +738,48 @@ Otwórz mapę Pól Chwały w grze.
     $('gbg-sound-kind').onchange=()=>{soundSettings.kind=$('gbg-sound-kind').value;localStorage.setItem(soundKey,JSON.stringify(soundSettings));};
     let sounded={};
     try{sounded=JSON.parse(sessionStorage.getItem(soundKey+'.sent')||'{}')||{};}catch{}
+    const popupKey='foe-companion.sectorPopup';let popupSettings={autoHide:false,countdown:true};
+    try{const saved=JSON.parse(localStorage.getItem(popupKey)||'{}');popupSettings={autoHide:saved.autoHide===true,countdown:saved.countdown!==false};}catch{}
+    const popupEntries=new Map();let popupDismissed={};
+    try{popupDismissed=JSON.parse(sessionStorage.getItem(popupKey+'.dismissed')||'{}')||{};}catch{}
+    function savePopupDismissed(){try{sessionStorage.setItem(popupKey+'.dismissed',JSON.stringify(popupDismissed));}catch{}}
+    for(const [id,key] of [['gbg-popup-auto','autoHide'],['gbg-popup-countdown','countdown']]){
+      $(id).checked=popupSettings[key];$(id).onchange=()=>{popupSettings[key]=$(id).checked;try{localStorage.setItem(popupKey,JSON.stringify(popupSettings));}catch{}paintSectorPopup();};
+    }
+    $('sector-popup-close').onclick=()=>{
+      for(const [key,entry] of popupEntries)popupDismissed[key]=entry.until+10;
+      popupEntries.clear();savePopupDismissed();paintSectorPopup();
+    };
+    function sectorPopupText(entry,now,countdown){
+      const seconds=Math.max(0,Math.ceil(entry.until-now));
+      const time=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
+      const type=entry.isAttackBattleType===true?'🟥 ':entry.isAttackBattleType===false?'🟦 ':'';
+      return (seconds===0?'Otwarte ':countdown?time+' ':'')+type+(entry.color||'⚪')+' '+entry.sector;
+    }
+    function paintSectorPopup(){
+      const now=Date.now()/1000;
+      for(const [key,entry] of popupEntries){
+        if(!soundSettings.enabled||entry.mapId!==battle?.map?.id||now>=entry.until+10||(popupSettings.autoHide&&now>=entry.shownAt+10)){
+          popupDismissed[key]=entry.until+10;popupEntries.delete(key);
+        }
+      }
+      for(const [key,expiry] of Object.entries(popupDismissed))if(expiry<=now)delete popupDismissed[key];
+      savePopupDismissed();
+      const lines=[...popupEntries.values()].sort((a,b)=>a.until-b.until).map(entry=>sectorPopupText(entry,now,popupSettings.countdown));
+      const text=lines.join('\n');if($('sector-popup-list').textContent!==text)$('sector-popup-list').textContent=text;
+      sectorPopup.hidden=!lines.length;
+      // Anchor to the actual handle width, also when the panel is expanded.
+      sectorPopup.style.right=($('handle').getBoundingClientRect().width+8)+'px';
+      if(lines.length)sectorStatus.textContent='🔔 '+text.replaceAll('\n',' · ');
+      else if(sectorStatus.textContent.startsWith('🔔'))sectorStatus.textContent='';
+    }
+    function updateSectorPopup(rows,now){
+      for(const r of rows){
+        const key=`${battle.map.id}:${r.id}:${r.until}`;
+        if(!popupDismissed[key]&&!popupEntries.has(key))popupEntries.set(key,{sector:r.sector,color:r.color,isAttackBattleType:r.isAttackBattleType,until:r.until,mapId:battle.map.id,shownAt:now});
+      }
+      paintSectorPopup();
+    }
     async function unlockAudio(){
       audioContext ||= new AudioContext();
       if(audioContext.state==='suspended')await audioContext.resume();
@@ -715,22 +795,25 @@ Otwórz mapę Pól Chwały w grze.
       return true;
     }
     function checkSectorAlerts(){
+      paintSectorPopup();
       if(!soundSettings.enabled||!battle||alertBusy)return;
       const now=Date.now()/1000;
-      const due=FoeModel.rows(battle,$('frontier').checked).rows.filter(r=>r.color!=='⚪'&&r.until>now&&r.until-now<=soundSettings.minutes*60&&!sounded[`${battle.map.id}:${r.id}:${r.until}`]);
+      const upcoming=FoeModel.rows(battle,$('frontier').checked).rows.filter(r=>r.color!=='⚪'&&r.until>now&&r.until-now<=soundSettings.minutes*60);
+      updateSectorPopup(upcoming,now);
+      const due=upcoming.filter(r=>!sounded[`${battle.map.id}:${r.id}:${r.until}`]);
       if(!due.length)return;
       if(!playAlert()){$('gbg-sound-status').textContent='Kliknij „Test dźwięku”, aby aktywować dźwięk w tej karcie.';return;}
       alertBusy=true;
       for(const [key,until] of Object.entries(sounded))if(until<=now)delete sounded[key];
       for(const r of due)sounded[`${battle.map.id}:${r.id}:${r.until}`]=r.until;
       try{sessionStorage.setItem(soundKey+'.sent',JSON.stringify(sounded));}catch{}
-      $('gbg-sound-status').textContent='🔔 Wkrótce odblokowanie: '+due.map(r=>r.sector).join(', ');
+      if(popupEntries.size)paintSectorPopup();
       setTimeout(()=>alertBusy=false,800);
     }
     $('gbg-sound-enabled').onchange=async()=>{
       soundSettings.enabled=$('gbg-sound-enabled').checked;localStorage.setItem(soundKey,JSON.stringify(soundSettings));
       if(soundSettings.enabled){try{await unlockAudio();checkSectorAlerts();}catch{$('gbg-sound-status').textContent='Nie udało się uruchomić dźwięku.';}}
-      else $('gbg-sound-status').textContent='Alerty wyłączone.';
+      else {paintSectorPopup();$('gbg-sound-status').textContent='Alerty wyłączone.';}
     };
     $('gbg-sound-minutes').onchange=()=>{
       const value=Number($('gbg-sound-minutes').value);
@@ -805,9 +888,32 @@ Otwórz mapę Pól Chwały w grze.
       .settings-alert select{min-width:0;flex:1;width:100px}.settings-alert input[type=number]{width:42px}.settings-alert button{padding:2px 5px}
       #settings details{border-top:1px solid #345058;margin-top:10px;padding-top:8px}#settings summary{cursor:pointer;font-weight:bold}
       #settings #gbg-sound-status{font-size:10px}#nego-tab{display:none!important}
+      #settings details{border:0;padding:0;margin:8px 0}
+      #settings summary{background:#243d45;color:#f1d69a;padding:6px 8px;line-height:1.4}
+      #settings details details{margin:6px 0 6px 8px}
+      #settings details details>summary{background:#182e35;color:#dce8ec;font-size:12px}
+      #settings label{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0}
+      #settings label>input{margin-left:auto!important;order:1}
+      #settings input:not([type=checkbox]){width:65px!important;max-width:100%;padding:4px!important;text-align:right}
+      #settings .settings-range{display:flex;align-items:center;gap:4px;margin-left:auto}
+      #settings .settings-open{display:block}
+      #settings .settings-alert{margin:8px 0;justify-content:flex-end;gap:4px}
+      #settings .settings-alert label{margin-right:auto;gap:4px}
+      #settings .settings-alert input[type=number]{width:38px!important}
+      #settings .settings-alert select{flex:0 1 135px;width:135px;margin-left:auto}
+      #settings input:not([type=checkbox]),#settings select,#settings #gbg-sound-test{height:28px;min-height:28px;box-sizing:border-box;font:inherit;line-height:18px;padding:4px!important;vertical-align:middle}
+      #gbg-sound-status{font-size:10px;line-height:16px;height:16px;min-height:16px;margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #sector-popup{position:absolute;bottom:10%;max-width:calc(100vw - 100px);max-height:50vh;overflow:auto;background:#102126;color:#e7eeee;padding:7px 26px 7px 9px;border-radius:0;box-shadow:0 2px 10px #0008;pointer-events:auto;font:12px/1.5 system-ui;z-index:2}
+      #sector-popup[hidden]{display:none!important}
+      #sector-popup-list{white-space:pre-line;font-variant-numeric:tabular-nums}
+      #sector-popup-title{display:block;color:#f1d69a;margin-bottom:4px;font-size:12px}
+      #sector-popup-close{position:absolute;right:3px;top:2px;border:0;background:transparent;padding:1px 4px;font-size:16px}
       .quantum-group{padding:5px 0;font-size:11px}.quantum-group summary{cursor:pointer;white-space:nowrap}
       #rich-tooltip{position:fixed;z-index:2147483647;max-width:min(320px,calc(100vw - 20px));white-space:pre-wrap;overflow-wrap:anywhere;background:#07171c;color:#e9f1f2;border:1px solid #45616a;border-radius:5px;padding:8px;font-size:12px;line-height:1.45;pointer-events:none;box-shadow:0 3px 14px #0008}
       #rich-tooltip strong{color:#ffd66b}
+      #rich-tooltip[hidden]{display:none!important}
+      #rich-tooltip{pointer-events:none!important}
+      #city{padding-bottom:100px;box-sizing:border-box}
     `;
     root.append(style);
     const tip=document.createElement('div');tip.id='rich-tooltip';tip.setAttribute('role','tooltip');tip.hidden=true;root.append(tip);
@@ -817,8 +923,9 @@ Otwórz mapę Pól Chwały w grze.
     };
     convertTitles(root);
     new MutationObserver(records=>{for(const r of records){if(r.type==='attributes')convertTitles(r.target);else for(const node of r.addedNodes)convertTitles(node);}}).observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['title']});
-    const hideTip=()=>{tip.hidden=true;};
+    const hideTip=()=>{tip.hidden=true;tip.replaceChildren();};
     function showTip(event){
+      if(event.target.closest?.('#reset-building-names')){hideTip();return;}
       const el=event.target.closest?.('[data-tooltip]');if(!el||!el.dataset.tooltip){hideTip();return;}
       tip.replaceChildren();
       for(const part of el.dataset.tooltip.split(/(\d[\d\s.,]* lin)/u)){
@@ -830,6 +937,8 @@ Otwórz mapę Pól Chwały w grze.
     }
     root.addEventListener('pointerover',showTip);root.addEventListener('focusin',showTip);
     root.addEventListener('pointerout',hideTip);root.addEventListener('focusout',hideTip);root.addEventListener('scroll',hideTip,true);
+    root.addEventListener('pointerdown',hideTip,true);
+    root.addEventListener('pointermove',event=>{if(event.target.closest?.('#reset-building-names'))hideTip();});
     root.addEventListener('keydown',event=>{if(event.key==='Escape')hideTip();});
     const qtab=document.createElement('button');qtab.dataset.page='quantum';qtab.setAttribute('role','tab');qtab.setAttribute('aria-selected','false');qtab.title='Najazdy kwantowe';qtab.setAttribute('aria-label','Najazdy kwantowe');qtab.textContent='⚛️';
     root.querySelector('nav').insertBefore(qtab,root.querySelector('[data-page="settings"]'));
@@ -1207,9 +1316,29 @@ Otwórz mapę Pól Chwały w grze.
     const autoKey='foe-companion-gbg-auto';
     let autoSettings={reserve:3,min:0.3,max:0.4};
     try{const v=JSON.parse(localStorage.getItem(autoKey));if(v&&Number.isInteger(v.reserve)&&v.reserve>=0&&Number.isFinite(v.min)&&v.min>=0&&Number.isFinite(v.max)&&v.max>=v.min)autoSettings=v;}catch{}
-    const autoConfig=document.createElement('div');
-    autoConfig.innerHTML='<h3>Autoatak — Pola Chwały</h3><label>Pozostaw walk: <input id="auto-reserve" type="number" min="0" step="1" style="width:70px"></label><p>Przerwa po walce (sekundy): <input id="auto-min" type="number" min="0" step="0.1" style="width:70px"> – <input id="auto-max" type="number" min="0" step="0.1" style="width:70px"></p><small>Automatyczne zatrzymanie po 3 kolejnych porażkach.</small><p id="auto-settings-error"></p>';
-    $('gbg-sound-status').after(autoConfig);
+    const autoConfig=document.createElement('details');autoConfig.id='settings-autoattack';autoConfig.open=true;
+    autoConfig.innerHTML='<summary>Autoatak</summary><label>Pozostaw walk <input id="auto-reserve" type="number" min="0" step="1"></label><label>Przerwa (s) <span class="settings-range"><input id="auto-min" aria-label="Minimalna przerwa po walce" type="number" min="0" step="0.1"> – <input id="auto-max" aria-label="Maksymalna przerwa po walce" type="number" min="0" step="0.1"></span></label><small>Stop po 3 porażkach z rzędu.</small><p id="auto-settings-error"></p>';
+    $('gbg-automation-settings').append(autoConfig);
+    const negTurnKey='foe-companion.negotiationTurnDelay';
+    let negTurnSettings={min:1,max:2};
+    try{const saved=JSON.parse(localStorage.getItem(negTurnKey));if(saved&&Number.isFinite(saved.min)&&Number.isFinite(saved.max)&&saved.min>=0&&saved.max>=saved.min&&saved.max<=60)negTurnSettings={min:saved.min,max:saved.max};}catch{}
+    const negTurnConfig=document.createElement('details');negTurnConfig.id='settings-negotiations';negTurnConfig.open=true;
+    negTurnConfig.innerHTML='<summary>Negocjacje</summary><label>Między turami (s) <span class="settings-range"><input id="nego-turn-min" type="number" min="0" max="60" step="0.1" aria-label="Minimalna przerwa między turami"> – <input id="nego-turn-max" type="number" min="0" max="60" step="0.1" aria-label="Maksymalna przerwa między turami"></span></label><small id="nego-turn-error" role="status"></small>';
+    autoConfig.after(negTurnConfig);
+    const foldKey='foe-companion.settingsFold';let folds={};
+    try{folds=JSON.parse(localStorage.getItem(foldKey)||'{}')||{};}catch{}
+    for(const section of $('settings').querySelectorAll('details[id]')){
+      if(typeof folds[section.id]==='boolean')section.open=folds[section.id];
+      section.addEventListener('toggle',()=>{folds[section.id]=section.open;try{localStorage.setItem(foldKey,JSON.stringify(folds));}catch{}});
+    }
+    for(const key of ['min','max']){
+      $('nego-turn-'+key).value=negTurnSettings[key];
+      $('nego-turn-'+key).onchange=()=>{
+        const minText=$('nego-turn-min').value,maxText=$('nego-turn-max').value,min=Number(minText),max=Number(maxText);
+        if(!minText||!maxText||!Number.isFinite(min)||!Number.isFinite(max)||min<0||max<min||max>60){$('nego-turn-error').textContent='Zakres: 0–60 s; maksimum ≥ minimum.';return;}
+        negTurnSettings={min,max};localStorage.setItem(negTurnKey,JSON.stringify(negTurnSettings));$('nego-turn-error').textContent='';
+      };
+    }
     for(const key of ['reserve','min','max']){
       $('auto-'+key).value=autoSettings[key];
       $('auto-'+key).onchange=()=>{
@@ -1270,7 +1399,7 @@ Otwórz mapę Pól Chwały w grze.
       clearTimeout(negClearTimer);
       negPanel.style.display='block';negPanel.innerHTML='<em>Uruchamiam negocjację: '+row.sector+'…</em>';
       setBattleFeedback('Negocjacja: '+row.sector+'…');
-      window.postMessage({channel:'foe-negotiate',token:negPending,provinceId:id,...(autoNegSector!==null?{reserve:autoSettings.reserve}:{})},location.origin);
+      window.postMessage({channel:'foe-negotiate',token:negPending,provinceId:id,turnDelay:negTurnSettings,...(autoNegSector!==null?{reserve:autoSettings.reserve}:{})},location.origin);
       paintOpenSectors();
     }
     window.addEventListener('message',event=>{
@@ -1587,7 +1716,7 @@ Otwórz mapę Pól Chwały w grze.
           };
           const cumulative=document.createElement('span');cumulative.textContent='· łącznie '+block.cumulative+' PR';
           small.append(blockAmount,blockCopy);
-          if(ownPlayerId&&construction.target?.playerId===ownPlayerId)small.append(contributionButton(block.additional,'🔒','Zablokuj miejsce ('+block.additional+' PR)',ownerPaid+block.additional,{total:Number(blockText),rank:row.rank,amount:row.amount}));
+          if(ownPlayerId&&construction.target?.playerId===ownPlayerId)small.append(contributionButton(block.additional,'🔒','Zablokuj miejsce ('+block.additional+' PR)',ownerPaid+block.additional,{total:Number(blockText),rank:row.rank,amount:row.amount,rows:result.rows.map(r=>({rank:r.rank,amount:r.amount}))}));
           small.append(cumulative);
           label.append(small);
         }
@@ -1677,20 +1806,64 @@ Otwórz mapę Pól Chwały w grze.
     };
 
     let collectPending=null;const attemptedCollections=new Map();let collectFeedback='';
+    const collectionBonusBar=document.createElement('div');collectionBonusBar.id='collection-bonuses';collectionBonusBar.style.cssText='display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:11px;color:#f1d69a;margin:6px 0';
+    $('city-list').before(collectionBonusBar);
+    let cityCategory='fp';
+    const cityCategories=[['fp','+PR','🔬'],['pearls','Perły','🏛️'],['army','Wojsko','⚔️'],['other','Pozostałe','📦']];
+    const inCityCategory=(b,key)=>key==='pearls'?b.type==='greatbuilding':key==='army'?b.productionUnits>0:key==='fp'?b.type!=='greatbuilding'&&b.productionFP>0:b.type!=='greatbuilding'&&!b.productionFP&&!b.productionUnits;
+    const cityTabs=document.createElement('div');cityTabs.setAttribute('role','tablist');cityTabs.setAttribute('aria-label','Kategorie zbiorów');cityTabs.style.cssText='display:flex;gap:5px;margin:6px 0 10px';
+    const cityTabButtons=new Map();
+    for(const [key,label,emoji] of cityCategories){
+      const button=document.createElement('button');button.type='button';button.textContent=emoji;button.dataset.tooltip=label;button.id='city-tab-'+key;button.setAttribute('role','tab');button.setAttribute('aria-controls','city-list');
+      button.onclick=()=>{cityCategory=key;hideTip();paintCity();};cityTabButtons.set(key,button);cityTabs.append(button);
+    }
+    $('city-list').before(cityTabs);$('city-list').setAttribute('role','tabpanel');
     const cityNamesKey='foe-companion.customBuildingNames';
+    const resetNames=document.createElement('button');resetNames.id='reset-building-names';resetNames.type='button';resetNames.textContent='Resetuj nazwy';resetNames.style.cssText='margin:10px 0 20px;font-size:11px;padding:3px 8px;cursor:pointer';
+    $('city-list').after(resetNames);
+    resetNames.onclick=()=>{
+      hideTip();
+      try{localStorage.removeItem(cityNamesKey);collectFeedback='Przywrócono nazwy automatyczne.';}catch{collectFeedback='Nie udało się zresetować nazw.';}
+      paintCity();
+    };
     function readCityNames(){try{const value=JSON.parse(localStorage.getItem(cityNamesKey)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}}
     window.addEventListener('message',event=>{if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-collect-result'||event.data.token!==collectPending)return;collectPending=null;collectFeedback=event.data.message;paintCity();});
     setInterval(()=>paintCity(),1000);
     paintCity = () => {
+      const bonuses=FoeModel.getCollectionBonuses();
+      const bonusSnapshot=JSON.stringify(bonuses);
+      if(collectionBonusBar.dataset.snapshot!==bonusSnapshot){
+        collectionBonusBar.dataset.snapshot=bonusSnapshot;collectionBonusBar.replaceChildren();
+        for(const bonus of bonuses||[]){
+          const label=document.createElement('span');
+          label.style.cssText='flex:0 0 calc((100% - 18px)/4);min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;padding:4px 3px;background:#19352d;border:1px solid #365b48;white-space:nowrap';
+          const uses=document.createElement('small');uses.textContent=bonus.amount+'x';uses.style.cssText='font-size:10px;color:#b7c8ce';
+          const effect=document.createElement('strong');effect.textContent=bonus.type==='double_collection'?'x2':'🔨 '+bonus.value+'%';effect.style.cssText='font-size:11px;font-weight:700;color:#b5dbba';
+          label.append(uses,effect);
+          label.dataset.tooltip=bonus.type==='double_collection'?'Szansa podwojenia zbioru: '+bonus.value+'%.\nPozostało prób: '+bonus.amount+'. Wynik losowy.':'Premia do zbioru zaopatrzenia: +'+bonus.value+'%.\nPozostało użyć: '+bonus.amount+'.';
+          collectionBonusBar.append(label);
+        }
+        collectionBonusBar.style.display=bonuses?.length?'flex':'none';
+      }
       // Live timers and network updates must not replace an input being edited.
       if(root.activeElement?.matches('input[data-building-name]'))return;
       const customNames=readCityNames();
-      const rows = FoeModel.cityRows();
+      const allRows = FoeModel.cityRows();
+      for(const [key,label,emoji] of cityCategories){
+        const button=cityTabButtons.get(key),selected=cityCategory===key;
+        const ready=allRows.filter(b=>inCityCategory(b,key)&&b.ready&&attemptedCollections.get(b.id)!==JSON.stringify(b.raw.state)).length;
+        const text=emoji+(ready?' ● '+ready:'');if(button.textContent!==text)button.textContent=text;
+        button.dataset.tooltip=label+(ready?' — gotowe do zbioru: '+ready:'');
+        button.setAttribute('aria-selected',String(selected));button.setAttribute('aria-label',label+(ready?': gotowe do zbioru '+ready:''));
+        button.style.cssText='flex:1;padding:5px 4px;font-size:12px;border-bottom:2px solid '+(selected?'#f1d69a':'transparent')+';background:'+(selected?'#243d45':'transparent')+';color:'+(ready?'#ffd76a':'#dce8ec')+';font-weight:'+(ready?'bold':'normal');
+      }
+      const rows=allRows.filter(b=>inCityCategory(b,cityCategory));
+      $('city-list').setAttribute('aria-labelledby','city-tab-'+cityCategory);
       const statusEl = $('city-status');
       const listEl = $('city-list');
 
       if (!rows.length) {
-        statusEl.textContent = 'Brak budynków z aktywnym timerem.';
+        statusEl.textContent = 'Brak budynków z produkcją w tej kategorii.';
         listEl.replaceChildren();
         return;
       }
@@ -1753,18 +1926,6 @@ Otwórz mapę Pól Chwały w grze.
         collect.onclick=()=>{if(collectPending)return;collectPending=crypto.randomUUID();attemptedCollections.set(b.id,stamp);collectFeedback='Zbieranie: '+b.name+'…';window.postMessage({channel:'foe-collect',token:collectPending,entityId:b.id},location.origin);paintCity();};
         controls.append(time,star,collect);row.append(name,controls);
         listEl.append(row);
-      }
-      // Przycisk resetowania własnych nazw na końcu listy
-      if(rows.length){
-        const resetBtn=document.createElement('button');
-        resetBtn.textContent='Resetuj nazwy';
-        resetBtn.title='Usuwa wszystkie własne nazwy budynków zapisane lokalnie. Po resecie widoczne będą nazwy pobrane z gry lub automatycznie rozpoznane.';
-        resetBtn.style.cssText='margin-top:10px;font-size:11px;padding:3px 8px;opacity:0.6';
-        resetBtn.onclick=()=>{
-          try{localStorage.removeItem(cityNamesKey);}catch{}
-          paintCity();
-        };
-        listEl.append(resetBtn);
       }
     };
 
@@ -1847,3 +2008,4 @@ Otwórz mapę Pól Chwały w grze.
 })();
 // sshdsd
 
+//oks

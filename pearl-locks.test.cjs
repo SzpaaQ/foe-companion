@@ -12,3 +12,14 @@ test('owner absent from loaded ranking means zero and enables locks',()=>{
  assert.equal(result[1].cumulative,470);
 });
 test('missing ranking remains unknown',()=>assert.equal(liveLocks(9232,rows,{target:{playerId:1}}),null));
+test('underpayment is displaced by a full 1.9 investment and leaves later slots',()=>{
+ const plan=[276,143,48,10,1].map((amount,i)=>({rank:i+1,amount}));
+ const current={target:{playerId:1},rankings:[{rank:0,player:{player_id:1},forge_points:568},...[290,150,8,1].map((forge_points,i)=>({rank:i+1,player:{player_id:i+2},forge_points}))]};
+ const result=liveLocks(1167,plan,current);
+ assert.equal(result[2].additional,62);
+ assert.equal(result[2].cumulative,630);
+ assert.equal(1167-1017-62-48,40);
+ assert.equal(result[3].additional,90);
+ current.rankings[0].forge_points+=62;
+ assert.equal(liveLocks(1167,plan,current)[2].additional,0);
+});

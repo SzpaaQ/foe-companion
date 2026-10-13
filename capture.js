@@ -258,8 +258,29 @@
     const restore=r=>r&&typeof r==='object'&&mapping.ids.has(r.requestId)?{...r,requestId:mapping.ids.get(r.requestId)}:r;
     return Array.isArray(value)?value.map(restore):restore(value);
   }
+  function isBuildingMetadata(url){
+    try{const u=new URL(url,location.href);return u.protocol==='https:'&&/(^|\.)innogamescdn\.com$/.test(u.hostname)&&u.pathname==='/start/metadata'&&/^building_entity_/.test(u.searchParams.get('id')||'');}catch{return false;}
+  }
+  function emitBuildingMetadata(url,data){
+    try{
+      if(!isBuildingMetadata(url))return;
+      if(typeof data==='string'){if(data.length>LIMIT)return;data=JSON.parse(data);}
+      const names=[];
+      for(const item of Array.isArray(data)?data:[data]){
+        const id=item?.id||item?.asset_id;
+        if(typeof id==='string'&&/^[A-Z]+_[A-Za-z0-9_]+$/.test(id)&&typeof item.name==='string'&&item.name.trim())names.push({id,name:item.name.trim()});
+      }
+      if(names.length)window.postMessage({channel:'foe-building-names',names},location.origin);
+    }catch{}
+  }
   window.fetch = function (...args) {
     const url=args[0] instanceof Request?args[0].url:String(args[0]);
+    if(isBuildingMetadata(url)){
+      return Reflect.apply(originalFetch,this,args).then(response=>{
+        if(response.ok)response.clone().text().then(data=>emitBuildingMetadata(url,data)).catch(()=>{});
+        return response;
+      });
+    }
     if(!relevant(url))return Reflect.apply(originalFetch,this,args);
     const receiver=this;
     return (async()=>{
@@ -292,6 +313,9 @@
   };
   XMLHttpRequest.prototype.send=function(...args){
     const url=urls.get(this),originalBody=args[0],headers=requestHeaders.get(this)||{};
+    if(isBuildingMetadata(url))this.addEventListener('load',()=>{
+      try{if(this.status>=200&&this.status<300)emitBuildingMetadata(url,this.responseType==='json'?this.response:this.responseText);}catch{}
+    },{once:true});
     // Install getters before sending: they also work for onload/onreadystatechange registered by the game earlier.
     let canTranslate=false;
     if(relevant(url)&&textDescriptor?.get&&responseDescriptor?.get){
@@ -342,9 +366,10 @@
       if(lock){
         if(values[1]!==cityOwner||![lock.total,lock.rank,lock.amount].every(Number.isSafeInteger)||lock.total<0||lock.rank<1||lock.rank>5||lock.amount<0)throw Error('Nieprawidłowe dane bloku.');
         if(fresh.rankings.some(r=>!Number.isSafeInteger(r.forge_points??0)||(r.forge_points??0)<0))throw Error('Nieprawidłowy ranking.');
-        const rest=Math.max(0,lock.total-fresh.rankings.reduce((sum,r)=>sum+(r.forge_points??0),0));
-        const actual=fresh.rankings.find(r=>r.rank===lock.rank&&r.player?.player_id!==cityOwner)?.forge_points??0;
-        remaining=Math.max(0,rest-(actual>0?actual:2*lock.amount));
+        if(!Array.isArray(lock.rows)||lock.rows.length!==5||lock.rows.some((r,i)=>r.rank!==i+1||!Number.isSafeInteger(r.amount)||r.amount<0))throw Error('Odśwież panel przed wpłatą.');
+        const stages=FoePearls.liveLocks(lock.total,lock.rows,{...fresh,target:{playerId:cityOwner}});
+        remaining=stages?.[lock.rank-1]?.additional;
+        if(!Number.isSafeInteger(remaining))throw Error('Nie udało się przeliczyć bloku.');
       }
       if(!remaining){answer(true,'Docelowa kwota jest już wpłacona. Nie wysłano wpłaty.');return;}
       if(remaining>values[3])throw Error('Stan wpłat zmienił się. Sprawdź aktualne kwoty przed ponowieniem.');
@@ -434,6 +459,11 @@
   }
 
   let negBusy = false;
+  function negotiationTurnPause(range){
+    const valid=range&&Number.isFinite(range.min)&&Number.isFinite(range.max)&&range.min>=0&&range.max>=range.min&&range.max<=60;
+    const {min,max}=valid?range:{min:1,max:2};
+    return new Promise(resolve=>setTimeout(resolve,(min+Math.random()*(max-min))*1000));
+  }
   let openNegotiation=null;
   let questNegotiation=null;
   const questStates=new Map();
@@ -521,6 +551,7 @@
       context=game.context;
       send('started',{goods,context,history:running.history});
       for(let turn=running.history.length+1;turn<=10;turn++){
+        if(turn>1)await negotiationTurnPause(event.data.turnDelay);
         await new Promise(resolve=>setTimeout(resolve,0));
         const guess=negBestGuess(candidates,goods,locked);
         if(!Array.isArray(guess))throw Error('Brak zgodnego rozwiązania.');
@@ -616,6 +647,7 @@
       const MAX_TURNS = 10; // bezpiecznik — serwer sam zwróci out_of_turns
 
       while (turnNumber <= MAX_TURNS) {
+        if(turnNumber>1)await negotiationTurnPause(event.data.turnDelay);
         // Wyznacz ruch.
         const guess = negBestGuess(candidates, goods, locked);
         if(!Array.isArray(guess)){

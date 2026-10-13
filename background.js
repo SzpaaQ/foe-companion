@@ -1,3 +1,14 @@
+const pendingKey='foe-dev-reload';
+// Reload the game from the new worker, not a destroyed content-script timer.
+const recovery=chrome.storage.local.get(pendingKey).then(async stored=>{
+  const pending=stored[pendingKey];if(!pending)return;
+  await chrome.storage.local.remove(pendingKey);
+  if(Date.now()-pending.at>60000)return;
+  for(const id of pending.tabs||[]){
+    try{const tab=await chrome.tabs.get(id);if(/^https:\/\/[^/]+\.forgeofempires\.com\//.test(tab.url||''))await chrome.tabs.reload(id);}catch{}
+  }
+}).catch(console.error);
+let reloading=false;
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(sender.id!==chrome.runtime.id || !sender.tab || !/^https:\/\/[^/]+\.forgeofempires\.com\//.test(sender.url||''))return;
   if(message?.type==='DEV_VERSION'){
@@ -5,5 +16,14 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
       .then(r=>r.ok?r.json():null).then(reply).catch(()=>reply(null));
     return true;
   }
-  if(message?.type==='DEV_RELOAD'){reply({ok:true});setTimeout(()=>chrome.runtime.reload(),150);}
+  if(message?.type==='DEV_RELOAD'){
+    if(reloading){reply({ok:true});return;}
+    reloading=true;
+    (async()=>{
+      await recovery;
+      await chrome.storage.local.set({[pendingKey]:{at:Date.now(),tabs:[sender.tab.id]}});
+      reply({ok:true});chrome.runtime.reload();
+    })().catch(error=>{reloading=false;console.error(error);reply({ok:false});});
+    return true;
+  }
 });

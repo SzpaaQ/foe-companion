@@ -128,12 +128,19 @@
   const paid=ownerContribution(construction),rankings=construction?.rankings;
   if(!Number.isSafeInteger(total)||total<0||paid===null||!Array.isArray(rankings))return null;
   if(rankings.some(r=>!Number.isSafeInteger(r.forge_points??0)||(r.forge_points??0)<0))return null;
-  const remaining=Math.max(0,total-rankings.reduce((sum,r)=>sum+(r.forge_points??0),0));
+  let remaining=Math.max(0,total-rankings.reduce((sum,r)=>sum+(r.forge_points??0),0));
+  const investors=rankings.filter(r=>r.rank!==0&&r.player?.player_id!==construction.target?.playerId).map(r=>r.forge_points??0).sort((a,b)=>b-a);
   return rows.map(row=>{
-   const actual=rankings.find(r=>r.rank===row.rank&&r.player?.player_id!==construction.target?.playerId)?.forge_points??0;
+   const actual=investors[row.rank-1]??0;
    if(!Number.isSafeInteger(row.amount)||row.amount<0)return null;
-   // Zajęte miejsce: rzeczywista wpłata. Wolne: planowana wpłata inwestora.
-   const additional=Math.max(0,remaining-(actual>0?actual:2*row.amount));
+   // Zaniżona wpłata nie zajmuje planowanego miejsca: nowy inwestor
+   // wpłaci pełną kwotę, a dotychczasowy spadnie niżej (jego PR zostają).
+   const occupied=actual>=row.amount&&actual>0;
+   const additional=Math.max(0,remaining-(occupied?actual:2*row.amount-actual));
+   if(!occupied){
+    remaining=Math.max(0,remaining-row.amount);
+    investors.push(row.amount);investors.sort((a,b)=>b-a);
+   }
    return {additional,cumulative:paid+additional};
   });
  }

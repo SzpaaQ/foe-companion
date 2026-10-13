@@ -177,25 +177,38 @@ function line(row) {
   // Pomija ulice, dekoracje, puste (IdleState bez timera).
 
   let cityOwner=null;
+  let collectionBonuses=null;
+  function updateCollectionBonuses(payload){
+    let changed=false;
+    for(const response of Array.isArray(payload)?payload:[payload]){
+      if(response?.requestClass!=='BonusService'||response.requestMethod!=='getLimitedBonuses'||!Array.isArray(response.responseData))continue;
+      const next=response.responseData.filter(b=>['double_collection','supplies_boost'].includes(b.type)&&b.isActive===true&&Number.isFinite(b.amount)&&b.amount>0&&Number.isFinite(b.value)&&b.value>=0).map(b=>({type:b.type,amount:b.amount,value:b.value,factor:b.factor}));
+      if(JSON.stringify(collectionBonuses)!==JSON.stringify(next)){collectionBonuses=next;changed=true;}
+    }
+    return changed;
+  }
+  function getCollectionBonuses(){return collectionBonuses?.map(b=>({...b}))??null;}
   function cityBuilding(e){
     const state=e.state||{},kind=state.__class__,until=Number(state.next_state_transition_at)||null;
     const producing=kind==='ProducingState',finished=['ProductionFinishedState','ProductionReadyState'].includes(kind);
     const motivated=['motivate','polish','polivate'].includes(state.socialInteractionId);
     const amounts={},extras=[];
+    const unitAmount=p=>p?.reward?.type==='unit'?Number(p.reward.amount)||0:(p?.unitTypeId||p?.__class__==='UnitProduct')?Number(p.amount)||0:0;
+    let productionUnits=unitAmount(state.current_product?.product);
     const add=r=>{for(const [k,n] of Object.entries(r||{}))if(typeof n==='number')amounts[k]=(amounts[k]||0)+n;};
     add(state.current_product?.product?.resources);
-    for(const p of state.productionOption?.products||[]){if(p.onlyWhenMotivated&&!motivated)continue;if(p.playerResources)add(p.playerResources.resources);else if(p.reward)extras.push((p.reward.name||p.reward.type)+(p.isRandom?' (losowe)':''));}
+    for(const p of state.productionOption?.products||[]){if(p.onlyWhenMotivated&&!motivated)continue;productionUnits+=unitAmount(p);if(p.playerResources)add(p.playerResources.resources);else if(p.reward)extras.push((p.reward.name||p.reward.type)+(p.isRandom?' (losowe)':''));}
     const labels={strategy_points:'🏛️',money:'🪙',supplies:'🔨',medals:'🥇',diamonds:'💎',premium:'💎'};
     const goods=new Set('stone lumber marble dye wine limestone ebony iron cloth jewelry gold alabaster honey granite copper silk basalt brass gunpowder rope coffee paper porcelain tar wire lead whaleoil whalebone rubber coke fertilizer textiles gasoline machine_parts tinplate explosives bronze gems cypress sandstone'.split(' '));
     let goodsTotal=0;const parts=[];for(const [k,n] of Object.entries(amounts)){if(goods.has(k))goodsTotal+=n;else parts.push((labels[k]||k)+' '+n.toLocaleString('pl-PL'));}if(goodsTotal)parts.splice(Math.min(1,parts.length),0,'📦 '+goodsTotal.toLocaleString('pl-PL'));
-    return {id:e.id,ceid:e.cityentity_id,type:e.type,level:e.level??null,productionFP:amounts.strategy_points||0,until:finished?0:until,motivated,producing,finished,collectible:(producing||finished)&&e.connected!==0,tooltip:[...parts,...extras].join('\n')||'Brak danych o produkcji',raw:e};
+    return {id:e.id,ceid:e.cityentity_id,type:e.type,level:e.level??null,productionFP:amounts.strategy_points||0,productionUnits,until:finished?0:until,motivated,producing,finished,collectible:(producing||finished)&&e.connected!==0,tooltip:[...parts,...extras].join('\n')||'Brak danych o produkcji',raw:e};
   }
   function parseCity(entities,playerId){cityOwner=playerId;cityBuildings=new Map();for(const e of entities){if(!e||e.player_id!==playerId||/GuildRaids/.test(e.cityentity_id||''))continue;cityBuildings.set(e.id,cityBuilding(e));if(e.type==='greatbuilding'&&Number.isSafeInteger(e.level)&&Number.isSafeInteger(e.state?.forge_points_for_level_up))saveOwnPearl(e.cityentity_id,e.level,e.state.forge_points_for_level_up);}return cityBuildings;}
   function updateCity(payload){let changed=false;const q=[payload];for(let i=0;i<q.length&&i<200000;i++){const v=q[i];if(!v||typeof v!=='object')continue;if(v.__class__==='CityMapEntity'&&cityBuildings.has(v.id)&&(v.player_id==null||v.player_id===cityOwner)&&!(/GuildRaids/.test(v.cityentity_id||''))){const old=cityBuildings.get(v.id).raw;cityBuildings.set(v.id,cityBuilding({...old,...v}));changed=true;}for(const child of Object.values(v))if(child&&typeof child==='object')q.push(child);}return {changed,buildings:cityBuildings};}
   function cityRows(){return [...cityBuildings.values()].filter(b=>b.producing||b.finished).sort((a,b)=>Number(a.type==='greatbuilding')-Number(b.type==='greatbuilding')||b.productionFP-a.productionFP||(a.until??Infinity)-(b.until??Infinity)||a.id-b.id).map(b=>({...b,name:buildingLabel(b.ceid),ready:b.collectible&&(b.finished||(b.until!==null&&b.until<=Date.now()/1000))}));}
   const {findConstruction,pearlAmounts}=typeof module!=='undefined'?require('./pearls.js'):root.FoePearls;
   const api = {sector,findBattle,rows,line,setTopology,updateBattle,findConstruction,pearlAmounts,
-    learnNames,seedName,buildingLabel,parseCity,updateCity,cityRows,loadOwnPearls,ceidLabel};
+    learnNames,seedName,buildingLabel,parseCity,updateCity,cityRows,loadOwnPearls,ceidLabel,updateCollectionBonuses,getCollectionBonuses};
   root.FoeModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

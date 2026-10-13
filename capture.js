@@ -122,19 +122,22 @@
     collectBusy=true;
     try{
       const ready=s=>['ProductionFinishedState','ProductionReadyState'].includes(s?.__class__)||(s?.__class__==='ProducingState'&&s.next_state_transition_at>0&&s.next_state_transition_at<=Date.now()/1000);
-      const results=await Promise.all(ids.map(async entityId=>{
-        const e=ownBuildings.get(entityId),stamp=JSON.stringify(e?.state);
-        if(!e||/GuildRaids/.test(e.cityentity_id||'')||!ready(e.state)||e.connected===0||collectedStates.get(entityId)===stamp)return {entityId,ok:false,retryable:false};
-        collectedStates.set(entityId,stamp);
-        try{
-          const data=await battleCall(battleTransport,'CityProductionService','pickupProduction',[[entityId]]);
+      const selected=ids.filter(entityId=>{
+        const e=ownBuildings.get(entityId);
+        return e&&!/GuildRaids/.test(e.cityentity_id||'')&&ready(e.state)&&e.connected!==0&&collectedStates.get(entityId)!==JSON.stringify(e.state);
+      });
+      for(const id of selected)collectedStates.set(id,JSON.stringify(ownBuildings.get(id).state));
+      let data=null;
+      if(selected.length){try{data=await battleCall(battleTransport,'CityProductionService','pickupProduction',[selected]);}catch{}}
+      const results=ids.map(entityId=>{
+        if(!selected.includes(entityId))return {entityId,ok:false,retryable:false};
+        const stamp=collectedStates.get(entityId);
           const updated=data?.updatedEntities?.find(v=>v.id===entityId&&(v.player_id==null||v.player_id===cityOwner));
           const ok=!!updated?.state&&typeof updated.state.__class__==='string'&&!ready(updated.state)&&JSON.stringify(updated.state)!==stamp;
           const retryable=(!!updated?.state&&ready(updated.state))||(Array.isArray(data?.updatedEntities)&&data.updatedEntities.length===0);
           if(retryable)collectedStates.delete(entityId);
           return {entityId,ok,retryable};
-        }catch{return {entityId,ok:false,retryable:false};}
-      }));
+      });
       const collected=results.filter(r=>r.ok).length;
       answer(collected===ids.length,'Zebrano: '+collected+'/'+ids.length+'.'+(collected<ids.length?' Pozostałych zbiorów nie potwierdzono — sprawdź magazyn PR i stan budynków w grze.':''),results);
     }

@@ -571,6 +571,7 @@ Otwórz mapę Pól Chwały w grze.
     $('open-sectors-heading').before(sectorStatus);
     const sectorPopup=document.createElement('div');sectorPopup.id='sector-popup';sectorPopup.hidden=true;
     sectorPopup.innerHTML='<div id="sector-popup-header"><strong id="sector-popup-title">Wkrótce otwarcie</strong><button id="sector-popup-copy" aria-label="Kopiuj widoczne sektory" data-tooltip="Kopiuj widoczne sektory">📋</button><button id="sector-popup-close" aria-label="Zamknij powiadomienia sektorów">×</button></div><div id="sector-popup-list"></div>';
+    root.append(sectorPopup);
     $('sector-popup-copy').onclick=async()=>{
       const button=$('sector-popup-copy'),text=$('sector-popup-list').textContent;
       if(!text)return;
@@ -578,7 +579,6 @@ Otwórz mapę Pól Chwały w grze.
       catch{button.textContent='!';button.dataset.tooltip='Nie udało się skopiować sektorów';}
       setTimeout(()=>{button.textContent='📋';button.dataset.tooltip='Kopiuj widoczne sektory';},1500);
     };
-    root.append(sectorPopup);
     const negoSection=document.createElement('section');negoSection.id='nego';negoSection.hidden=true;negoSection.setAttribute('role','tabpanel');
     negoSection.innerHTML='<h2>Negocjacje</h2><p id="standalone-kind"></p><button id="standalone-start" disabled>🤝 Negocjuj</button><p id="standalone-status" role="status" style="height:32px;font-size:12px">Otwórz negocjację w grze.</p><div id="standalone-history" style="max-height:300px;overflow:auto;font-size:12px"></div>';
     root.querySelector('aside').append(negoSection);

@@ -570,7 +570,14 @@ Otwórz mapę Pól Chwały w grze.
     const sectorStatus=document.createElement('p');sectorStatus.id='gbg-sound-status';sectorStatus.setAttribute('role','status');
     $('open-sectors-heading').before(sectorStatus);
     const sectorPopup=document.createElement('div');sectorPopup.id='sector-popup';sectorPopup.hidden=true;
-    sectorPopup.innerHTML='<strong id="sector-popup-title">Wkrótce otwarcie</strong><button id="sector-popup-close" aria-label="Zamknij powiadomienia sektorów">×</button><div id="sector-popup-list"></div>';
+    sectorPopup.innerHTML='<div id="sector-popup-header"><strong id="sector-popup-title">Wkrótce otwarcie</strong><button id="sector-popup-copy" aria-label="Kopiuj widoczne sektory" data-tooltip="Kopiuj widoczne sektory">📋</button><button id="sector-popup-close" aria-label="Zamknij powiadomienia sektorów">×</button></div><div id="sector-popup-list"></div>';
+    $('sector-popup-copy').onclick=async()=>{
+      const button=$('sector-popup-copy'),text=$('sector-popup-list').textContent;
+      if(!text)return;
+      try{await navigator.clipboard.writeText(text);button.textContent='✓';button.dataset.tooltip='Skopiowano sektory';}
+      catch{button.textContent='!';button.dataset.tooltip='Nie udało się skopiować sektorów';}
+      setTimeout(()=>{button.textContent='📋';button.dataset.tooltip='Kopiuj widoczne sektory';},1500);
+    };
     root.append(sectorPopup);
     const negoSection=document.createElement('section');negoSection.id='nego';negoSection.hidden=true;negoSection.setAttribute('role','tabpanel');
     negoSection.innerHTML='<h2>Negocjacje</h2><p id="standalone-kind"></p><button id="standalone-start" disabled>🤝 Negocjuj</button><p id="standalone-status" role="status" style="height:32px;font-size:12px">Otwórz negocjację w grze.</p><div id="standalone-history" style="max-height:300px;overflow:auto;font-size:12px"></div>';
@@ -908,8 +915,11 @@ Otwórz mapę Pól Chwały w grze.
       #sector-popup{position:absolute;bottom:10%;max-width:calc(100vw - 100px);max-height:50vh;overflow:auto;background:#102126;color:#e7eeee;padding:7px 26px 7px 9px;border-radius:0;box-shadow:0 2px 10px #0008;pointer-events:auto;font:12px/1.5 system-ui;z-index:2}
       #sector-popup[hidden]{display:none!important}
       #sector-popup-list{white-space:pre-line;font-variant-numeric:tabular-nums}
-      #sector-popup-title{display:block;color:#f1d69a;margin-bottom:4px;font-size:12px}
-      #sector-popup-close{position:absolute;right:3px;top:2px;border:0;background:transparent;padding:1px 4px;font-size:16px}
+      #sector-popup{padding:7px 9px}
+      #sector-popup-header{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+      #sector-popup-title{display:block;color:#f1d69a;font-size:12px;margin-right:auto}
+      #sector-popup-copy,#sector-popup-close{border:0;background:transparent;padding:0 2px;line-height:18px}
+      #sector-popup-copy{font-size:12px}#sector-popup-close{font-size:16px}
       .quantum-group{padding:5px 0;font-size:11px}.quantum-group summary{cursor:pointer;white-space:nowrap}
       #rich-tooltip{position:fixed;z-index:2147483647;max-width:min(320px,calc(100vw - 20px));white-space:pre-wrap;overflow-wrap:anywhere;background:#07171c;color:#e9f1f2;border:1px solid #45616a;border-radius:5px;padding:8px;font-size:12px;line-height:1.45;pointer-events:none;box-shadow:0 3px 14px #0008}
       #rich-tooltip strong{color:#ffd66b}

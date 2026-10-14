@@ -1833,7 +1833,7 @@ Otwórz mapę Pól Chwały w grze.
       button.onclick=()=>{cityCategory=key;hideTip();paintCity();};cityTabButtons.set(key,button);cityTabs.append(button);
     }
     $('city-list').before(cityTabs);$('city-list').setAttribute('role','tabpanel');
-    const collectAll=document.createElement('button');collectAll.textContent='🤲 Zbierz wszystkie';collectAll.style.cssText='font-size:11px;margin:0 0 6px';$('city-list').before(collectAll);
+    const collectAll=document.createElement('button');collectAll.textContent='🤲 Zbierz wszystkie';collectAll.style.cssText='display:block;font-size:11px;margin:0 0 6px auto';$('city-list').before(collectAll);
     const canCollect=b=>b.ready&&attemptedCollections.get(b.id)!==JSON.stringify(b.raw.state);
     function startCollection(buildings){
       if(collectPending)return;
@@ -1882,7 +1882,7 @@ Otwórz mapę Pól Chwały w grze.
         const text=emoji+(ready?' ● '+ready:'');if(button.textContent!==text)button.textContent=text;
         button.dataset.tooltip=label+(ready?' — gotowe do zbioru: '+ready:'');
         button.setAttribute('aria-selected',String(selected));button.setAttribute('aria-label',label+(ready?': gotowe do zbioru '+ready:''));
-        button.style.cssText='flex:1;padding:5px 4px;font-size:12px;border-bottom:2px solid '+(selected?'#f1d69a':'transparent')+';background:'+(selected?'#243d45':'transparent')+';color:'+(ready?'#ffd76a':'#dce8ec')+';font-weight:'+(ready?'bold':'normal');
+        button.style.cssText='flex:1;padding:5px 4px;font-size:12px;border-bottom:2px solid '+(selected?'#f1d69a':'#2d454d')+';background:'+(selected?'#243d45':'transparent')+';color:'+(ready?'#ffd76a':'#dce8ec')+';font-weight:'+(ready?'bold':'normal');
       }
       const rows=allRows.filter(b=>inCityCategory(b,cityCategory));
       collectAll.disabled=!!collectPending||!rows.some(canCollect);
@@ -1906,7 +1906,7 @@ Otwórz mapę Pól Chwały w grze.
         hour12: false
       }).format(ts * 1000);
 
-      for (const b of rows) {
+      for (const [index,b] of rows.entries()) {
         const row = document.createElement('div');
         row.style.cssText =
           'display:flex;align-items:baseline;gap:6px;padding:2px 0;border-bottom:1px solid #1a2d33';
@@ -1954,6 +1954,7 @@ Otwórz mapę Pól Chwały w grze.
         collect.onclick=()=>startCollection([b]);
         const favorite=document.createElement('button'),isFavorite=readFavorites().has(favoriteId(b));favorite.textContent=isFavorite?'❤️':'🤍';favorite.dataset.tooltip=isFavorite?'Usuń z ulubionych':'Dodaj do ulubionych';favorite.setAttribute('aria-label',favorite.dataset.tooltip);favorite.style.cssText='border:0;background:transparent;padding:0;font-size:12px';
         favorite.onclick=()=>{const saved=readFavorites();if(saved.has(favoriteId(b)))saved.delete(favoriteId(b));else saved.add(favoriteId(b));try{localStorage.setItem(favoritesKey(),JSON.stringify([...saved]));}catch{collectFeedback='Nie udało się zapisać ulubionych.';}hideTip();paintCity();};
+        if(cityCategory==='favorites'){const number=document.createElement('span');number.textContent=(index+1)+'.';number.style.cssText='flex:0 0 20px;font-size:9px;color:#71858b;text-align:right;font-variant-numeric:tabular-nums';row.append(number);}
         controls.append(time,star,favorite,collect);row.append(name,controls);
         listEl.append(row);
       }

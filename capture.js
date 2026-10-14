@@ -480,6 +480,18 @@
   }
 
   let negBusy = false;
+  async function ensureFreeNegotiationTurn(connection,slots,costs){
+    const bag=await battleCall(connection,'ResourceService','getPlayerResourceBag',[]);
+    const resources=bag?.resources?.resources||bag?.resources;
+    if(!resources||!(resources.negotiation_game_turn>0))throw Error('Brak potwierdzonej bezpłatnej tury. Płatna negocjacja zablokowana.');
+    const required={};
+    for(const slot of slots){
+      const id=slot.resourceId,cost=costs?.[id];
+      if(['premium','diamonds'].includes(id)||!Number.isFinite(cost)||cost<0)throw Error('Nie można potwierdzić kosztu bez diamentów.');
+      required[id]=(required[id]||0)+cost;
+    }
+    for(const [id,amount] of Object.entries(required))if(!Number.isFinite(resources[id])||resources[id]<amount)throw Error('Brak towarów: '+id+'. Zakup za diamenty zablokowany.');
+  }
   function negotiationTurnPause(range){
     const valid=range&&Number.isFinite(range.min)&&Number.isFinite(range.max)&&range.min>=0&&range.max>=range.min&&range.max<=60;
     const {min,max}=valid?range:{min:1,max:2};
@@ -578,6 +590,7 @@
         if(!Array.isArray(guess))throw Error('Brak zgodnego rozwiązania.');
         const slots=guess.map((resourceId,slotId)=>({__class__:'NegotiationGameSlot',slotId,resourceId})).filter(s=>locked[s.slotId]===null);
         send('turn',{turn,guess});
+        await ensureFreeNegotiationTurn(connection,slots,game.possibleCosts?.resources);
         const result=await battleCall(connection,'NegotiationGameService','submitTurn',[slots,turn]);
         if(result?.__class__!=='NegotiationGameResult')throw Error('Nieoczekiwany wynik tury.');
         send('feedback',{turn,feedback:result.turnResult?.slots||[],state:result.state});
@@ -685,6 +698,7 @@
         // Poinformuj panel o proponowanym ruchu.
         window.postMessage({channel: 'foe-negotiate-turn', token, turn: turnNumber, guess, slots}, location.origin);
 
+        await ensureFreeNegotiationTurn(connection,slots,game.possibleCosts?.resources);
         const result = await battleCall(connection, 'NegotiationGameService', 'submitTurn', [slots, turnNumber]);
         if (result?.__class__ !== 'NegotiationGameResult') throw Error('Nieoczekiwana odpowiedź serwera.');
 

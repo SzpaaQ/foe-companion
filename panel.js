@@ -523,7 +523,7 @@ Otwórz mapę Pól Chwały w grze.
           <div id="gbg-automation-settings"></div>
           </details>
 
-          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.5.02</strong></p><ul><li>Kategoria PR korzysta także z definicji produkcji: widoczne niezmotywowane Emporium Solary i oba egzemplarze Elizejskiego Młyna; obsługa losowej produkcji PR.</li><li>Pełniejsza lista budynków: widoczne nieaktywne produkcje, nowe budynki i osobne egzemplarze; kategorie PR i wojska niezależne od motywacji.</li><li>Zbiory: domyślna karta Ulubione, zapis wybranych budynków i przyciski dodawania/usuwania.</li><li>Zbierz wszystkie w każdej podzakładce: jedno zbiorcze żądanie dla gotowych budynków wybranej kategorii i osobna kontrola wyniku każdego zbioru.</li><li>Potwierdzenie zbioru wymaga zmiany stanu budynku; brak fałszywego sukcesu przy odrzuconym zbiorze.</li></ul><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
+          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.5.02</strong></p><ul><li>🏁 Wyścig: sąsiedztwo konkurencyjnej gildii w powiadomieniu i rozpisce do 30 minut przed otwarciem.</li><li>Wyłączone wpłaty PR z panelu oraz negocjacje poza Polami Chwały.</li><li>Kategoria PR korzysta także z definicji produkcji: widoczne niezmotywowane Emporium Solary i oba egzemplarze Elizejskiego Młyna; obsługa losowej produkcji PR.</li><li>Pełniejsza lista budynków: widoczne nieaktywne produkcje, nowe budynki i osobne egzemplarze; kategorie PR i wojska niezależne od motywacji.</li><li>Zbiory: domyślna karta Ulubione, zapis wybranych budynków i przyciski dodawania/usuwania.</li><li>Zbierz wszystkie w każdej podzakładce: jedno zbiorcze żądanie dla gotowych budynków wybranej kategorii i osobna kontrola wyniku każdego zbioru.</li><li>Potwierdzenie zbioru wymaga zmiany stanu budynku; brak fałszywego sukcesu przy odrzuconym zbiorze.</li></ul><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
 <p><strong>0.4.21</strong> · automatyczna aktualizacja soli podpisu z pliku JS gry</p>
 <p><strong>0.4.20</strong> · aktualizacja soli podpisu do wersji gry 1.345</p>
 <p><strong>0.4.19</strong> · separatory między sekcjami kwantowymi</p>
@@ -691,6 +691,7 @@ Otwórz mapę Pól Chwały w grze.
       if(event.source!==window||event.origin!==location.origin)return;
       const d=event.data;
       if(d?.channel==='foe-open-negotiation'){
+        return; // Negotiations outside battlegrounds are disabled.
         standaloneGame=d.game;
         if(d.game){
           $('nego-tab').hidden=true;$('standalone-kind').textContent=d.game.context==='quest'?'Misja':`Negocjacja: ${d.game.context}`;
@@ -763,7 +764,7 @@ Otwórz mapę Pól Chwały w grze.
       const seconds=Math.max(0,Math.ceil(entry.until-now));
       const time=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
       const type=entry.isAttackBattleType===true?'🟥 ':entry.isAttackBattleType===false?'🟦 ':'';
-      return (seconds===0?'Otwarte ':countdown?time+' ':'')+type+(entry.color||'⚪')+' '+entry.sector;
+      return (seconds===0?'Otwarte ':countdown?time+' ':'')+type+(entry.color||'⚪')+' '+entry.sector+(entry.race?' 🏁':'');
     }
     function paintSectorPopup(){
       const now=Date.now()/1000;
@@ -785,7 +786,8 @@ Otwórz mapę Pól Chwały w grze.
     function updateSectorPopup(rows,now){
       for(const r of rows){
         const key=`${battle.map.id}:${r.id}:${r.until}`;
-        if(!popupDismissed[key]&&!popupEntries.has(key))popupEntries.set(key,{sector:r.sector,color:r.color,isAttackBattleType:r.isAttackBattleType,until:r.until,mapId:battle.map.id,shownAt:now});
+        if(!popupDismissed[key]&&!popupEntries.has(key))popupEntries.set(key,{sector:r.sector,color:r.color,race:r.race,isAttackBattleType:r.isAttackBattleType,until:r.until,mapId:battle.map.id,shownAt:now});
+        if(popupEntries.has(key))popupEntries.get(key).race=r.race;
       }
       paintSectorPopup();
     }
@@ -1728,7 +1730,6 @@ Otwórz mapę Pól Chwały w grze.
           };
           const cumulative=document.createElement('span');cumulative.textContent='· łącznie '+block.cumulative+' PR';
           small.append(blockAmount,blockCopy);
-          if(ownPlayerId&&construction.target?.playerId===ownPlayerId)small.append(contributionButton(block.additional,'🔒','Zablokuj miejsce ('+block.additional+' PR)',ownerPaid+block.additional,{total:Number(blockText),rank:row.rank,amount:row.amount,rows:result.rows.map(r=>({rank:r.rank,amount:r.amount}))}));
           small.append(cumulative);
           label.append(small);
         }
@@ -1755,7 +1756,6 @@ Otwórz mapę Pól Chwały w grze.
         if(ownPlayerId&&construction.target?.playerId!==ownPlayerId){
           const paid=construction.rankings?.find(r=>r.player?.player_id===ownPlayerId)?.forge_points??0;
           const remaining=row.amount===null?null:Math.max(0,row.amount-paid);
-          line.append(contributionButton(remaining,'📥','Dopłać '+(remaining??'—')+' PR (łącznie '+row.amount+' PR)',row.amount));
         }
         $('pearl-rows').append(line);
       }

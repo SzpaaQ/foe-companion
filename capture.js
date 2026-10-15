@@ -368,6 +368,7 @@
   };
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-contribute')return;
+    return; // Contributions from the panel are disabled.
     const {token,request,desiredTotal,lock}=event.data;
     const answer=(ok,message)=>window.postMessage({channel:'foe-contribution-result',token,ok,message},location.origin);
     if(paymentBusy||battleBusy||collectBusy||negBusy)return answer(false,'Trwa inne żądanie. Nie wysłano wpłaty.');
@@ -548,6 +549,7 @@
       window.postMessage({channel:'foe-open-negotiation',game:openNegotiation,reason:questNegotiationStatus()},location.origin);return;
     }
     if(event.data?.channel!=='foe-open-negotiate')return;
+    return; // Disabled: negotiations outside battlegrounds.
     const {token}=event.data;
     const send=(kind,extra)=>window.postMessage({channel:'foe-open-nego-'+kind,token,...extra},location.origin);
     if(questNegotiationStatus())return send('result',{message:questNegotiationStatus()});
@@ -882,6 +884,7 @@
   // Rozpoczęcie kolejnej misji-negocjacji po odebraniu nagrody (przycisk NEXT w panelu Nego)
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-next')return;
+    return; // Disabled: quest negotiation continuation.
     const {token,quest}=event.data;
     const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quest-next-result',token,ok,message,...extra},location.origin);
     if(!Number.isSafeInteger(quest?.id)||!Number.isSafeInteger(quest?.condition))return answer(false,'Brak danych kolejnej misji.');
@@ -908,6 +911,7 @@
   // Rozpoczęcie kolejnej misji-negocjacji po odebraniu nagrody (przycisk NEXT w panelu Nego)
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quest-next')return;
+    return; // Disabled: quest negotiation continuation.
     const {token,quest}=event.data;
     const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quest-next-result',token,ok,message,...extra},location.origin);
     if(!Number.isSafeInteger(quest?.id)||!Number.isSafeInteger(quest?.condition))return answer(false,'Brak danych kolejnej misji.');

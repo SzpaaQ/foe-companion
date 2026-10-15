@@ -64,8 +64,12 @@
     const list = battle.map.provinces.filter(p => !p.isSpawnSpot && (!frontierOnly || (p.ownerId!==own && frontier.has(p.id ?? 0)))).map(p => {
       const id = p.id ?? 0; const owner = participants.get(p.ownerId);
       const conquest=p.conquestProgress?.find(c=>c.participantId===own);
+      const race=(topology.sectors[sector(id,battle.map.id)]?.neighbors||[]).some(name=>{
+        const neighbor=battle.map.provinces.find(n=>(n.id??0)===topology.sectors[name].id);
+        return neighbor?.ownerId!=null&&neighbor.ownerId!==own&&neighbor.ownerId!==p.ownerId&&participants.has(neighbor.ownerId);
+      });
       return {id, sector:sector(id,battle.map.id), color:p.ownerId === own ? '⚪' : colors[owner?.colour] || '⚫', owner:owner?.clan?.name || 'Nieznany', until:Number(p.lockedUntil)||0, isAttackBattleType:p.isAttackBattleType===true,
-        ignored:ignored.has(id),progress:conquest?.progress??0,maxProgress:conquest?.maxProgress??null,gainAttritionChance:Number.isFinite(p.gainAttritionChance)?p.gainAttritionChance:null};
+        race,ignored:ignored.has(id),progress:conquest?.progress??0,maxProgress:conquest?.maxProgress??null,gainAttritionChance:Number.isFinite(p.gainAttritionChance)?p.gainAttritionChance:null};
     }).sort((a,b)=>a.until-b.until || a.id-b.id);
     return {rows:list, warning:frontierOnly ? 'Sąsiedzi własnych pól według stałej mapy. Własna gildia: ⚪.' : 'Wszystkie sektory; to nie jest lista celów dostępnych do ataku.'};
   }
@@ -100,7 +104,8 @@
 function line(row) {
     const time = row.until ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',hour12:false}).format(row.until*1000) : '';
     const battleType = row.isAttackBattleType === true ? '🟥 ' : row.isAttackBattleType === false ? '🟦 ' : '';
-    return `${time ? time + ' ' : ''}${battleType}${row.color} ${row.sector}`;
+    const remaining=row.until-Date.now()/1000;
+    return `${time ? time + ' ' : ''}${battleType}${row.color} ${row.sector}${row.race&&remaining>0&&remaining<=1800?' 🏁':''}`;
   }
 
   // --- Zbiory ---

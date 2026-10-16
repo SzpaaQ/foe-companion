@@ -20,7 +20,7 @@ function setup(){
   send(body){this.raw=JSON.stringify(reply(body,this.headers));this.readyState=4;for(const fn of this.handlers)fn();this.handlers=[];}
  }
  const window={addEventListener(){},postMessage(){},fetch:async(url,o)=>new Response(JSON.stringify(reply(o.body,Object.fromEntries(new Headers(o.headers)))))};
- vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),{window,location:{origin:'https://test.local',href:'https://test.local/'},XMLHttpRequest:XHR,FoeRequestSignature:signer,URL,Request,Response,Headers,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout});
+ vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),{document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},window,location:{origin:'https://test.local',href:'https://test.local/'},XMLHttpRequest:XHR,FoeRequestSignature:signer,URL,Request,Response,Headers,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout});
  const body=ids=>JSON.stringify(ids.map(requestId=>({__class__:'ServerRequest',requestId,requestClass:'TestService',requestMethod:'getData',requestData:[]})));
  const url='https://test.local/game/json?h=test';
  return {sent,XHR,url,body,async fetch(ids){const text=body(ids);return (await window.fetch(url,{method:'POST',body:text,headers:{Signature:signer.sign('test',text)}})).json();}};
@@ -64,7 +64,7 @@ test('unsigned game request with colliding ID is bumped above extension IDs with
   const b=JSON.parse(o.body);sent.push(...b.map(r=>r.requestId));
   return new Response(JSON.stringify(b.map(r=>({...r,responseData:true}))),{headers:{'content-type':'application/json'}});
  }};
- vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),{window,location:{origin:'https://test.local',href:'https://test.local/'},XMLHttpRequest:XHR,FoeRequestSignature:signer,URL,Request,Response,Headers,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout});
+ vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),{document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},window,location:{origin:'https://test.local',href:'https://test.local/'},XMLHttpRequest:XHR,FoeRequestSignature:signer,URL,Request,Response,Headers,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout});
  const url='https://test.local/game/json?h=test';
  const signedBody=JSON.stringify([{__class__:'ServerRequest',requestId:36,requestClass:'TestService',requestMethod:'getData',requestData:[]}]);
  // Step 1: signed fetch — extension sees ID 36, lastRequestId becomes 36

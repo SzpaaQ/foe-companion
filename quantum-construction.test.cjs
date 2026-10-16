@@ -14,7 +14,7 @@ function render(summary){
  const element=()=>({style:{},children:[],append(...items){this.children.push(...items);}});
  const root=element(),source=fs.readFileSync(__dirname+'/panel.js','utf8');
  const text=(parent,value)=>{const n=element();n.textContent=value;parent.append(n);return n;};
- vm.runInNewContext(source.slice(source.indexOf('      const buildProduction='),source.indexOf('      const emojiTitles=')),{summary,FoeQuantum:Q,document:{createElement:element},$:()=>root,text,num:n=>n.toLocaleString('pl-PL')});
+ vm.runInNewContext(source.slice(source.indexOf('      const resourceValues='),source.indexOf("      addSection('Zbiory',true);"))+source.slice(source.indexOf('      const buildProduction='),source.indexOf('      const emojiTitles=')),{summary,FoeQuantum:Q,document:{createElement:element},$:()=>root,text,num:n=>n.toLocaleString('pl-PL')});
  return root.children.filter(n=>n.open).map(n=>n.children[1]);
 }
 test('construction keeps effects and production separate from current totals',()=>{

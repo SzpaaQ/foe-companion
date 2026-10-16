@@ -1036,10 +1036,14 @@ Otwórz mapę Pól Chwały w grze.
         if(!first){const hr=document.createElement('hr');hr.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hr);}
         const h=document.createElement('strong');h.textContent=label;h.style.cssText='display:block;font-size:12px;color:#8fcfcf;margin-bottom:4px';$('quantum-groups').append(h);
       };
+      // Shared resource widths keep every collection group and overview aligned.
+      const resourceValues=[summary.totals,...summary.groups.map(g=>g.production),...summary.groups.flatMap(g=>g.items.map(i=>i.production))];
+      resourceValues.push(Object.fromEntries(FoeQuantum.KEYS.map(k=>[k,(summary.totals[k]||0)+summary.builds.reduce((sum,b)=>sum+(b.production?.[k]||0),0)])));
+      const resourceColumns='minmax(0,1fr) '+FoeQuantum.KEYS.map(k=>Math.max(2,...resourceValues.map(v=>num(v[k]||0).length))+'ch').join(' ');
       addSection('Zbiory',true);
       // Jeden grid dla wszystkich grup — kolumny wyrównane jak w Zestawieniu
       const zbGrid=document.createElement('div');
-      zbGrid.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;margin-bottom:4px';
+      zbGrid.style.cssText='display:grid;grid-template-columns:'+resourceColumns+';gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;margin-bottom:4px';
       $('quantum-groups').append(zbGrid);
       // Nagłówki kolumn
       const zbHdr=document.createElement('span');zbHdr.style.cssText='padding:1px 0;border-bottom:1px solid #4a3525';zbGrid.append(zbHdr);
@@ -1051,7 +1055,7 @@ Otwórz mapę Pól Chwały w grze.
         // Wiersz nagłówka grupy
         const hRow=document.createElement('span');
         hRow.dataset.groupat=atKey;hRow.dataset.collapsed=collapsed?'1':'0';
-        hRow.style.cssText='grid-column:1/-1;display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;cursor:pointer;margin-top:4px';
+        hRow.style.cssText='grid-column:1/-1;display:grid;grid-template-columns:'+resourceColumns+';gap:0 8px;cursor:pointer;margin-top:4px';
         const isReady=group.at<=Date.now()/1000;
         if(isReady)hRow.dataset.ready='1';
         const timeCell=document.createElement('strong');
@@ -1111,7 +1115,7 @@ Otwórz mapę Pól Chwały w grze.
         const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
         $('quantum-groups').append(sec);
         const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
-        const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:1fr auto auto auto;gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
+        const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:'+resourceColumns+';gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
         // Nagłówki
         for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
         for(const item of grouped){
@@ -1372,9 +1376,9 @@ Otwórz mapę Pól Chwały w grze.
         autoSettings=next;localStorage.setItem(autoKey,JSON.stringify(next));$('auto-settings-error').textContent='';stopAuto('Ustawienia zmienione.');
       };
     }
-    let autoSector=null,autoTimer=null,lossStreak=0,fights=0,wins=0;
+    let autoSector=null,autoTimer=null,autoStopRequested=false,lossStreak=0,fights=0,wins=0;
     const stats=document.createElement('td');stats.title='Wygrane / zakończone walki przyciskami rozszerzenia w tej sesji';stats.textContent='🏆 0/0';$('open-sectors').before(stats);
-    const stopButton=document.createElement('button');stopButton.textContent='⏹ Stop walk';stopButton.hidden=true;stats.after(stopButton);stopButton.onclick=()=>stopAuto('Autoatak zatrzymany. Rozpoczęte żądanie zostanie dokończone.');
+    const stopButton=document.createElement('button');stopButton.textContent='⏹ Stop walk';stopButton.hidden=true;stats.after(stopButton);stopButton.onclick=()=>requestStopAuto();
     function setBattleFeedback(message){
       const full=String(message||'');
       let short=full;
@@ -1388,12 +1392,19 @@ Otwórz mapę Pól Chwały w grze.
       else if(full.startsWith('Pobieranie i wymiana armii:'))short=full.replace('Pobieranie i wymiana armii:','Wymiana armii:');
       const feedback=$('battle-feedback');feedback.textContent=short;feedback.title=full;feedback.setAttribute('aria-label',full);
     }
-    function stopAuto(message){clearTimeout(autoTimer);autoTimer=null;autoSector=null;stopButton.hidden=true;if(message)setBattleFeedback(message);paintOpenSectors();}
+    function stopAuto(message){clearTimeout(autoTimer);autoTimer=null;autoSector=null;autoStopRequested=false;stopButton.disabled=false;stopButton.textContent='⏹ Stop walk';stopButton.hidden=true;if(message)setBattleFeedback(message);paintOpenSectors();}
 
     // --- Negocjacje UI --- (negStats/stopNegButton/negPanel zdefiniowane poniżej, montowane tu)
     // Montaż następuje po deklaracji zmiennych negocjacyjnych w kolejnym bloku.
     let negClearTimer=null;
     let negPending=null,negPendingSector=null,negLastSector=null,negLastUntil=0,negLastOK=false;
+    function requestStopAuto(){
+      if(autoSector===null)return;
+      if(!battlePending&&battleWaveSector===null){stopAuto('Autoatak zatrzymany.');return;}
+      autoStopRequested=true;stopButton.disabled=true;stopButton.textContent='Kończę walkę…';
+      setBattleFeedback('Zatrzymywanie — kończę rozpoczętą walkę wraz z pozostałymi falami.');
+      if(!battlePending&&battleWaveSector!==null&&!autoTimer)startFight(autoSector,true);
+    }
     let autoNegSector=null,autoNegTimer=null,negWins=0,negDone=0;
     const negStats=document.createElement('td');negStats.title='Wygrane / zakończone negocjacje przyciskami rozszerzenia w tej sesji';negStats.textContent='🤝 0/0';
     const stopNegButton=document.createElement('button');stopNegButton.textContent='⏹ Stop nego';stopNegButton.hidden=true;
@@ -1507,6 +1518,7 @@ Otwórz mapę Pól Chwały w grze.
         }
         if(autoSector!==null){
           if(!data.ok||(!data.nextWave&&(!data.refreshed||typeof data.won!=='boolean')))stopAuto(data.message);
+          else if(autoStopRequested&&!data.nextWave)stopAuto('Autoatak zatrzymany po zakończeniu walki.');
           else if(lossStreak>=3)stopAuto('Autoatak zatrzymany po 3 kolejnych porażkach.');
           else{
             const id=autoSector;
@@ -1564,7 +1576,7 @@ Otwórz mapę Pól Chwały w grze.
         if(!isNegOnly){
           auto.textContent=autoSector===row.id?'⏹':'▶';auto.title=autoSector===row.id?'Zatrzymaj autoatak':'Autoatak na tym sektorze';
           auto.disabled=autoSector!==row.id&&(!battleReady||!!battlePending||autoSector!==null||autoNegSector!==null||negPending!==null||(battleWaveSector!==null&&battleWaveSector!==row.id));
-          auto.onclick=()=>{if(autoSector===row.id){stopAuto('Autoatak zatrzymany.');return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id,true);};
+          auto.onclick=()=>{if(autoSector===row.id){requestStopAuto();return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id,true);};
         } else {
           auto.style.display='none';
         }

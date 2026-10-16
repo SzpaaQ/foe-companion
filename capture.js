@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const LIMIT = 24000000;
+  const battlegroundLive=globalThis.FoeBattlegroundLive?.createTracker();
+  globalThis.FoeBattlegroundLive?.observeSockets(window,data=>emit(location.origin+'/socket/',null,data,true,'socket'),connected=>battlegroundLive.setConnected(connected));
   // Dynamiczne wyciąganie soli z pliku JS gry — uruchamia się gdy gra załaduje ForgeHX-*.js
   (function autoUpdateSalt(){
     const extract=async url=>{
@@ -25,18 +27,6 @@
   let collectBusy=false,cityOwner=null;const ownBuildings=new Map(),collectedStates=new Map();
   let transport=null,lastRequestId=0,paymentBusy=false,paymentUncertain=false;
   let battleTransport=null,battleBusy=false,battleUncertain=false,nextWave=null;
-  let mapRefreshTimer=null,mapRefreshing=false;
-  function scheduleMapRefresh(){
-    clearTimeout(mapRefreshTimer);
-    mapRefreshTimer=setTimeout(async()=>{
-      if(battleBusy||paymentBusy||collectBusy||mapRefreshing){scheduleMapRefresh();return;}
-      if(!battleTransport)return;
-      mapRefreshing=true;
-      try{await battleCall(battleTransport,'GuildBattlegroundService','getBattleground',[]);}
-      catch{window.postMessage({channel:'foe-map-refresh-error',message:'Nie odświeżono postępu po walce. Otwórz mapę ponownie.'},location.origin);}
-      finally{mapRefreshing=false;}
-    },300);
-  }
   let battleReason='Nie przechwycono jeszcze podpisanego żądania gry.';
   const captureStats={version:2,requests:0,signed:0,verified:0,bodyType:'—'};
   function bodyText(body){
@@ -82,13 +72,13 @@
   function relevant(url) {
     try { const u = new URL(url, location.href); return u.origin === location.origin && /\/game\/json(?:\?|$)/.test(u.pathname + u.search); } catch { return false; }
   }
-  function emit(url, body, data, internal=false) {
+  function emit(url, body, data, internal=false, source='http') {
     try {
       body=bodyText(body);
       if (typeof data === 'string') { if (data.length > LIMIT) return; data = JSON.parse(data); }
       if (!data || typeof data !== 'object') return;
+      battlegroundLive?.consume(data,source);
       observeOpenNegotiation(data,body);
-      if(!battleBusy&&(Array.isArray(data)?data:[data]).some(r=>r.requestClass==='BattlefieldService'&&r.requestMethod==='startByBattleType'&&r.responseData?.state?.ranking_data))scheduleMapRefresh();
       const queue=[data];for(let i=0;i<queue.length&&i<200000;i++){
         const v=queue[i];if(!v||typeof v!=='object')continue;
         if(v.requestClass==='StartupService'&&v.responseData?.city_map?.entities){cityOwner=v.responseData.user_data?.player_id;ownBuildings.clear();for(const e of v.responseData.city_map.entities)if(e.player_id===cityOwner)ownBuildings.set(e.id,e);}
@@ -173,26 +163,8 @@
     try{
       if(!nextWave){
         if(automatic===true&&Number.isInteger(reserve)&&reserve>=0){
-          const fresh=await battleCall(connection,'GuildBattlegroundService','getBattleground',[]);
-          let province=fresh.map?.provinces?.find(p=>(p.id??0)===provinceId);
-          let conquest=province?.conquestProgress?.find(c=>c.participantId===fresh.currentParticipantId);
-          if(!Number.isFinite(conquest?.maxProgress)){
-            const detail=await battleCall(connection,'GuildBattlegroundService','getProvince',[provinceId]);
-            if(detail?.__class__==='GuildBattlegroundProvince'&&(detail.id??0)===provinceId)province={...province,...detail};
-            conquest=province?.conquestProgress?.find(c=>c.participantId===fresh.currentParticipantId);
-          }
-          const progress=conquest?.progress??0;
-          if(!province||province.isSpawnSpot||province.ownerId===fresh.currentParticipantId||province.lockedUntil>Date.now()/1000)throw Error('Sektor nie jest już otwarty do walki.');
-          // conquestProgress is an explicit empty array when the sector has never been attacked by our
-          // guild — the server does not send maxProgress until there is history. Allow the fight; the
-          // reserve guard is skipped because there is nothing to compare against.
-          // When the server does send an entry for our participant but maxProgress is missing/invalid,
-          // block: that indicates a data error rather than a genuinely new sector.
-          if(!Array.isArray(province.conquestProgress))throw Error('Brak potwierdzonego progresu lub limitu sektora.');
-          if(conquest&&(!Number.isFinite(conquest.maxProgress)||conquest.maxProgress<=0))throw Error('Brak potwierdzonego progresu lub limitu sektora.');
-          if(Number.isFinite(conquest?.maxProgress)&&conquest.maxProgress>0){
-            if(conquest.maxProgress-progress<=reserve)throw Error('Osiągnięto ustawiony zapas walk.');
-          }
+          if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
+          battlegroundLive.check(provinceId,reserve,1);
         }
         const context={__class__:'BattlegroundArmyContext',battleType:'battleground',provinceId};
         const army=await battleCall(connection,'ArmyUnitManagementService','getArmyInfo',[context]);
@@ -205,6 +177,7 @@
       }
       changed=true;
       stage='szybka walka';fightSent=true;
+      const progressBefore=battlegroundLive?.snapshot(provinceId);
       const realm=await battleCall(connection,'BattlefieldService','startByBattleType',[type,true]);
       if(realm?.__class__!=='BattleRealm'||!realm.state?.ranking_data)throw Error('unconfirmed');
       const more=!!realm.state.ranking_data.nextArmy;
@@ -217,15 +190,9 @@
       nextWave=more?{...returnedType,provinceId:returnedProvince}:null;
       const winner=realm.state.winnerBit;
       const won=winner===1?true:winner===2?false:null;
-      let refreshed=false;
-      if(!more){
-        clearTimeout(mapRefreshTimer);
-        try{
-          const fresh=await battleCall(connection,'GuildBattlegroundService','getBattleground',[]);
-          refreshed=Array.isArray(fresh.map?.provinces)&&fresh.currentParticipantId!=null;
-        }catch{}
-      }
-      answer(true,more?'Fala zakończona — pozostała kolejna.':(won===true?'Wygrana.':won===false?'Przegrana.':'Nie rozpoznano wyniku walki.')+(refreshed?' Progres odświeżony.':' Nie potwierdzono aktualnego progresu — autoatak zatrzymany.'),{provinceId,nextWave:more,won,refreshed,battleId:realm.battleId});
+      let refreshed=won===false;
+      if(!more&&won===true)refreshed=await (battlegroundLive?.waitForProgress(provinceId,progressBefore,1)??Promise.resolve(false));
+      answer(true,more?'Fala zakończona — pozostała kolejna.':(won===true?'Wygrana.':won===false?'Przegrana.':'Nie rozpoznano wyniku walki.')+(!more&&won===true?(refreshed?' Progres potwierdzony przez socket.':' Brak aktualizacji socketu — autoatak zatrzymany.'):''),{provinceId,nextWave:more,won,refreshed,battleId:realm.battleId});
     }catch(error){
       const invalidWave=error.invalidWave===true;
       if(invalidWave)nextWave=null;
@@ -649,22 +616,9 @@
     negBusy = true;
     const connection = battleTransport;let started=false;
     try {
-      // 1. Pobierz mapę — sprawdź czy sektor jest otwarty i negocjowalny.
-      const fresh = await battleCall(connection, 'GuildBattlegroundService', 'getBattleground', []);
-      const province = fresh.map?.provinces?.find(p => (p.id ?? 0) === provinceId);
-      if (!province || province.isSpawnSpot || province.ownerId === fresh.currentParticipantId || province.lockedUntil > Date.now() / 1000)
-        throw Error('Sektor nie jest już otwarty do negocjacji.');
-      // isAttackBattleType określa atak/obronę; oba typy pozwalają negocjować.
-
-      if(Number.isInteger(reserve)&&reserve>=0){
-        let progress=province.conquestProgress?.find(p=>p.participantId===fresh.currentParticipantId);
-        if(!Number.isFinite(progress?.maxProgress)){
-          const detail=await battleCall(connection,'GuildBattlegroundService','getProvince',[provinceId]);
-          progress=detail?.conquestProgress?.find(p=>p.participantId===fresh.currentParticipantId);
-        }
-        if(!Number.isFinite(progress?.maxProgress))throw Error('Brak potwierdzonego limitu sektora — auto-negocjacja zatrzymana.');
-        if(progress.maxProgress-(progress.progress??0)-2<reserve)throw Error('Osiągnięto zapas: pozostaw '+reserve+' walk. Negocjacja może dodać 2 punkty progresu.');
-      }
+      // Read the game-provided map/socket state; never poll the map here.
+      if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
+      battlegroundLive.check(provinceId,reserve,2);
       // 2. Rozpocznij negocjację.
       started=true;
       const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId]);
@@ -701,6 +655,7 @@
         window.postMessage({channel: 'foe-negotiate-turn', token, turn: turnNumber, guess, slots}, location.origin);
 
         await ensureFreeNegotiationTurn(connection,slots,game.possibleCosts?.resources);
+        const progressBefore=battlegroundLive.snapshot(provinceId);
         const result = await battleCall(connection, 'NegotiationGameService', 'submitTurn', [slots, turnNumber]);
         if (result?.__class__ !== 'NegotiationGameResult') throw Error('Nieoczekiwana odpowiedź serwera.');
 
@@ -709,12 +664,7 @@
         window.postMessage({channel: 'foe-negotiate-feedback', token, turn: turnNumber, state: result.state, feedback}, location.origin);
 
         if (result.state === 'won') {
-          // Odśwież mapę po wygranej.
-          let refreshed = false;
-          try {
-            await battleCall(connection, 'GuildBattlegroundService', 'getBattleground', []);
-            refreshed = true;
-          } catch {}
+          const refreshed=await battlegroundLive.waitForProgress(provinceId,progressBefore,2);
           answer(true, 'Negocjacja zakończona sukcesem w ' + turnNumber + ' ' + (turnNumber === 1 ? 'turze' : turnNumber < 5 ? 'turach' : 'turach') + '.', {won: true, turns: turnNumber, refreshed});
           return;
         }

@@ -5,9 +5,11 @@ const fs=require('node:fs');
 
 function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
+  const live=require('./battleground-live.js').createTracker();live.setConnected(true);
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>messages.push(m)};
   const map=()=>({currentParticipantId:1,map:{provinces:[{id:provinceId,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
+  live.consume([{requestClass:'GuildBattlegroundService',requestMethod:'getBattleground',responseData:map()}]);
   window.fetch=async(url,options)=>{
     const [r]=JSON.parse(options.body);calls.push(r.requestMethod);
     let data={};
@@ -16,44 +18,44 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
     }
     if(r.requestMethod==='startByBattleType'){
       battleCount++;const more=waves&&battleCount===1;
-      if(!more&&winner===1)progress++;
+      if(!more&&winner===1){progress++;if(!refreshFails)live.consume([{requestClass:'GuildBattlegroundService',requestMethod:'getProvinces',responseData:map().map.provinces}],'socket');}
       data={__class__:'BattleRealm',battleId:battleCount,battleType:omitProvince?{}:{provinceId},state:{winnerBit:winner,ranking_data:more?{nextArmy:{units:[{}]}}:{}}};
     }
     return {ok:true,json:async()=>[{...r,requestMethod:r.requestMethod==='updatePools'?'getArmyInfo':r.requestMethod,responseData:data}]};
   };
-  const ctx={window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
+  const ctx={document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},FoeBattlegroundLive:{createTracker:()=>live,observeSockets(){}},window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
   return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve,automatic=reserve!==undefined){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId,reserve,automatic}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
 }
 test('fresh reserve check: 196/200 fights once; 197/200 stops without army mutation',async()=>{
   const h=harness();const first=await h.fight(3);assert.equal(first.won,true);assert.equal(first.refreshed,true);
-  assert.deepEqual(h.calls,['getBattleground','getArmyInfo','updatePools','startByBattleType','getBattleground']);
+  assert.deepEqual(h.calls,['getArmyInfo','updatePools','startByBattleType']);
   const second=await h.fight(3);assert.equal(second.ok,false);assert.equal(second.uncertain,false);assert.equal(h.calls.filter(x=>x==='startByBattleType').length,1);
 });
-test('two waves replace army only once, refresh after final result',async()=>{
+test('two waves replace army only once and await socket progress after final result',async()=>{
   const h=harness({waves:true});assert.equal((await h.fight(3)).nextWave,true);assert.equal((await h.fight(3)).nextWave,false);
   assert.equal(h.calls.filter(x=>x==='updatePools').length,1);assert.equal(h.calls.filter(x=>x==='startByBattleType').length,2);
 });
-test('defeat is a confirmed result, failed refresh blocks continuation signal',async()=>{
-  const h=harness({winner:2,refreshFails:true});const r=await h.fight();assert.equal(r.ok,true);assert.equal(r.won,false);assert.equal(r.refreshed,false);
+test('defeat is confirmed without polling or waiting for a progress increment',async()=>{
+  const h=harness({winner:2,refreshFails:true});const r=await h.fight();assert.equal(r.ok,true);assert.equal(r.won,false);assert.equal(r.refreshed,true);
 });
 test('unknown progress does not start auto battle',async()=>{
-  const h=harness({max:null});assert.equal((await h.fight(3)).ok,false);assert.deepEqual(h.calls,['getBattleground','getProvince']);
+  const h=harness({max:null});assert.equal((await h.fight(3)).ok,false);assert.deepEqual(h.calls,[]);
 });
-test('new sector with empty conquestProgress allows fight without reserve guard',async()=>{
+test('unknown sector limit blocks auto but still allows a manual fight',async()=>{
   // Server returns conquestProgress:[] for a province never attacked by our guild.
   // The extension must not block the fight even when reserve is set.
   const h=harness({max:'empty'});const result=await h.fight(3);
-  assert.equal(result.ok,true,'fight must proceed on a brand-new sector');
-  assert.equal(result.won,true);
+  assert.equal(result.ok,false);assert.equal(h.calls.length,0);const manual=await h.fight();assert.equal(manual.ok,true);
+  assert.equal(manual.won,true);
   // Army exchange + fight + refresh — no getProvince needed since conquestProgress is clearly []
   assert.ok(h.calls.includes('startByBattleType'),'startByBattleType must have been called');
 });
 
 function controller(){
   const elements=new Map(),listeners=[],timers=new Map(),sent=[];let seq=0;
-  const element=()=>({value:'',textContent:'',hidden:false,style:{},onclick:null,disabled:false,title:'',setAttribute(){},getAttribute(){return null;},append(){},before(){},after(){}});
+  const element=()=>({value:'',textContent:'',hidden:false,style:{},onclick:null,disabled:false,title:'',setAttribute(){},getAttribute(){return null;},append(){},before(){},after(){},querySelectorAll(){return [];}});
   const $=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>sent.push(m)};
   const context=vm.createContext({playerAttrition:null,paintAttrition(){},$,window,location:{origin:'test'},document:{createElement:element},localStorage:{getItem:()=>null,setItem(){}},battle:{},FoeModel:{rows:()=>({rows:[{id:7,until:0,sector:'A1M'}]})},crypto:{randomUUID:()=>String(++seq)},paintOpenSectors(){},setInterval(){},setTimeout:(fn,delay)=>{const id=++seq;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)});
@@ -81,14 +83,14 @@ test('missing live progress stops auto even after a win',()=>{
 test('negotiation starts for attack, defense and omitted battle type; locked sectors remain blocked',async()=>{
  for(const attackType of [true,false,undefined]){
   const h=harness({attackType});await h.negotiate();
-  assert.deepEqual(h.calls,['getBattleground','startNegotiation','getRunning']);
+  assert.deepEqual(h.calls,['startNegotiation','getRunning']);
  }
  const h=harness({attackType:true,lockedUntil:Date.now()/1000+3600});await h.negotiate();
- assert.deepEqual(h.calls,['getBattleground']);
+ assert.deepEqual(h.calls,[]);
 });
 
 test('auto negotiation reserves space for its two progress points',async()=>{
- const blocked=harness({progress:197,max:200});await blocked.negotiate(2);assert.deepEqual(blocked.calls,['getBattleground']);
+ const blocked=harness({progress:197,max:200});await blocked.negotiate(2);assert.deepEqual(blocked.calls,[]);
  const allowed=harness({progress:196,max:200});await allowed.negotiate(2);assert.ok(allowed.calls.includes('startNegotiation'));
 });
 

@@ -58,6 +58,17 @@
     if(e.cityentity_id.includes('Impediment'))continue;
     const def=definitions.get(e.cityentity_id),c=component(e),s=e.state||{},name=e.cityentity_id==='H_GuildRaidsEarlyMiddleAge_Townhall'||e.type==='main_building'?'Ratusz':def?.name||e.cityentity_id;
     if(!def&&e.type!=='main_building')missing.add(e.cityentity_id);
+    // Budynki nieprodukcyjne (stałe efekty) — zbierane jako extras
+    const extraEffects=emptyExtra();
+    const sr=c?.staticResources?.resources?.resources||{};
+    for(const k of ['guild_raids_happiness','guild_raids_population'])if(sr[k])extraEffects[k]=Number(sr[k])||0;
+    for(const b of c?.boosts?.boosts||[]){
+     if(b.type==='guild_raids_action_points_collection')extraEffects.guild_raids_action_points_collection=Number(b.value)||0;
+     if(b.type==='guild_raids_action_points_capacity')extraEffects.guild_raids_action_points_capacity=Number(b.value)||0;
+     if(b.type==='att_def_boost_attacker')extraEffects.att_def_boost_attacker=Number(b.value)||0;
+     if(b.type==='att_def_boost_defender')extraEffects.att_def_boost_defender=Number(b.value)||0;
+    }
+    const hasExtras=EXTRA_KEYS.some(k=>extraEffects[k]!==0);
     if(s.__class__==='ConstructionState'){
      const emoji={guild_raids_happiness:'😊',guild_raids_population:'👥'},benefits=[];
      for(const [key,value] of Object.entries(c?.staticResources?.resources?.resources||{}))if(emoji[key])benefits.push(emoji[key]+' '+value);
@@ -73,19 +84,9 @@
       const time=opt.time?(opt.time>=3600?(opt.time/3600)+'h':(opt.time/60)+'min'):'';
       for(const k of KEYS)if(sum[k])benefits.push(prodEmoji[k]+' '+sum[k].toLocaleString('pl')+(time?' / '+time:''));
      }
-     builds.push({name,cityentity_id:e.cityentity_id,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
+     const options=(c?.production?.options||[]).filter(opt=>KEYS.some(k=>products(opt)[k]));
+     builds.push({name,cityentity_id:e.cityentity_id,category:c?.constructionMenu?.category,underConstruction:true,effects:extraEffects,raw:options.length===1?products(options[0]):null,hasProduction:options.length>0,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
     }
-    // Budynki nieprodukcyjne (stałe efekty) — zbierane jako extras
-    const extraEffects=emptyExtra();
-    const sr=c?.staticResources?.resources?.resources||{};
-    for(const k of ['guild_raids_happiness','guild_raids_population'])if(sr[k])extraEffects[k]=Number(sr[k])||0;
-    for(const b of c?.boosts?.boosts||[]){
-     if(b.type==='guild_raids_action_points_collection')extraEffects.guild_raids_action_points_collection=Number(b.value)||0;
-     if(b.type==='guild_raids_action_points_capacity')extraEffects.guild_raids_action_points_capacity=Number(b.value)||0;
-     if(b.type==='att_def_boost_attacker')extraEffects.att_def_boost_attacker=Number(b.value)||0;
-     if(b.type==='att_def_boost_defender')extraEffects.att_def_boost_defender=Number(b.value)||0;
-    }
-    const hasExtras=EXTRA_KEYS.some(k=>extraEffects[k]!==0);
     const ready=s.__class__==='ProductionFinishedState'||s.__class__==='ProductionReadyState';
     if(s.__class__!=='ProducingState'&&!ready){
      if(hasExtras&&e.connected!==0)extras.push({id:e.id,name,cityentity_id:e.cityentity_id,category:e.type==='main_building'?'main_building':c?.constructionMenu?.category,effects:extraEffects});
@@ -122,6 +123,12 @@
     const value=item.hall?item.raw[k]:Math.round(item.raw[k]*(g.bonuses.multiplier+boost/100));
     item.production[k]=value;g.production[k]+=value;totals[k]+=value;
    }}}
+   // Construction previews use the same bonuses as the production overview.
+   const previewBonuses=bonuses(groups.at(-1)?.at||now);
+   for(const build of builds){build.production=empty();if(build.raw)for(const k of KEYS){
+    const boost=k===KEYS[0]?previewBonuses.coins:k===KEYS[1]?previewBonuses.supplies:0;
+    build.production[k]=Math.round(build.raw[k]*(previewBonuses.multiplier+boost/100));
+   }}
    let actionsPerHour=5000;
    for(const e of map.entities){if(e.connected===0)continue;for(const b of component(e)?.boosts?.boosts||[])if(b.type==='guild_raids_action_points_collection')actionsPerHour+=Number(b.value)||0;}
    return {groups,totals,builds,extras,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};

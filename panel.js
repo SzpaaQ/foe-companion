@@ -1094,10 +1094,19 @@ Otwórz mapę Pól Chwały w grze.
           }
         }
       }
+      const buildProduction=FoeQuantum.groupedBuildings(summary.builds.filter(b=>b.hasProduction)).map(item=>({...item,underConstruction:true}));
+      const buildExtras=FoeQuantum.groupedExtras(summary.builds.filter(b=>!b.hasProduction&&FoeQuantum.EXTRA_KEYS.some(k=>b.effects[k]))).map(item=>({...item,underConstruction:true}));
+      const constructionStyle=';opacity:0.5';
+      const addConstructionTotal=(table,keys,totals,pending,field)=>{
+        if(!pending.length)return;
+        const label=text(table,'🚧 Suma z budową','span');label.style.cssText='font-weight:bold;padding:2px 0'+constructionStyle;
+        label.title='Suma bieżących wierszy i budynków w budowie. Produkcja według bonusów zestawienia; bez przeliczania wpływu nowych budynków na pozostałe.';
+        for(const key of keys){const value=(totals[key]||0)+pending.reduce((sum,item)=>sum+(item[field][key]||0),0);const cell=text(table,value?num(value):'—','span');cell.style.cssText='text-align:right;font-weight:bold;padding:2px 0'+constructionStyle;}
+      };
       // Zestawienie budynków i sumarycznej produkcji (domyślnie rozwinięte)
-      if(summary.groups.length){
+      if(summary.groups.length||buildProduction.length){
         const allItems=summary.groups.flatMap(g=>g.items);
-        const grouped=FoeQuantum.groupedBuildings(allItems);
+        const grouped=[...FoeQuantum.groupedBuildings(allItems),...buildProduction];
         const sec=document.createElement('details');sec.open=true;sec.style.cssText='';
         const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
         $('quantum-groups').append(sec);
@@ -1106,16 +1115,17 @@ Otwórz mapę Pól Chwały w grze.
         // Nagłówki
         for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
         for(const item of grouped){
-          const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name);nameCell.style.cssText='padding:1px 0';tbl.append(nameCell);
-          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e');tbl.append(c);}
+          const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — nie wlicza się do bieżącej sumy.';tbl.append(nameCell);
+          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e')+(item.underConstruction?constructionStyle:'');tbl.append(c);}
         }
         // Suma
         const totalsRow=document.createElement('span');totalsRow.textContent='Suma';totalsRow.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(totalsRow);
         for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=summary.totals[k]?summary.totals[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(c);}
+        addConstructionTotal(tbl,FoeQuantum.KEYS,summary.totals,buildProduction,'production');
       }
       // Sekcja: Pozostałe budynki (nieprodukcyjne — stałe efekty)
-      if(summary.extras&&summary.extras.length){
-        const grouped=FoeQuantum.groupedExtras(summary.extras);
+      if(summary.extras?.length||buildExtras.length){
+        const grouped=[...FoeQuantum.groupedExtras(summary.extras||[]),...buildExtras];
         // Ustal dynamicznie które kolumny mają jakiekolwiek wartości != 0
         const extraColDefs=[
           {key:'guild_raids_happiness',    label:'😊', title:'Zadowolenie'},
@@ -1140,19 +1150,20 @@ Otwórz mapę Pól Chwały w grze.
           // Wiersze
           const extTotals=Object.fromEntries(FoeQuantum.EXTRA_KEYS.map(k=>[k,0]));
           for(const item of grouped){
-            const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name);nameCell.style.cssText='padding:1px 0';tbl2.append(nameCell);
+            const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — nie wlicza się do bieżącej sumy.';tbl2.append(nameCell);
             for(const col of activeCols){
               const v=item.effects[col.key]||0;
               const c=document.createElement('span');
               c.textContent=v?(item.count>1&&col.key!=='guild_raids_happiness'&&col.key!=='guild_raids_population'?v.toLocaleString('pl-PL'):v.toLocaleString('pl-PL')):'—';
-              c.style.cssText='text-align:right;padding:1px 0;color:'+(v!==0?(v<0?'#e57373':'#f0e6d2'):'#6a7a7e');
+              c.style.cssText='text-align:right;padding:1px 0;color:'+(v!==0?(v<0?'#e57373':'#f0e6d2'):'#6a7a7e')+(item.underConstruction?constructionStyle:'');
               tbl2.append(c);
-              extTotals[col.key]+=v;
+              if(!item.underConstruction)extTotals[col.key]+=v;
             }
           }
           // Suma
           const sumName=document.createElement('span');sumName.textContent='Suma';sumName.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl2.append(sumName);
           for(const col of activeCols){const c=document.createElement('span');const v=extTotals[col.key];c.textContent=v?v.toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525;color:'+(v<0?'#e57373':'#f0e6d2');tbl2.append(c);}
+          addConstructionTotal(tbl2,activeCols.map(col=>col.key),extTotals,buildExtras,'effects');
         }
       }
       const emojiTitles={'🪙':'Monety kwantowe','🔨':'Zaopatrzenie kwantowe (młotki)','🔩':'Chronostopy','👑':'Poziom trudności najazdu','⌛':'Termin zakończenia najazdu','✨':'Mnożnik produkcji wynikający z zadowolenia','⚡':'Produkcja działań kwantowych na godzinę','⚔️':'Walki na godzinę przy koszcie 3500 działań za walkę'};

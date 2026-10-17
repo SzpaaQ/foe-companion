@@ -37,6 +37,7 @@
 
   const pearlTracker = FoePearls.createTracker();
   const quantumTracker = FoeQuantum.createTracker();
+  const quantumHistory = FoeQuantumHistory.create();
   let paintQuantum=()=>{},syncNotes=()=>{};
   fetch(chrome.runtime.getURL('quantum-definitions.json')).then(r=>r.json()).then(defs=>{
     quantumTracker.consume(defs,{fallback:true});
@@ -87,7 +88,9 @@ window.addEventListener('message', event => {
 
   // Uzupełniaj słownik nazw ze wszystkich odpowiedzi
   FoeModel.learnNames(data);
+  const quantumBefore=quantumTracker.map?{map:quantumTracker.map,summary:quantumTracker.summary()}:null;
   quantumTracker.consume(data);
+  if(quantumTracker.map&&quantumBefore?.map!==quantumTracker.map)quantumHistory.observe(data,quantumBefore,{map:quantumTracker.map,summary:quantumTracker.summary()});
   paintQuantum();
   if(FoeQuantum.isSettlementResponse(data))openQuantumPanel();
 
@@ -961,8 +964,9 @@ Otwórz mapę Pól Chwały w grze.
     const qtab=document.createElement('button');qtab.dataset.page='quantum';qtab.setAttribute('role','tab');qtab.setAttribute('aria-selected','false');qtab.title='Najazdy kwantowe';qtab.setAttribute('aria-label','Najazdy kwantowe');qtab.textContent='⚛️';
     root.querySelector('nav').insertBefore(qtab,root.querySelector('[data-page="settings"]'));
     const quantumSection=document.createElement('section');quantumSection.id='quantum';quantumSection.hidden=true;quantumSection.setAttribute('role','tabpanel');
-    quantumSection.innerHTML='<h2>Najazdy kwantowe</h2><div id="quantum-summary"></div><div id="quantum-groups"></div>';
+    quantumSection.innerHTML='<h2>Najazdy kwantowe</h2><button id="quantum-history">Historia zbiorów</button><div id="quantum-summary"></div><div id="quantum-groups"></div>';
     $('settings').before(quantumSection);
+    FoeQuantumHistory.mount({root,button:$('quantum-history'),history:quantumHistory});
     const title=document.createElement('h3');title.id='pearl-name';$('pearl-status').before(title);
     const totalLabel=document.createElement('label');totalLabel.innerHTML='Total PR <input id="pearl-total" type="number" min="0" step="1" placeholder="Koszt poziomu" style="width:130px;padding:6px">';
     $('pearl-status').before(totalLabel);

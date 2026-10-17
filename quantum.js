@@ -33,10 +33,11 @@
  function walk(data,fn){const q=[data];for(let i=0;i<q.length&&i<250000;i++){const v=q[i];if(!v||typeof v!=='object')continue;fn(v);for(const c of Object.values(v))if(c&&typeof c==='object')q.push(c);}}
  function products(option){const sum=empty();for(const p of option?.products||[]){const r=p.playerResources?.resources;if(r)for(const k of KEYS)sum[k]+=Number(r[k])||0;}return sum;}
  function createTracker(){
-  const definitions=new Map();let map=null,raid=null,wallet={},version=0;
+  const definitions=new Map();let map=null,raid=null,wallet={},version=0,activeGrid=null;
   function consume(data,{fallback=false}={}){
    walk(data,v=>{
     if(v.__class__==='GenericCityEntity'&&typeof v.id==='string'&&v.components){if(!fallback||!definitions.has(v.id))definitions.set(v.id,v);version++;}
+    if(typeof v.gridId==='string'&&Array.isArray(v.entities))activeGrid=v.gridId;
     if(v.gridId==='guild_raids'&&Array.isArray(v.entities)){map=v;version++;}
     if(v.__class__==='GuildRaidsRunningState'){raid={name:v.raidInstance?.raidName,difficulty:v.raidInstance?.difficultyLevel,endsAt:v.endsAt};version++;}
     if(v.__class__==='ResourceBag'){
@@ -44,10 +45,19 @@
      if(r&&Object.keys(r).some(k=>k.startsWith('guild_raids_'))){for(const [k,n] of Object.entries(r))if(k.startsWith('guild_raids_')&&typeof n==='number')wallet[k]=n;version++;}
     }
    });
-   // Known entities may be replaced by typed updates; a fresh map handles removals.
+   // Typed additions and updates are scoped to this outpost, never the main city.
    if(map)walk(data,v=>{if(v.__class__==='CityMapEntity'&&typeof v.cityentity_id==='string'&&v.cityentity_id.includes('GuildRaids')){
-    const i=map.entities.findIndex(e=>e.id===v.id);if(i>=0&&map.entities[i]!==v){map={...map,entities:map.entities.map((e,n)=>n===i?{...e,...v}:e)};version++;}
+    const owner=map.entities.find(e=>e.player_id!=null)?.player_id;
+    if(owner!=null&&v.player_id!=null&&owner!==v.player_id)return;
+    const i=map.entities.findIndex(e=>e.id===v.id);
+    if(i<0){map={...map,entities:[...map.entities,v]};version++;}
+    else if(map.entities[i]!==v){map={...map,entities:map.entities.map((e,n)=>n===i?{...e,...v}:e)};version++;}
    }});
+   if(map&&activeGrid==='guild_raids')for(const r of Array.isArray(data)?data:[data]){
+    if(r?.requestClass==='CityMapService'&&r.requestMethod==='deleteEntity'&&Number.isSafeInteger(r.responseData)&&map.entities.some(e=>e.id===r.responseData)){
+     map={...map,entities:map.entities.filter(e=>e.id!==r.responseData)};version++;
+    }
+   }
    return version;
   }
   function component(e){return definitions.get(e.cityentity_id)?.components?.AllAge;}

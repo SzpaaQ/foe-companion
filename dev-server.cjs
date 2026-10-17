@@ -1,7 +1,7 @@
 const http=require('node:http'),fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path');
 const logTime=new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
 function log(message,error=false){for(const line of String(message).split(/\r?\n/))(error?console.error:console.log)(`[${logTime.format(new Date())}] ${line}`);}
-const files=['manifest.json','request-signature.js','battle-army.js','battleground-live.js','capture.js','pearls-main.js','pearls.js','model.js','quantum.js','notes.js','quantum-definitions.json','building-names.json','building-fp-types.json','panel.js','dev-client.js','background.js','sectors.json','sectors-volcano.json'];
+const files=['manifest.json','request-signature.js','battle-army.js','battleground-live.js','capture.js','pearls-main.js','pearls.js','model.js','quantum.js','quantum-history.js','notes.js','quantum-definitions.json','building-names.json','building-fp-types.json','panel.js','dev-client.js','background.js','sectors.json','sectors-volcano.json'];
 function revision(){const hash=crypto.createHash('sha256');for(const name of files)hash.update(name).update(fs.readFileSync(path.join(__dirname,name)));return hash.digest('hex');}
 let stable=revision(),candidate=stable,since=0;
 let lastClient=0,servedVersion=null,connectionReported=false;

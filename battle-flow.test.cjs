@@ -43,13 +43,12 @@ test('defeat is confirmed without polling or waiting for a progress increment',a
 test('unknown progress does not start auto battle',async()=>{
   const h=harness({max:null});assert.equal((await h.fight(3)).ok,false);assert.deepEqual(h.calls,[]);
 });
-test('unknown sector limit blocks auto but still allows a manual fight',async()=>{
+test('untouched sector allows its first automatic fight but requires socket confirmation',async()=>{
   // Server returns conquestProgress:[] for a province never attacked by our guild.
   // The extension must not block the fight even when reserve is set.
   const h=harness({max:'empty'});const result=await h.fight(3);
-  assert.equal(result.ok,false);assert.equal(h.calls.length,0);const manual=await h.fight();assert.equal(manual.ok,true);
-  assert.equal(manual.won,true);
-  // Army exchange + fight + refresh — no getProvince needed since conquestProgress is clearly []
+  assert.equal(result.ok,true);assert.equal(result.won,true);assert.equal(result.refreshed,false);
+  // This fixture deliberately never reports the earned progress, so auto must stop.
   assert.ok(h.calls.includes('startByBattleType'),'startByBattleType must have been called');
 });
 

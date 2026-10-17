@@ -1,8 +1,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const Live=require('./battleground-live.js');
-function setup(){
- const listeners=[],messages=[],calls=[];let progress=10;
- const province=()=>({__class__:'GuildBattlegroundProvince',id:7,ownerId:2,conquestProgress:[{participantId:1,progress,maxProgress:100}]});
+function setup(initialProgress=10){
+ const listeners=[],messages=[],calls=[];let progress=initialProgress;
+ const province=()=>({__class__:'GuildBattlegroundProvince',id:7,ownerId:2,conquestProgress:progress===0?[]:[{participantId:1,progress,maxProgress:100}]});
  class Socket{constructor(){this.handlers={};}addEventListener(t,f){(this.handlers[t]??=[]).push(f);}fire(t,data){for(const f of this.handlers[t]||[])f({data});}send(){assert.fail('Observer must not send socket messages');}}
  class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
  const location={origin:'https://pl1.forgeofempires.com',href:'https://pl1.forgeofempires.com/game/index',host:'pl1.forgeofempires.com'};
@@ -37,4 +37,18 @@ test('auto negotiation keeps the free-turn check and confirms socket progress wi
 });
 test('socket disconnected before an automatic action prevents any outgoing API request',async()=>{
  const h=setup();h.socket.fire('close');await h.action('foe-quick-battle');await h.action('foe-negotiate');assert.deepEqual(h.calls,[]);
+});
+
+for(const channel of ['foe-quick-battle','foe-negotiate'])test(channel+' starts at zero and receives the real limit from the socket',async()=>{
+ const h=setup(0);await h.action(channel);
+ const result=h.messages.find(m=>m.channel===channel+'-result');assert.equal(result.ok,true);assert.equal(result.refreshed,true);
+ const push=h.messages.find(m=>m.channel==='foe-companion-v1'&&m.internal&&m.data[0]?.requestMethod==='getProvinces');
+ assert.equal(push.data[0].responseData[0].conquestProgress[0].maxProgress,100);
+});
+
+test('idle socket updates reach the panel without an attack or any API requests',()=>{
+ const h=setup(0);
+ h.socket.fire('message',JSON.stringify([{requestClass:'GuildBattlegroundService',requestMethod:'getProvinces',responseData:[{__class__:'GuildBattlegroundProvince',id:7,ownerId:3}]}]));
+ assert.deepEqual(h.calls,[]);
+ const push=h.messages.find(m=>m.channel==='foe-companion-v1'&&m.internal);assert.equal(push.data[0].responseData[0].ownerId,3);
 });

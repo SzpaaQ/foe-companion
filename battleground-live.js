@@ -40,8 +40,12 @@
    if(Number.isInteger(reserve)&&reserve>=0){
     if(!connected)throw Error('Brak połączenia z aktualizacjami socketu — automat zatrzymany.');
     if(s.epoch!==epoch)throw Error('Po przerwaniu socketu otwórz mapę w grze, aby uzupełnić brakujące aktualizacje.');
-    if(!Number.isFinite(s.maxProgress)||s.maxProgress<=0)throw Error('Brak potwierdzonego limitu sektora — otwórz sektor w grze.');
-    if(s.maxProgress-s.progress-cost<reserve)throw Error('Osiągnięto ustawioną rezerwę walk.');
+    // An untouched guild has no conquest entry (or an entry with omitted zero).
+    // Allow its first action; the winning action must still await socket progress.
+    // Never invent a limit: once progress is positive the real limit is required.
+    const hasLimit=Number.isFinite(s.maxProgress)&&s.maxProgress>0;
+    if(!hasLimit&&s.progress!==0)throw Error('Brak potwierdzonego limitu sektora — otwórz sektor w grze.');
+    if(hasLimit&&s.maxProgress-s.progress-cost<reserve)throw Error('Osiągnięto ustawioną rezerwę walk.');
    }
    return s;
   }
@@ -60,26 +64,45 @@
   }
   return {consume,snapshot,check,waitForProgress,setConnected(value){if(connected&&!value)epoch++;connected=value;flush();}};
  }
- function observeSockets(win,receive,status){
-  const Native=win.WebSocket;if(typeof Native!=='function')return false;
-  const sockets=new Set();
+ const readers=new WeakMap();
+ function createSocketReader(win){
+  if(readers.has(win))return readers.get(win);
+  const Native=win.WebSocket;if(typeof Native!=='function')return null;
+  const sockets=new Set(),subscribers=new Set(),states=new Set();
+  const notify=(listeners,value)=>{for(const listener of [...listeners])try{listener(value);}catch{ /* One consumer must not interrupt the game or other consumers. */ }};
+  const reader={
+   // Passive incoming responses only. No frame history, outgoing messages or polling.
+   subscribe(listener){subscribers.add(listener);return ()=>subscribers.delete(listener);},
+   onConnection(listener){states.add(listener);notify([listener],sockets.size>0);return ()=>states.delete(listener);},
+   get connected(){return sockets.size>0;}
+  };
+  readers.set(win,reader);
   win.WebSocket=new Proxy(Native,{construct(Target,args,newTarget){
    const socket=Reflect.construct(Target,args,newTarget);
    let url;try{url=new URL(args[0],win.location?.href);}catch{return socket;}
    if(url.protocol!=='wss:'||url.host!==win.location?.host||url.pathname!=='/socket/')return socket;
-   socket.addEventListener('open',()=>{sockets.add(socket);status(true);});
-   socket.addEventListener('close',()=>{sockets.delete(socket);status(sockets.size>0);});
+   socket.addEventListener('open',()=>{sockets.add(socket);notify(states,true);});
+   socket.addEventListener('close',()=>{sockets.delete(socket);notify(states,sockets.size>0);});
    socket.addEventListener('message',event=>{
     if(typeof event.data!=='string'||event.data.length>24000000)return;
     try{
      const batch=JSON.parse(event.data);
-     const updates=(Array.isArray(batch)?batch:[]).filter(r=>r?.requestClass==='GuildBattlegroundService'&&['getProvince','getProvinces','getUpdatedProvinces'].includes(r.requestMethod));
-     if(updates.length)receive(updates.map(r=>({...r,responseData:(Array.isArray(r.responseData)?r.responseData:[r.responseData]).filter(p=>p?.__class__==='GuildBattlegroundProvince').map(p=>({...p,ownerId:p.ownerId??0,lockedUntil:p.lockedUntil??0,isSpawnSpot:p.isSpawnSpot??false,conquestProgress:p.conquestProgress??[]}))})));
+     const responses=(Array.isArray(batch)?batch:[]).filter(r=>typeof r?.requestClass==='string'&&typeof r.requestMethod==='string');
+     if(responses.length)notify(subscribers,responses);
     }catch{ /* Heartbeats and unrelated messages are ignored. */ }
    });
    return socket;
   }});
+  return reader;
+ }
+ function observeSockets(win,receive,status){
+  const reader=createSocketReader(win);if(!reader)return false;
+  reader.onConnection(status);
+  reader.subscribe(batch=>{
+   const updates=batch.filter(r=>r.requestClass==='GuildBattlegroundService'&&['getProvince','getProvinces','getUpdatedProvinces'].includes(r.requestMethod));
+   if(updates.length)receive(updates.map(r=>({...r,responseData:(Array.isArray(r.responseData)?r.responseData:[r.responseData]).filter(p=>p?.__class__==='GuildBattlegroundProvince').map(p=>({...p,ownerId:p.ownerId??0,lockedUntil:p.lockedUntil??0,isSpawnSpot:p.isSpawnSpot??false,conquestProgress:p.conquestProgress??[]}))})));
+  });
   return true;
  }
- const api={createTracker,observeSockets};root.FoeBattlegroundLive=api;if(typeof module!=='undefined')module.exports=api;
+ const api={createTracker,createSocketReader,observeSockets};root.FoeBattlegroundLive=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

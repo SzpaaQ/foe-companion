@@ -22,7 +22,7 @@ test('unrelated sectors and HTTP responses do not confirm the socket result; tim
 test('disconnect, missed updates, missing limits and a conquered sector block automation',async()=>{
  const {tracker,advance}=setup(),waiting=tracker.waitForProgress(26,tracker.snapshot(26));tracker.setConnected(false);assert.equal(await waiting,false);
  assert.throws(()=>tracker.check(26,3),/socketu/);tracker.setConnected(true);advance(31000);assert.throws(()=>tracker.check(26,3),/przerwaniu/);
- tracker.consume(response('getProvinces',[{...province(),conquestProgress:[]}]),'socket');assert.throws(()=>tracker.check(26,3),/limitu/);
+ tracker.consume(response('getProvinces',[{...province(),conquestProgress:[{participantId:1,progress:1}]}]),'socket');assert.throws(()=>tracker.check(26,3),/limitu/);
  tracker.consume(response('getProvinces',[{...province(),ownerId:1}]),'socket');assert.throws(()=>tracker.check(26,3),/otwarty/);
 });
 test('initial HTTP map seeds progress before the first socket message, including nested state responses',()=>{
@@ -47,5 +47,34 @@ test('observer uses only the game-created socket, never sends, ignores auth and 
  const socket=new win.WebSocket('wss://pl1.forgeofempires.com/socket/');socket.fire('open');socket.fire('message','pong');socket.fire('message',JSON.stringify([{requestClass:'ChatService',requestMethod:'messages',responseData:[]}]));
  socket.fire('message',JSON.stringify(response('getProvinces',[province(74)])));assert.equal(received.length,1);assert.equal(received[0][0].responseData[0].lockedUntil,0);assert.equal(sent,0);
  const other=new win.WebSocket('wss://example.com/socket/');other.fire('message',JSON.stringify(response('getProvinces',[province(99)])));assert.equal(received.length,1);
- socket.fire('close');const next=new win.WebSocket('wss://pl1.forgeofempires.com/socket/');next.fire('open');assert.deepEqual(states,[true,false,true]);assert.equal(sent,0);
+ socket.fire('close');const next=new win.WebSocket('wss://pl1.forgeofempires.com/socket/');next.fire('open');assert.deepEqual(states,[false,true,false,true]);assert.equal(sent,0);
+});
+
+test('zero progress can bootstrap from HTTP, but missing map or a known reserve limit still blocks',async()=>{
+ const {tracker}=setup();
+ for(const conquestProgress of [[],[{participantId:1}],[{participantId:1,progress:0}],[{participantId:2,progress:10,maxProgress:120}]]){
+  tracker.consume(response('getProvince',{...province(),conquestProgress}));
+  assert.equal(tracker.check(26,3,1).progress,0);assert.equal(tracker.check(26,3,2).maxProgress,undefined);
+ }
+ assert.throws(()=>tracker.check(999,3),/Brak danych/);
+ const before=tracker.snapshot(26),waiting=tracker.waitForProgress(26,before);
+ tracker.consume(response('getProvinces',[province(1)]),'socket');assert.equal(await waiting,true);
+ assert.equal(tracker.check(26,3).maxProgress,120);
+ tracker.consume(response('getProvince',province(0)));assert.throws(()=>tracker.check(26,120),/rezerwę/);
+});
+
+test('shared reader routes future service events continuously and isolates/unsubscribes consumers',()=>{
+ let sent=0,created=0;
+ class Socket{constructor(){created++;this.handlers={};}addEventListener(t,f){(this.handlers[t]??=[]).push(f);}fire(t,data){for(const f of this.handlers[t]||[])f({data});}send(){sent++;}}
+ const win={WebSocket:Socket,location:{host:'pl1.forgeofempires.com'}};
+ const reader=Live.createSocketReader(win),wrapper=win.WebSocket,received=[];
+ assert.equal(Live.createSocketReader(win),reader);assert.equal(win.WebSocket,wrapper);assert.equal(created,0);
+ reader.subscribe(()=>{throw Error('broken consumer');});
+ const off=reader.subscribe(batch=>received.push(batch));
+ const socket=new win.WebSocket('wss://pl1.forgeofempires.com/socket/');socket.fire('open');assert.equal(reader.connected,true);
+ socket.fire('message','pong');socket.fire('message','{}');
+ const update=JSON.stringify([{requestClass:'GuildBattlegroundSignalsService',requestMethod:'updateSignal',responseData:{id:1}}]);
+ socket.fire('message',update);socket.fire('message',update);assert.equal(received.length,2);
+ off();socket.fire('message',update);assert.equal(received.length,2);
+ socket.fire('close');assert.equal(reader.connected,false);assert.equal(sent,0);
 });

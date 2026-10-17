@@ -769,7 +769,11 @@ Otwórz mapę Pól Chwały w grze.
     function paintSectorPopup(){
       const now=Date.now()/1000;
       for(const [key,entry] of popupEntries){
-        if(!soundSettings.enabled||entry.mapId!==battle?.map?.id||now>=entry.until+10||(popupSettings.autoHide&&now>=entry.shownAt+10)){
+        // Leaving the map or switching alerts off is not a dismissal.
+        // Only closing the popup or its auto-hide timer mutes this opening.
+        if(!soundSettings.enabled||entry.mapId!==battle?.map?.id||now>=entry.until+10){
+          popupEntries.delete(key);
+        }else if(popupSettings.autoHide&&now>=entry.shownAt+10){
           popupDismissed[key]=entry.until+10;popupEntries.delete(key);
         }
       }

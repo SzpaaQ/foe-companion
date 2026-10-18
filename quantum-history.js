@@ -217,20 +217,32 @@
         }
       }
   }
+  let views=[];
+  const childDetails=node=>Array.from(node.children||[]).flatMap(child=>child.tagName==='DETAILS'?[child]:childDetails(child));
+  const remember=node=>({open:node.open,children:childDetails(node).map(remember)});
+  function restore(node,state){
+   if(!state)return;node.open=state.open;
+   if(node.open)node.historyBuild?.();
+   childDetails(node).forEach((child,i)=>restore(child,state.children[i]));
+  }
   function paint(){
-   if(!dialog.open)return;const doc=history.document;list.replaceChildren();
+   if(!dialog.open)return;
+   const scrollTop=dialog.scrollTop,states=new Map();
+   for(const view of views){const state=remember(view.node);for(const id of view.ids)states.set(id,state);}
+   views=[];const doc=history.document;list.replaceChildren();
    status.textContent=history.error;status.hidden=!history.error;
    download.disabled=!doc?.events.length;
    if(!doc?.events.length){el('p',list,'Brak historii. Otwórz osadę kwantową w grze.');return;}
    const grouped=groupEvents(doc.events);
    for(const event of grouped.slice(-limit).reverse()){
     const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:5px 7px;margin:4px 0;border-radius:4px';
+    views.push({node:details,ids:event.actions.map(e=>e.id)});
     const title=event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Żonglowanie';
     const heading=el('summary',details,title+' · '+new Date(event.at).toLocaleString('pl-PL'));
     const remove=smallButton(heading,'×',()=>history.remove(event.actions.map(e=>e.id)));remove.title='Usuń cały wpis';remove.setAttribute('aria-label','Usuń cały wpis');remove.style.float='right';
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
-    details.addEventListener('toggle',()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
+    details.historyBuild=()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
      const savedItems=[...(event.after?.summary?.groups||[]).flatMap(g=>g.items),...(event.before?.summary?.groups||[]).flatMap(g=>g.items),...(event.after?.summary?.extras||[]),...(event.before?.summary?.extras||[]),...(event.after?.summary?.builds||[]),...(event.before?.summary?.builds||[])];
      const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+event.actions.length+')');
      for(const action of event.actions){
@@ -239,10 +251,13 @@
       el('span',row,new Date(action.at).toLocaleTimeString('pl-PL')+' · '+description).style.flex='1';
       const remove=smallButton(row,'×',()=>history.remove([action.id]));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
      }
-     for(const [label,snap] of [['Przed działaniem',event.before],['Po działaniu',event.after]])if(snap){const d=el('details',details);d.style.cssText='background:#0d2026;padding:7px 9px;margin-top:6px;border-radius:3px';el('summary',d,label);d.addEventListener('toggle',()=>{if(d.open&&!d.dataset.built){d.dataset.built='1';snapshot(d,snap);}});}
-    });
+     for(const [label,snap] of [['Przed działaniem',event.before],['Po działaniu',event.after]])if(snap){const d=el('details',details);d.style.cssText='background:#0d2026;padding:7px 9px;margin-top:6px;border-radius:3px';el('summary',d,label);d.historyBuild=()=>{if(d.open&&!d.dataset.built){d.dataset.built='1';snapshot(d,snap);}};d.addEventListener('toggle',d.historyBuild);}
+    };
+    details.addEventListener('toggle',details.historyBuild);
+    restore(details,event.actions.map(e=>states.get(e.id)).find(Boolean));
    }
    if(grouped.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
+   dialog.scrollTop=scrollTop;
   }
   button.onclick=async()=>{dialog.showModal();status.textContent='Wczytywanie historii…';await history.ready();paint();};
   dialog.addEventListener('close',()=>button.focus());history.onChange=paint;

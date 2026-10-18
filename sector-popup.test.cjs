@@ -1,54 +1,37 @@
 const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const fs=require('node:fs'),vm=require('node:vm');
-function setup(saved={},session=new Map()){
- const source=fs.readFileSync(__dirname+'/panel.js','utf8');
- const elements=new Map();const $=id=>{if(!elements.has(id))elements.set(id,{textContent:'',style:{},getBoundingClientRect:()=>({width:70})});return elements.get(id);};
- const local=new Map([['foe-companion.sectorPopup',JSON.stringify(saved)]]);
- const storage=map=>({getItem:key=>map.get(key)||null,setItem:(key,value)=>map.set(key,value)});
- let now=100;
- const popup={style:{}},status={textContent:''};
- const ctx=vm.createContext({$,sectorPopup:popup,sectorStatus:status,soundSettings:{enabled:true},battle:{map:{id:1}},Date:{now:()=>now*1000},localStorage:storage(local),sessionStorage:storage(session)});
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+function setup(session=new Map()){
+ const source=fs.readFileSync(__dirname+'/panel.js','utf8'),elements=new Map();
+ const $=id=>{if(!elements.has(id))elements.set(id,{textContent:'',style:{},getBoundingClientRect:()=>({width:70})});return elements.get(id);};
+ let now=100;const popup={style:{}},status={textContent:''};
+ const ctx=vm.createContext({$,sectorPopup:popup,sectorStatus:status,soundSettings:{enabled:true,minutes:2},battle:{map:{id:1}},Date:{now:()=>now*1000},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v)}});
  vm.runInContext(source.slice(source.indexOf("    const popupKey="),source.indexOf('    async function unlockAudio()')),ctx);
- return {ctx,$,popup,status,session,advance:t=>{now=t;vm.runInContext('paintSectorPopup()',ctx);},add:(id,until)=>{ctx.row={id,until,sector:'A'+id,color:'🟣',isAttackBattleType:true};vm.runInContext('updateSectorPopup([row],Date.now()/1000)',ctx);}};
+ return {ctx,$,popup,session,advance:t=>{now=t;vm.runInContext('paintSectorPopup()',ctx);},add:(id,until,extra={})=>{ctx.row={id,until,sector:'A'+id,color:'🟣',isAttackBattleType:true,...extra};vm.runInContext('updateSectorPopup([row],Date.now()/1000)',ctx);}};
 }
-test('countdown remains through opening, then disappears after ten seconds',()=>{
- const ui=setup();ui.add(1,120);assert.equal(ui.$('sector-popup-list').textContent,'00:00:20 🟥 🟣 A1');
- ui.advance(120);assert.equal(ui.$('sector-popup-list').textContent,'Otwarte 🟥 🟣 A1');
- ui.advance(130);assert.equal(ui.popup.hidden,true);
+test('countdown ticks and notification remains after opening until explicitly closed',()=>{
+ const ui=setup();ui.add(1,120);assert.match(ui.$('sector-popup-list').textContent,/00:00:20/);
+ ui.advance(110);assert.match(ui.$('sector-popup-list').textContent,/00:00:10/);
+ ui.advance(120);assert.match(ui.$('sector-popup-list').textContent,/Otwarte/);
+ ui.advance(5000);assert.equal(ui.popup.hidden,false);ui.$('sector-popup-close').onclick();assert.equal(ui.popup.hidden,true);
 });
-test('close dismisses all shown sectors but permits a new sector or lock cycle',()=>{
- const ui=setup();ui.add(1,160);ui.add(2,180);ui.$('sector-popup-close').onclick();
- ui.add(1,160);ui.add(2,180);assert.equal(ui.popup.hidden,true);
- ui.add(3,190);assert.equal(ui.$('sector-popup-list').textContent,'00:01:30 🟥 🟣 A3');
- ui.add(1,300);assert.match(ui.$('sector-popup-list').textContent,/A1/);
-});
-test('automatic hiding does not repeatedly recreate notifications',()=>{
- const ui=setup({autoHide:true,countdown:false});ui.add(1,160);
- assert.equal(ui.$('sector-popup-list').textContent,'🟥 🟣 A1');
- ui.advance(110);ui.add(1,160);assert.equal(ui.popup.hidden,true);
-});
-test('changing maps and disabling alerts clear the popup',()=>{
- const ui=setup();ui.add(1,160);ui.ctx.battle.map.id=2;ui.advance(101);assert.equal(ui.popup.hidden,true);
- ui.add(2,180);ui.ctx.soundSettings.enabled=false;ui.advance(102);assert.equal(ui.popup.hidden,true);
-});
-
-test('dismissal survives reload only for that opening; the same sector alerts again four hours later',()=>{
+test('dismissal is per sector for exactly one hour, survives reload and ignores changed opening time',()=>{
  const ui=setup();ui.add(1,160);ui.$('sector-popup-close').onclick();
- assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed')),{'1:1:160':170});
- const reloaded=setup({},ui.session);reloaded.add(1,160);assert.equal(reloaded.popup.hidden,true);
- reloaded.advance(14500);reloaded.add(1,14560);assert.equal(reloaded.popup.hidden,false);
- assert.match(reloaded.$('sector-popup-list').textContent,/A1/);
- assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed')),{});
+ assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed.v2')),{'1:1':3700});
+ const reloaded=setup(ui.session);reloaded.add(1,180);assert.equal(reloaded.popup.hidden,true);
+ reloaded.advance(3699);reloaded.add(1,3750);assert.equal(reloaded.popup.hidden,true);
+ reloaded.advance(3700);reloaded.add(1,3750);assert.equal(reloaded.popup.hidden,false);
 });
-
-test('temporarily disabling alerts or leaving the map does not dismiss the opening',()=>{
- const ui=setup();ui.add(1,160);
- ui.ctx.soundSettings.enabled=false;ui.advance(101);assert.equal(ui.popup.hidden,true);
+test('open sectors require strictly less than half progress and 30 percent resistance',()=>{
+ const ui=setup();ui.add(1,0,{progress:49,maxProgress:100,gainAttritionChance:29});assert.equal(ui.popup.hidden,false);
+ const rejected=[{progress:50,maxProgress:100,gainAttritionChance:29},{progress:1,maxProgress:100,gainAttritionChance:30},{progress:0,maxProgress:null,gainAttritionChance:0},{progress:0,maxProgress:100,gainAttritionChance:null}];
+ for(const data of rejected){const other=setup();other.add(1,0,data);assert.equal(other.popup.hidden,true);}
+ ui.advance(10000);assert.equal(ui.popup.hidden,false);
+});
+test('disable/map change clears visibility without marking dismissal',()=>{
+ const ui=setup();ui.add(1,160);ui.ctx.soundSettings.enabled=false;ui.advance(101);assert.equal(ui.popup.hidden,true);
  ui.ctx.soundSettings.enabled=true;ui.add(1,160);assert.equal(ui.popup.hidden,false);
  ui.ctx.battle.map.id=2;ui.advance(102);assert.equal(ui.popup.hidden,true);
  ui.ctx.battle.map.id=1;ui.add(1,160);assert.equal(ui.popup.hidden,false);
- assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed')),{});
 });
 test('settings fold state restores both open and closed sections and saves toggles',()=>{
  const source=fs.readFileSync(__dirname+'/panel.js','utf8');

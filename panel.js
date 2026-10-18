@@ -521,8 +521,6 @@ Otwórz mapę Pól Chwały w grze.
             <input id="gbg-sound-minutes" type="number" min="1" max="60" step="1" value="2" aria-label="Wyprzedzenie w minutach" title="Wyprzedzenie alertu (minuty)"><span>min</span>
             <button id="gbg-sound-test" title="Odsłuch sygnału" aria-label="Odsłuch sygnału">▶</button>
           </div>
-          <label>Ukrywaj powiadomienie po 10 s <input id="gbg-popup-auto" type="checkbox"></label>
-          <label>Pokaż odliczanie <input id="gbg-popup-countdown" type="checkbox" checked></label>
           <div id="gbg-automation-settings"></div>
           </details>
 
@@ -751,16 +749,13 @@ Otwórz mapę Pól Chwały w grze.
     $('gbg-sound-kind').onchange=()=>{soundSettings.kind=$('gbg-sound-kind').value;localStorage.setItem(soundKey,JSON.stringify(soundSettings));};
     let sounded={};
     try{sounded=JSON.parse(sessionStorage.getItem(soundKey+'.sent')||'{}')||{};}catch{}
-    const popupKey='foe-companion.sectorPopup';let popupSettings={autoHide:false,countdown:true};
-    try{const saved=JSON.parse(localStorage.getItem(popupKey)||'{}');popupSettings={autoHide:saved.autoHide===true,countdown:saved.countdown!==false};}catch{}
+    const popupKey='foe-companion.sectorPopup';
     const popupEntries=new Map();let popupDismissed={};
-    try{popupDismissed=JSON.parse(sessionStorage.getItem(popupKey+'.dismissed')||'{}')||{};}catch{}
-    function savePopupDismissed(){try{sessionStorage.setItem(popupKey+'.dismissed',JSON.stringify(popupDismissed));}catch{}}
-    for(const [id,key] of [['gbg-popup-auto','autoHide'],['gbg-popup-countdown','countdown']]){
-      $(id).checked=popupSettings[key];$(id).onchange=()=>{popupSettings[key]=$(id).checked;try{localStorage.setItem(popupKey,JSON.stringify(popupSettings));}catch{}paintSectorPopup();};
-    }
+    try{popupDismissed=JSON.parse(sessionStorage.getItem(popupKey+'.dismissed.v2')||'{}')||{};}catch{}
+    function savePopupDismissed(){try{sessionStorage.setItem(popupKey+'.dismissed.v2',JSON.stringify(popupDismissed));}catch{}}
     $('sector-popup-close').onclick=()=>{
-      for(const [key,entry] of popupEntries)popupDismissed[key]=entry.until+10;
+      const until=Date.now()/1000+3600;
+      for(const key of popupEntries.keys())popupDismissed[key]=until;
       popupEntries.clear();savePopupDismissed();paintSectorPopup();
     };
     function sectorPopupText(entry,now,countdown){
@@ -772,17 +767,11 @@ Otwórz mapę Pól Chwały w grze.
     function paintSectorPopup(){
       const now=Date.now()/1000;
       for(const [key,entry] of popupEntries){
-        // Leaving the map or switching alerts off is not a dismissal.
-        // Only closing the popup or its auto-hide timer mutes this opening.
-        if(!soundSettings.enabled||entry.mapId!==battle?.map?.id||now>=entry.until+10){
-          popupEntries.delete(key);
-        }else if(popupSettings.autoHide&&now>=entry.shownAt+10){
-          popupDismissed[key]=entry.until+10;popupEntries.delete(key);
-        }
+        if(!soundSettings.enabled||entry.mapId!==battle?.map?.id)popupEntries.delete(key);
       }
       for(const [key,expiry] of Object.entries(popupDismissed))if(expiry<=now)delete popupDismissed[key];
       savePopupDismissed();
-      const lines=[...popupEntries.values()].sort((a,b)=>a.until-b.until).map(entry=>sectorPopupText(entry,now,popupSettings.countdown));
+      const lines=[...popupEntries.values()].sort((a,b)=>a.until-b.until).map(entry=>sectorPopupText(entry,now,true));
       const text=lines.join('\n');if($('sector-popup-list').textContent!==text)$('sector-popup-list').textContent=text;
       sectorPopup.hidden=!lines.length;
       // Anchor to the actual handle width, also when the panel is expanded.
@@ -790,11 +779,15 @@ Otwórz mapę Pól Chwały w grze.
       if(lines.length)sectorStatus.textContent='🔔 '+text.replaceAll('\n',' · ');
       else if(sectorStatus.textContent.startsWith('🔔'))sectorStatus.textContent='';
     }
+    function eligibleOpenSector(r,now){
+      return r.until<=now&&Number.isFinite(r.maxProgress)&&r.maxProgress>0&&Number.isFinite(r.progress)&&r.progress<r.maxProgress/2&&Number.isFinite(r.gainAttritionChance)&&r.gainAttritionChance<30;
+    }
     function updateSectorPopup(rows,now){
+      for(const [key,expiry] of Object.entries(popupDismissed))if(expiry<=now)delete popupDismissed[key];
       for(const r of rows){
-        const key=`${battle.map.id}:${r.id}:${r.until}`;
-        if(!popupDismissed[key]&&!popupEntries.has(key))popupEntries.set(key,{sector:r.sector,color:r.color,race:r.race,isAttackBattleType:r.isAttackBattleType,until:r.until,mapId:battle.map.id,shownAt:now});
-        if(popupEntries.has(key))popupEntries.get(key).race=r.race;
+        const key=battle.map.id+':'+r.id;
+        const eligible=r.color!=='⚪'&&((r.until>now&&r.until-now<=soundSettings.minutes*60)||eligibleOpenSector(r,now));
+        if(!popupDismissed[key]&&(eligible||popupEntries.has(key)))popupEntries.set(key,{...r,mapId:battle.map.id});
       }
       paintSectorPopup();
     }
@@ -816,9 +809,10 @@ Otwórz mapę Pól Chwały w grze.
       paintSectorPopup();
       if(!soundSettings.enabled||!battle||alertBusy)return;
       const now=Date.now()/1000;
-      const upcoming=FoeModel.rows(battle,$('frontier').checked).rows.filter(r=>r.color!=='⚪'&&r.until>now&&r.until-now<=soundSettings.minutes*60);
-      updateSectorPopup(upcoming,now);
-      const due=upcoming.filter(r=>!sounded[`${battle.map.id}:${r.id}:${r.until}`]);
+      const rows=FoeModel.rows(battle,$('frontier').checked).rows;
+      const upcoming=rows.filter(r=>r.color!=='⚪'&&r.until>now&&r.until-now<=soundSettings.minutes*60);
+      updateSectorPopup(rows,now);
+      const due=upcoming.filter(r=>!popupDismissed[battle.map.id+':'+r.id]&&!sounded[`${battle.map.id}:${r.id}:${r.until}`]);
       if(!due.length)return;
       if(!playAlert()){$('gbg-sound-status').textContent='Kliknij „Test dźwięku”, aby aktywować dźwięk w tej karcie.';return;}
       alertBusy=true;
@@ -964,9 +958,9 @@ Otwórz mapę Pól Chwały w grze.
     const qtab=document.createElement('button');qtab.dataset.page='quantum';qtab.setAttribute('role','tab');qtab.setAttribute('aria-selected','false');qtab.title='Najazdy kwantowe';qtab.setAttribute('aria-label','Najazdy kwantowe');qtab.textContent='⚛️';
     root.querySelector('nav').insertBefore(qtab,root.querySelector('[data-page="settings"]'));
     const quantumSection=document.createElement('section');quantumSection.id='quantum';quantumSection.hidden=true;quantumSection.setAttribute('role','tabpanel');
-    quantumSection.innerHTML='<h2>Najazdy kwantowe</h2><button id="quantum-history">Historia zbiorów</button><div id="quantum-summary"></div><div id="quantum-groups"></div>';
+    quantumSection.innerHTML='<h2>Najazdy kwantowe</h2><div id="quantum-summary"></div><div id="quantum-groups"></div><button id="quantum-history" style="margin-top:12px">Historia zbiorów</button>';
     $('settings').before(quantumSection);
-    FoeQuantumHistory.mount({root,button:$('quantum-history'),history:quantumHistory});
+    FoeQuantumHistory.mount({root,button:$('quantum-history'),history:quantumHistory,getWidth:()=>$('quantum-summary').getBoundingClientRect().width});
     const title=document.createElement('h3');title.id='pearl-name';$('pearl-status').before(title);
     const totalLabel=document.createElement('label');totalLabel.innerHTML='Total PR <input id="pearl-total" type="number" min="0" step="1" placeholder="Koszt poziomu" style="width:130px;padding:6px">';
     $('pearl-status').before(totalLabel);

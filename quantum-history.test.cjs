@@ -12,6 +12,22 @@ function setup(storage){
  return {history,tracker,receive,storage,setTime:t=>time=t};
 }
 const pickup=(...entities)=>[{requestClass:'CityProductionService',requestMethod:'pickupProduction',responseData:{__class__:'CityProductionResult',updatedEntities:entities}}];
+test('history groups a collection and its rearrangement, retaining all actions and boundary snapshots',()=>{
+ const events=[{id:'a',run:'r',kind:'collection',cycle:1,at:1000,before:{a:1},after:{a:2},changes:[]},
+ {id:'b',run:'r',kind:'change',at:2000,after:{a:3},changes:[{kind:'added'}]},
+ {id:'c',run:'r',kind:'collection',cycle:1,at:3000,after:{a:4},changes:[]},
+ {id:'d',run:'r',kind:'change',at:4000,after:{a:5},changes:[{kind:'removed'}]},
+ {id:'e',run:'r',kind:'collection',cycle:2,at:36001000,after:{a:6},changes:[]}];
+ const grouped=H.groupEvents(events);assert.equal(grouped.length,2);assert.equal(grouped[0].actions.length,4);
+ assert.deepEqual(grouped[0].before,{a:1});assert.deepEqual(grouped[0].after,{a:5});assert.equal(grouped[0].changes.length,2);
+ assert.equal(events[0].changes.length,0);assert.deepEqual(events[0].after,{a:2});
+});
+test('existing individual changes form one rearrangement; inactivity and reload boundaries separate sessions',()=>{
+ const list=[{kind:'change',run:'r',at:1000},{kind:'change',run:'r',at:2000},{kind:'change',run:'r',at:3000}];
+ assert.equal(H.groupEvents(list).length,1);
+ assert.equal(H.groupEvents([...list,{kind:'change',run:'r',at:2000000}]).length,2);
+ assert.equal(H.groupEvents([...list,{kind:'baseline',run:'r',at:4000},{kind:'change',run:'r',at:5000}]).length,3);
+});
 test('baseline persists; moves and repeated snapshots do not add history; additions/removals do',async()=>{
  const h=setup();await h.receive(map([entity()]));assert.equal(h.history.document.events.length,1);
  await h.receive(map([{...entity(),x:10,y:20}]));assert.equal(h.history.document.events.length,1);

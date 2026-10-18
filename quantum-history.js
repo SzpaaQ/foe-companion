@@ -81,8 +81,20 @@
    });}
   };
  }
+ // Group only the presentation; the export retains every observed action.
+ function groupEvents(events){
+  const groups=[];
+  for(const e of events){
+   const previous=groups.at(-1);
+   const near=previous&&e.run===previous.run&&e.at-previous.endAt<=30*60*1000&&e.at-previous.at<2*3600*1000;
+   const same=near&&e.kind!=='baseline'&&previous.kind!=='baseline'&&(e.kind==='change'||(e.kind==='collection'&&previous.kind==='collection'&&e.cycle===previous.cycle));
+   if(!same){groups.push({...e,endAt:e.at,changes:[...(e.changes||[])],actions:[e]});continue;}
+   previous.endAt=e.at;previous.after=e.after;previous.changes.push(...(e.changes||[]));previous.actions.push(e);
+  }
+  return groups;
+ }
  const labels={added:'Dodano budynek',removed:'Usunięto budynek',changed:'Zmieniono budynek',completed:'Ukończono budowę',connection:'Zmieniono połączenie z drogą',expansion:'Powiększono osadę'};
- function mount({root:host,button,history}){
+ function mount({root:host,button,history,getWidth=()=>350}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');
   dialog.style.cssText='color:#e7eeee;background:#102126;border:1px solid #56727b;padding:18px;width:min(900px,90vw);max-height:85vh;overflow:auto;pointer-events:auto;font:13px/1.5 system-ui';
@@ -91,59 +103,128 @@
   const status=el('p',dialog),list=el('div',dialog);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
-  function table(parent,title,rows,keys,totals){
-   el('h4',parent,title);const t=el('table',parent);t.style.cssText='width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums';
-   const head=el('tr',t);for(const label of ['Budynek',...keys.map(k=>resources[k]||k)])el('th',head,label);
-   for(const r of [...rows,...(totals?[{name:'Suma',values:totals}]:[])]){
-    const tr=el('tr',t);if(r.dim)tr.style.opacity='.5';
-    el('td',tr,(r.dim?'🚧 ':'')+(r.count?r.count+'× ':'')+r.name);
-    for(const k of keys){const cell=el('td',tr,num(r.values?.[k]??0));cell.style.cssText='text-align:right;padding:3px 7px;border-bottom:1px solid #29434b';}
-   }
-  }
   function snapshot(parent,snap){
-   if(!snap)return;const s=snap.summary;if(!s){el('p',parent,'Brak podsumowania');return;}
-   const q=root.FoeQuantum;
-   el('p',parent,'Najazd: '+(s.raid?.name||'—')+' · Trudność: '+(s.raid?.difficulty??'—')+' · Koniec: '+(s.raid?.endsAt?new Date(s.raid.endsAt*1000).toLocaleString('pl-PL'):'—'));
-   el('p',parent,Object.entries(s.wallet||{}).map(([k,v])=>(resources[k]||k)+': '+num(v)).join(' · '));
-   el('p',parent,'Bonus monet: '+s.bonuses.coins+'% · Zaopatrzenie: '+s.bonuses.supplies+'% · Akcje/h: '+num(s.actionsPerHour)+' · Walki/h: '+num(s.actionsPerHour/3500)+' · Możliwe liny: '+num(s.ropeCapacity));
-   el('p',parent,'Populacja: '+num(s.currentBonuses.population)+' · Zadowolenie: '+num(s.currentBonuses.happiness)+' · Euforia: '+(s.currentBonuses.euphoria?'150%':s.currentBonuses.unhappy?'niska':'100%'));
-   if(s.missing.length)el('p',parent,'Niepełne definicje budynków: '+s.missing.length);
-   for(const g of s.groups)table(parent,'Zbiory — prognoza na '+new Date(g.at*1000).toLocaleString('pl-PL'),q.groupedBuildings(g.items).map(r=>({...r,values:r.production})),q.KEYS,g.production);
-   const builds=q.groupedBuildings(s.builds.filter(b=>b.hasProduction)).map(r=>({...r,dim:true,values:r.production}));
-   table(parent,'Zestawienie',q.groupedBuildings(s.groups.flatMap(g=>g.items)).map(r=>({...r,values:r.production})).concat(builds),q.KEYS,s.totals);
-   if(builds.length)table(parent,'Suma z budową',[{name:'Suma z budową',dim:true,values:Object.fromEntries(q.KEYS.map(k=>[k,s.totals[k]+builds.reduce((sum,b)=>sum+(b.values[k]||0),0)]))}],q.KEYS);
-   const extras=q.groupedExtras(s.extras),future=q.groupedExtras(s.builds.filter(b=>!b.hasProduction));
-   const totals=Object.fromEntries(q.EXTRA_KEYS.map(k=>[k,extras.reduce((sum,b)=>sum+(b.effects[k]||0),0)]));
-   table(parent,'Pozostałe budynki',extras.map(r=>({...r,values:r.effects})).concat(future.map(r=>({...r,dim:true,values:r.effects}))),q.EXTRA_KEYS,totals);
-   if(future.length)table(parent,'Suma pozostałych z budową',[{name:'Suma z budową',dim:true,values:Object.fromEntries(q.EXTRA_KEYS.map(k=>[k,totals[k]+future.reduce((sum,b)=>sum+(b.effects[k]||0),0)]))}],q.EXTRA_KEYS);
-   if(s.builds.length){el('h4',parent,'W budowie');for(const b of s.builds)el('p',parent,b.name+' · '+(b.at?new Date(b.at*1000).toLocaleString('pl-PL'):'—')+' · '+b.benefits);}
-   const raw=el('details',parent);el('summary',raw,'Pełny zapis stanu i układu');el('pre',raw,JSON.stringify(snap,null,2)).style.cssText='white-space:pre-wrap;overflow-wrap:anywhere';
+   if(!snap?.summary)return;
+   const summary=snap.summary,FoeQuantum=root.FoeQuantum;
+   const wrap=el('div',parent);wrap.style.cssText='width:'+Math.round(getWidth()||350)+'px;max-width:100%;margin:8px 0 0 auto;color:#e7eeee;line-height:1.4';
+   const stockBox=el('div',wrap),groups=el('div',wrap);
+   const $=id=>id==='quantum-summary'?stockBox:groups;
+   const text=(parent,value,tag='p')=>el(tag,parent,value);
+      const box=$('quantum-summary');box.style.cssText='font-size:13px;line-height:1.4;color:#f0e6d2;margin-bottom:12px';
+      const stocks=text(box,'','div');stocks.style.cssText='display:flex;flex-wrap:wrap;gap:10px;font-weight:bold;border-bottom:1px solid #4a3525;padding-bottom:6px;margin-bottom:8px';
+      const num=n=>Number.isFinite(n)?n.toLocaleString('pl-PL'):'—';
+      for(const [key,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩'],['guild_raids_rope','➰']]){
+        const node=text(stocks,icon+' '+num(summary.wallet[key]),'span');
+        if(key==='guild_raids_rope')node.title=summary.ropeCapacity===null?'Brak danych do obliczenia produkcji lin.':'Z obecnych zapasów można wyprodukować maksymalnie '+num(summary.ropeCapacity)+' lin, łącząc dostępne paczki. Kalkulacja kosztów, bez kosztu budowy wytwórni.';
+      }
+      const mood=text(stocks,'✨ '+(summary.currentBonuses.euphoria?'150%':summary.currentBonuses.unhappy?'niska':'100%'),'span');mood.style.color=summary.currentBonuses.euphoria?'#4caf50':'#dfd1b8';
+      const hourly=text(box,'🪙 +'+summary.bonuses.coins+'% / 🔨 +'+summary.bonuses.supplies+'% · ⚡ '+num(summary.actionsPerHour)+'/h · ⚔️ '+(summary.actionsPerHour/3500).toLocaleString('pl-PL',{maximumFractionDigits:2})+'/h','div');hourly.style.cssText='text-align:center;font-size:12px;color:#a99885;margin-bottom:8px';
+      const table=document.createElement('table');table.style.cssText='background:#0b191e;border-radius:5px;width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px';box.append(table);
+      const tr=document.createElement('tr');table.append(tr);text(tr,'Następny zbiór:','th');
+      const next=summary.groups[0]?.production;
+      for(const [key,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩']]){const cell=text(tr,icon+' '+num(next?.[key]),'td');cell.style.cssText='padding:6px 4px;border-left:1px solid #4a3525;text-align:center;font-weight:bold';}
+
+      const resourceValues=[summary.totals,...summary.groups.map(g=>g.production),...summary.groups.flatMap(g=>g.items.map(i=>i.production))];
+      resourceValues.push(Object.fromEntries(FoeQuantum.KEYS.map(k=>[k,(summary.totals[k]||0)+summary.builds.reduce((sum,b)=>sum+(b.production?.[k]||0),0)])));
+      const resourceColumns='minmax(0,1fr) '+FoeQuantum.KEYS.map(k=>Math.max(2,...resourceValues.map(v=>num(v[k]||0).length))+'ch').join(' ');
+      const buildProduction=FoeQuantum.groupedBuildings(summary.builds.filter(b=>b.hasProduction)).map(item=>({...item,underConstruction:true}));
+      const buildExtras=FoeQuantum.groupedExtras(summary.builds.filter(b=>!b.hasProduction&&FoeQuantum.EXTRA_KEYS.some(k=>b.effects[k]))).map(item=>({...item,underConstruction:true}));
+      const constructionStyle=';opacity:0.5';
+      const addConstructionTotal=(table,keys,totals,pending,field)=>{
+        if(!pending.length)return;
+        const label=text(table,'🚧 Suma z budową','span');label.style.cssText='font-weight:bold;padding:2px 0'+constructionStyle;
+        label.title='Suma bieżących wierszy i budynków w budowie. Produkcja według bonusów zestawienia; bez przeliczania wpływu nowych budynków na pozostałe.';
+        for(const key of keys){const value=(totals[key]||0)+pending.reduce((sum,item)=>sum+(item[field][key]||0),0);const cell=text(table,value?num(value):'—','span');cell.style.cssText='text-align:right;font-weight:bold;padding:2px 0'+constructionStyle;}
+      };
+      // Zestawienie budynków i sumarycznej produkcji (domyślnie rozwinięte)
+      if(summary.groups.length||buildProduction.length){
+        const allItems=summary.groups.flatMap(g=>g.items);
+        const grouped=[...FoeQuantum.groupedBuildings(allItems),...buildProduction];
+        const sec=document.createElement('details');sec.open=true;sec.style.cssText='';
+        const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
+        $('quantum-groups').append(sec);
+        const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
+        const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:'+resourceColumns+';gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
+        // Nagłówki
+        for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
+        for(const item of grouped){
+          const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — nie wlicza się do bieżącej sumy.';tbl.append(nameCell);
+          for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e')+(item.underConstruction?constructionStyle:'');tbl.append(c);}
+        }
+        // Suma
+        const totalsRow=document.createElement('span');totalsRow.textContent='Suma';totalsRow.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(totalsRow);
+        for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=summary.totals[k]?summary.totals[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(c);}
+        addConstructionTotal(tbl,FoeQuantum.KEYS,summary.totals,buildProduction,'production');
+      }
+      // Sekcja: Pozostałe budynki (nieprodukcyjne — stałe efekty)
+      if(summary.extras?.length||buildExtras.length){
+        const grouped=[...FoeQuantum.groupedExtras(summary.extras||[]),...buildExtras];
+        // Ustal dynamicznie które kolumny mają jakiekolwiek wartości != 0
+        const extraColDefs=[
+          {key:'guild_raids_happiness',    label:'😊', title:'Zadowolenie'},
+          {key:'guild_raids_population',   label:'👥', title:'Populacja'},
+          {key:'guild_raids_action_points_collection', label:'⚡', title:'Produkcja działań/h'},
+          {key:'guild_raids_action_points_capacity',   label:'🔋', title:'Pojemność działań'},
+          {key:'att_def_boost_attacker',   label:'🗡️', title:'Bonus ataku atakującego %'},
+          {key:'att_def_boost_defender',   label:'🛡️', title:'Bonus obrony obrońcy %'},
+        ];
+        const activeCols=extraColDefs.filter(col=>grouped.some(g=>g.effects[col.key]!==0));
+        if(activeCols.length){
+          const sec2=document.createElement('details');sec2.open=true;sec2.style.cssText='';
+          const hrP=document.createElement('hr');hrP.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrP);
+          $('quantum-groups').append(sec2);
+          const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
+          const tbl2=document.createElement('div');
+          tbl2.style.cssText=`display:grid;grid-template-columns:1fr ${activeCols.map(()=>'auto').join(' ')};gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;`;
+          sec2.append(tbl2);
+          // Nagłówki
+          const hName=document.createElement('span');hName.style.cssText='font-weight:bold;padding:1px 0;border-bottom:1px solid #4a3525';tbl2.append(hName);
+          for(const col of activeCols){const hd=document.createElement('span');hd.textContent=col.label;hd.title=col.title;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl2.append(hd);}
+          // Wiersze
+          const extTotals=Object.fromEntries(FoeQuantum.EXTRA_KEYS.map(k=>[k,0]));
+          for(const item of grouped){
+            const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — nie wlicza się do bieżącej sumy.';tbl2.append(nameCell);
+            for(const col of activeCols){
+              const v=item.effects[col.key]||0;
+              const c=document.createElement('span');
+              c.textContent=v?(item.count>1&&col.key!=='guild_raids_happiness'&&col.key!=='guild_raids_population'?v.toLocaleString('pl-PL'):v.toLocaleString('pl-PL')):'—';
+              c.style.cssText='text-align:right;padding:1px 0;color:'+(v!==0?(v<0?'#e57373':'#f0e6d2'):'#6a7a7e')+(item.underConstruction?constructionStyle:'');
+              tbl2.append(c);
+              if(!item.underConstruction)extTotals[col.key]+=v;
+            }
+          }
+          // Suma
+          const sumName=document.createElement('span');sumName.textContent='Suma';sumName.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl2.append(sumName);
+          for(const col of activeCols){const c=document.createElement('span');const v=extTotals[col.key];c.textContent=v?v.toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525;color:'+(v<0?'#e57373':'#f0e6d2');tbl2.append(c);}
+          addConstructionTotal(tbl2,activeCols.map(col=>col.key),extTotals,buildExtras,'effects');
+        }
+      }
   }
   function paint(){
    if(!dialog.open)return;const doc=history.document;list.replaceChildren();
-   status.textContent=history.error||'Historia lokalna. Pierwszy zapis jest punktem odniesienia; działań sprzed uruchomienia nie odtwarzamy. Przesunięcia nie tworzą wpisów. Kwoty zbiorów są prognozą z zapisanego stanu. Odbiory partiami mają ten sam numer zbioru.';
+   status.textContent=history.error;status.hidden=!history.error;
    download.disabled=!doc?.events.length;
    if(!doc?.events.length){el('p',list,'Brak historii. Otwórz osadę kwantową w grze.');return;}
-   const last=doc.events.at(-1),cycles=doc.events.filter(e=>e.run===last.run&&e.kind==='collection');
-   el('p',list,'Licznik zbiorów bieżącego najazdu: '+(cycles.at(-1)?.cycle||0)+' · Zapisane działania: '+doc.events.length);
-   for(const event of doc.events.slice(-limit).reverse()){
-    const details=el('details',list);details.style.cssText='border-top:1px solid #345058;padding:10px 0';
-    const title=event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Zmiany osady';
+   const grouped=groupEvents(doc.events);
+   for(const event of grouped.slice(-limit).reverse()){
+    const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:8px 10px;margin:6px 0;border-radius:4px';
+    const title=event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Żonglowanie';
     el('summary',details,title+' · '+new Date(event.at).toLocaleString('pl-PL'));
     details.addEventListener('toggle',()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
      const savedItems=[...(event.after?.summary?.groups||[]).flatMap(g=>g.items),...(event.before?.summary?.groups||[]).flatMap(g=>g.items),...(event.after?.summary?.extras||[]),...(event.before?.summary?.extras||[]),...(event.after?.summary?.builds||[]),...(event.before?.summary?.builds||[])];
-     for(const change of event.changes||[])el('p',details,(labels[change.kind]||change.kind)+(change.building?' · '+(savedItems.find(i=>i.cityentity_id===change.building)?.name||change.building):''));
+     const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+event.actions.length+')');
+     for(const change of event.changes||[])el('p',actions,(labels[change.kind]||change.kind)+(change.building?' · '+(savedItems.find(i=>i.cityentity_id===change.building)?.name||change.building):''));
      if(event.collected?.length)el('p',details,'Odbiór z budynków: '+event.collected.join(', '));
      if(event.estimate)el('p',details,'Prognoza odebranej produkcji: '+Object.entries(event.estimate).map(([k,v])=>(resources[k]||k)+' '+num(v)).join(' · '));
      if(event.kind==='collection')for(const [label,split] of [['Połącz z poprzednim zbiorem',false],['Rozpocznij nowy zbiór',true]]){const b=el('button',details,label);b.onclick=()=>history.relabel(event.id,split);}
-     for(const [label,snap] of [['Przed działaniem',event.before],['Po działaniu',event.after]])if(snap){const d=el('details',details);el('summary',d,label);d.addEventListener('toggle',()=>{if(d.open&&!d.dataset.built){d.dataset.built='1';snapshot(d,snap);}});}
+     for(const [label,snap] of [['Przed działaniem',event.before],['Po działaniu',event.after]])if(snap){const d=el('details',details);d.style.cssText='background:#0d2026;padding:7px 9px;margin-top:6px;border-radius:3px';el('summary',d,label);d.addEventListener('toggle',()=>{if(d.open&&!d.dataset.built){d.dataset.built='1';snapshot(d,snap);}});}
     });
    }
-   if(doc.events.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
+   if(grouped.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
   }
   button.onclick=async()=>{dialog.showModal();status.textContent='Wczytywanie historii…';await history.ready();paint();};
   dialog.addEventListener('close',()=>button.focus());history.onChange=paint;
   download.onclick=async()=>{await history.ready();const blob=new Blob([history.export()],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a',dialog);link.href=url;link.download='najazdy-kwantowe-historia-'+new Date().toISOString().slice(0,10)+'.json';link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  }
- root.FoeQuantumHistory={create,changes,mount};if(typeof module!=='undefined')module.exports=root.FoeQuantumHistory;
+ root.FoeQuantumHistory={create,changes,groupEvents,mount};if(typeof module!=='undefined')module.exports=root.FoeQuantumHistory;
 })(globalThis);

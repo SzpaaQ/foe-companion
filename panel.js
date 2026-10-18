@@ -1531,6 +1531,9 @@ Otwórz mapę Pól Chwały w grze.
             const delay=(autoSettings.min+Math.random()*(autoSettings.max-autoSettings.min))*1000;
             autoTimer=setTimeout(()=>{if(autoSector===id)startFight(id,true);},delay);
           }
+        }else if(data.ok&&data.nextWave&&!data.uncertain&&!data.invalidWave&&battleWaveSector===battleLastSector){
+          // A single click authorizes the whole battle, including its remaining waves.
+          startFight(battleLastSector,false);
         }
         paintOpenSectors();
       }

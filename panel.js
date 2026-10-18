@@ -1556,6 +1556,12 @@ Otwórz mapę Pól Chwały w grze.
       for(const row of open){
         const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #345058';
         if(row.ignored){line.style.background='rgba(190,45,45,0.16)';line.title='Prowincja oznaczona przez gildię jako ignorowana';}
+        const activeBattle=autoSector===row.id||battlePendingSector===row.id||battleWaveSector===row.id;
+        const activeNegotiation=autoNegSector===row.id||negPendingSector===row.id;
+        if(activeBattle||activeNegotiation){
+          line.style.background='rgba(45,180,170,0.22)';line.style.boxShadow='inset 3px 0 #55d6c7';
+          line.title=(activeNegotiation?'Negocjacja w toku':'Walka w toku')+(row.ignored?' · Prowincja oznaczona przez gildię jako ignorowana':'');
+        }
         const name=document.createElement('span');name.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector;name.style.flex='1';
         const progress=document.createElement('span');progress.textContent=row.progress+'/'+(row.maxProgress??'—');progress.title='Postęp przejęcia naszej gildii';
         const chance=document.createElement('span');chance.textContent='🔥 '+(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');chance.title='Szansa na wzrost oporu';

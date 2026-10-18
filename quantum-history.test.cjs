@@ -83,3 +83,15 @@ test('snapshots are frozen before asynchronous persistence, and rapid responses 
  await Promise.all([h.receive(pickup(entity(1,37000))),h.receive(map([entity(1,37000),entity(2)]))]);
  assert.deepEqual(h.history.document.events.map(e=>e.kind),['baseline','collection','change']);
 });
+test('manual merge combines whole collections across ten hours and deletion persists in export and storage',async()=>{
+ const h=setup();await h.receive(map([entity()]));await h.receive(pickup(entity(1,37000)));
+ h.setTime(37000000);await h.receive(pickup(entity(1,73000)));await h.receive(map([entity(1,73000),entity(2)]));
+ let groups=H.groupEvents(h.history.document.events);assert.equal(groups.length,3);
+ await h.history.merge(groups.at(-1).id);groups=H.groupEvents(h.history.document.events);
+ assert.equal(groups.length,2);assert.equal(groups[1].actions.length,3);assert.equal(groups[1].cycle,1);
+ const action=groups[1].actions.at(-1);await h.history.remove([action.id]);
+ assert.ok(!JSON.parse(h.history.export()).events.some(e=>e.id===action.id));
+ groups=H.groupEvents(h.history.document.events);await h.history.remove(groups[1].actions.map(e=>e.id));
+ assert.equal(h.history.document.events.length,1);
+ const reloaded=setup(h.storage);await reloaded.receive(map([entity()]));assert.equal(reloaded.history.document.events.filter(e=>e.kind==='collection').length,0);
+});

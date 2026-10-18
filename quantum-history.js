@@ -71,6 +71,21 @@
   }
   return {observe,ready:()=>queue,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
    export(){return JSON.stringify({exportedAt:new Date(now()).toISOString(),...copy(doc)},null,2);},
+   remove(ids){return enqueue(async()=>{if(!doc)return;const selected=new Set(ids);doc.events=doc.events.filter(e=>!selected.has(e.id));await save();});},
+   merge(id){return enqueue(async()=>{
+    if(!doc)return;const groups=groupEvents(doc.events),index=groups.findIndex(g=>g.id===id),selected=groups[index];
+    if(!selected)return;
+    const previous=groups.slice(0,index).reverse().find(g=>g.run===selected.run&&g.kind==='collection');
+    if(!previous)return;
+    const groupId=previous.groupId||previous.id,start=groups.indexOf(previous);
+    const ids=new Set(groups.slice(start,index+1).filter(g=>g.run===selected.run).flatMap(g=>g.actions.map(e=>e.id)));
+    const delta=selected.kind==='collection'?selected.cycle-previous.cycle:0;
+    for(const e of doc.events){
+     if(ids.has(e.id)){e.groupId=groupId;e.manuallyGrouped=true;if(e.kind==='collection')e.cycle=previous.cycle;}
+     else if(delta>0&&e.run===selected.run&&e.kind==='collection'&&e.at>selected.endAt)e.cycle-=delta;
+    }
+    await save();
+   });},
    relabel(id,split){return enqueue(async()=>{
     const event=doc?.events.find(e=>e.id===id);if(!event||event.kind!=='collection')return;
     const list=doc.events.filter(e=>e.run===event.run&&e.kind==='collection'),i=list.indexOf(event),prev=list[i-1];if(!prev)return;
@@ -87,7 +102,8 @@
   for(const e of events){
    const previous=groups.at(-1);
    const near=previous&&e.run===previous.run&&e.at-previous.endAt<=30*60*1000&&e.at-previous.at<2*3600*1000;
-   const same=near&&e.kind!=='baseline'&&previous.kind!=='baseline'&&(e.kind==='change'||(e.kind==='collection'&&previous.kind==='collection'&&e.cycle===previous.cycle));
+   const explicit=previous&&e.run===previous.run&&e.groupId&&e.groupId===previous.groupId;
+   const same=explicit||(near&&(!e.groupId||!previous.groupId||e.groupId===previous.groupId)&&e.kind!=='baseline'&&previous.kind!=='baseline'&&(e.kind==='change'||(e.kind==='collection'&&previous.kind==='collection'&&e.cycle===previous.cycle)));
    if(!same){groups.push({...e,endAt:e.at,changes:[...(e.changes||[])],actions:[e]});continue;}
    previous.endAt=e.at;previous.after=e.after;previous.changes.push(...(e.changes||[]));previous.actions.push(e);
   }
@@ -97,9 +113,10 @@
  function mount({root:host,button,history,getWidth=()=>350}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');
-  dialog.style.cssText='color:#e7eeee;background:#102126;border:1px solid #56727b;padding:18px;width:min(900px,90vw);max-height:85vh;overflow:auto;pointer-events:auto;font:13px/1.5 system-ui';
-  const top=el('div',dialog);top.style.cssText='display:flex;gap:12px;align-items:center;flex-wrap:wrap';el('h2',top,'Historia zbiorów');
-  const download=el('button',top,'Eksport JSON'),close=el('button',top,'Zamknij');close.onclick=()=>dialog.close();
+  dialog.style.cssText='color:#e7eeee;background:#102126;border:1px solid #56727b;padding:10px;width:min(900px,90vw);max-height:85vh;overflow:auto;pointer-events:auto;font:11px/1.35 system-ui';
+  const smallButton=(parent,label,handler)=>{const b=el('button',parent,label);b.style.cssText='font:11px/1.2 system-ui;padding:2px 5px;margin:0 0 0 5px;min-width:0';b.onclick=event=>{event?.preventDefault();event?.stopPropagation();return handler();};return b;};
+  const top=el('div',dialog);top.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap';el('h2',top,'Historia zbiorów').style.cssText='font-size:14px;margin:4px 0';
+  const download=smallButton(top,'Eksport JSON',()=>{}),close=smallButton(top,'Zamknij',()=>dialog.close());
   const status=el('p',dialog),list=el('div',dialog);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
@@ -207,16 +224,21 @@
    if(!doc?.events.length){el('p',list,'Brak historii. Otwórz osadę kwantową w grze.');return;}
    const grouped=groupEvents(doc.events);
    for(const event of grouped.slice(-limit).reverse()){
-    const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:8px 10px;margin:6px 0;border-radius:4px';
+    const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:5px 7px;margin:4px 0;border-radius:4px';
     const title=event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Żonglowanie';
-    el('summary',details,title+' · '+new Date(event.at).toLocaleString('pl-PL'));
+    const heading=el('summary',details,title+' · '+new Date(event.at).toLocaleString('pl-PL'));
+    const remove=smallButton(heading,'×',()=>history.remove(event.actions.map(e=>e.id)));remove.title='Usuń cały wpis';remove.setAttribute('aria-label','Usuń cały wpis');remove.style.float='right';
+    const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
+    if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
     details.addEventListener('toggle',()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
      const savedItems=[...(event.after?.summary?.groups||[]).flatMap(g=>g.items),...(event.before?.summary?.groups||[]).flatMap(g=>g.items),...(event.after?.summary?.extras||[]),...(event.before?.summary?.extras||[]),...(event.after?.summary?.builds||[]),...(event.before?.summary?.builds||[])];
      const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+event.actions.length+')');
-     for(const change of event.changes||[])el('p',actions,(labels[change.kind]||change.kind)+(change.building?' · '+(savedItems.find(i=>i.cityentity_id===change.building)?.name||change.building):''));
-     if(event.collected?.length)el('p',details,'Odbiór z budynków: '+event.collected.join(', '));
-     if(event.estimate)el('p',details,'Prognoza odebranej produkcji: '+Object.entries(event.estimate).map(([k,v])=>(resources[k]||k)+' '+num(v)).join(' · '));
-     if(event.kind==='collection')for(const [label,split] of [['Połącz z poprzednim zbiorem',false],['Rozpocznij nowy zbiór',true]]){const b=el('button',details,label);b.onclick=()=>history.relabel(event.id,split);}
+     for(const action of event.actions){
+      const description=(action.changes||[]).map(change=>(labels[change.kind]||change.kind)+(change.building?' · '+(savedItems.find(i=>i.cityentity_id===change.building)?.name||change.building):'')).join(' · ')||(action.kind==='collection'?'Odbiór produkcji':'Zapis stanu');
+      const row=el('div',actions);row.style.cssText='display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #29434b';
+      el('span',row,new Date(action.at).toLocaleTimeString('pl-PL')+' · '+description).style.flex='1';
+      const remove=smallButton(row,'×',()=>history.remove([action.id]));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
+     }
      for(const [label,snap] of [['Przed działaniem',event.before],['Po działaniu',event.after]])if(snap){const d=el('details',details);d.style.cssText='background:#0d2026;padding:7px 9px;margin-top:6px;border-radius:3px';el('summary',d,label);d.addEventListener('toggle',()=>{if(d.open&&!d.dataset.built){d.dataset.built='1';snapshot(d,snap);}});}
     });
    }

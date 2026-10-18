@@ -1349,6 +1349,7 @@ Otwórz mapę Pól Chwały w grze.
       });
 
     const autoKey='foe-companion-gbg-auto';
+    let selectedSector=null;
     let autoSettings={reserve:3,min:0.3,max:0.4};
     try{const v=JSON.parse(localStorage.getItem(autoKey));if(v&&Number.isInteger(v.reserve)&&v.reserve>=0&&Number.isFinite(v.min)&&v.min>=0&&Number.isFinite(v.max)&&v.max>=v.min)autoSettings=v;}catch{}
     const autoConfig=document.createElement('details');autoConfig.id='settings-autoattack';autoConfig.open=true;
@@ -1437,7 +1438,7 @@ Otwórz mapę Pól Chwały w grze.
       if(!battleReady){if(autoNegSector!==null)stopAutoNeg('Brak gotowego połączenia.');return;}
       const row=FoeModel.rows(battle,true).rows.find(r=>r.id===id&&r.until<=Date.now()/1000);
       if(!row){stopAutoNeg('Sektor nie jest już dostępny.');return;}
-      negPending=crypto.randomUUID();negPendingSector=id;negStatus.textContent='start nego';
+      negPending=crypto.randomUUID();negPendingSector=id;selectedSector=id;negStatus.textContent='start nego';
       clearTimeout(negClearTimer);
       negPanel.style.display='block';negPanel.innerHTML='<em>Uruchamiam negocjację: '+row.sector+'…</em>';
       setBattleFeedback('Negocjacja: '+row.sector+'…');
@@ -1499,7 +1500,7 @@ Otwórz mapę Pól Chwały w grze.
       if(!battleReady||battlePending){if(autoSector!==null)stopAuto('Brak gotowego połączenia.');return;}
       const row=FoeModel.rows(battle,true).rows.find(r=>r.id===id&&r.until<=Date.now()/1000);
       if(!row){stopAuto('Sektor nie jest już dostępny.');return;}
-      battlePending=crypto.randomUUID();battlePendingSector=id;
+      battlePending=crypto.randomUUID();battlePendingSector=id;selectedSector=id;
       setBattleFeedback((battleWaveSector===id?'Kolejna fala: ':'Pobieranie i wymiana armii: ')+row.sector+'…');
       window.postMessage({channel:'foe-quick-battle',token:battlePending,provinceId:id,automatic,...(automatic?{reserve:autoSettings.reserve}:{})},location.origin);paintOpenSectors();
     }
@@ -1543,8 +1544,8 @@ Otwórz mapę Pól Chwały w grze.
     function paintOpenSectors(){
       const list=$('open-sectors');
       const snapshot=JSON.stringify([battle?FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000):null,battleReady,battlePending,battlePendingSector,battleWaveSector,autoSector,autoNegSector,negPending,negPendingSector,battleLastSector,Date.now()<battleLastUntil,battleLastOK,negLastSector,Date.now()<negLastUntil,negLastOK]);
-      if(list.renderSnapshot===snapshot)return;
-      list.renderSnapshot=snapshot;list.replaceChildren();
+      if(list.renderSnapshot===snapshot&&list.selectedSector===selectedSector)return;
+      list.renderSnapshot=snapshot;list.selectedSector=selectedSector;list.replaceChildren();
       list.copyText='';
       if(!battle){list.textContent='Otwórz mapę Pól Chwały w grze.';return;}
       const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>Number(a.ignored)-Number(b.ignored)||(a.progress??0)-(b.progress??0)||a.id-b.id);
@@ -1558,11 +1559,19 @@ Otwórz mapę Pól Chwały w grze.
         if(row.ignored){line.style.background='rgba(190,45,45,0.16)';line.title='Prowincja oznaczona przez gildię jako ignorowana';}
         const activeBattle=autoSector===row.id||battlePendingSector===row.id||battleWaveSector===row.id;
         const activeNegotiation=autoNegSector===row.id||negPendingSector===row.id;
-        if(activeBattle||activeNegotiation){
+        if(activeBattle||activeNegotiation||selectedSector===row.id){
           line.style.background='rgba(45,180,170,0.22)';line.style.boxShadow='inset 3px 0 #55d6c7';
-          line.title=(activeNegotiation?'Negocjacja w toku':'Walka w toku')+(row.ignored?' · Prowincja oznaczona przez gildię jako ignorowana':'');
+          line.title=(activeNegotiation?'Negocjacja w toku':activeBattle?'Walka w toku':'Zaznaczony sektor')+(row.ignored?' · Prowincja oznaczona przez gildię jako ignorowana':'');
         }
         const name=document.createElement('span');name.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector;name.style.flex='1';
+        name.style.cursor=activeBattle||activeNegotiation?'default':'pointer';
+        name.style.textDecoration=selectedSector===row.id?'underline':'none';
+        name.setAttribute('role','button');name.setAttribute('tabindex','0');
+        name.setAttribute('aria-pressed',String(selectedSector===row.id));
+        name.setAttribute('aria-disabled',String(activeBattle||activeNegotiation));
+        name.onclick=()=>{if(activeBattle||activeNegotiation)return;selectedSector=selectedSector===row.id?null:row.id;paintOpenSectors();};
+        name.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();name.onclick();}};
+
         const progress=document.createElement('span');progress.textContent=row.progress+'/'+(row.maxProgress??'—');progress.title='Postęp przejęcia naszej gildii';
         const chance=document.createElement('span');chance.textContent='🔥 '+(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');chance.title='Szansa na wzrost oporu';
 

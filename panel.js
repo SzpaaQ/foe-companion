@@ -786,6 +786,9 @@ Otwórz mapę Pól Chwały w grze.
       for(const [key,expiry] of Object.entries(popupDismissed))if(expiry<=now)delete popupDismissed[key];
       for(const r of rows){
         const key=battle.map.id+':'+r.id;
+        if(Number.isFinite(r.maxProgress)&&r.maxProgress>0&&Number.isFinite(r.progress)&&r.progress/r.maxProgress>0.9){
+          popupEntries.delete(key);continue;
+        }
         const eligible=r.color!=='⚪'&&((r.until>now&&r.until-now<=soundSettings.minutes*60)||eligibleOpenSector(r,now));
         if(!popupDismissed[key]&&(eligible||popupEntries.has(key)))popupEntries.set(key,{...r,mapId:battle.map.id});
       }
@@ -807,11 +810,12 @@ Otwórz mapę Pól Chwały w grze.
     }
     function checkSectorAlerts(){
       paintSectorPopup();
-      if(!soundSettings.enabled||!battle||alertBusy)return;
+      if(!soundSettings.enabled||!battle)return;
       const now=Date.now()/1000;
       const rows=FoeModel.rows(battle,$('frontier').checked).rows;
       const upcoming=rows.filter(r=>r.color!=='⚪'&&r.until>now&&r.until-now<=soundSettings.minutes*60);
       updateSectorPopup(rows,now);
+      if(alertBusy)return;
       const due=upcoming.filter(r=>!popupDismissed[battle.map.id+':'+r.id]&&!sounded[`${battle.map.id}:${r.id}:${r.until}`]);
       if(!due.length)return;
       if(!playAlert()){$('gbg-sound-status').textContent='Kliknij „Test dźwięku”, aby aktywować dźwięk w tej karcie.';return;}

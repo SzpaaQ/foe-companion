@@ -33,6 +33,23 @@ test('disable/map change clears visibility without marking dismissal',()=>{
  ui.ctx.battle.map.id=2;ui.advance(102);assert.equal(ui.popup.hidden,true);
  ui.ctx.battle.map.id=1;ui.add(1,160);assert.equal(ui.popup.hidden,false);
 });
+test('socket province updates remove a notification strictly above 90 percent without dismissal cooldown',()=>{
+ const Model=require('./model.js'),ui=setup();
+ let battle={currentParticipantId:1,battlegroundParticipants:[{participantId:2,colour:'purple'}],map:{id:'waterfall_archipelago',provinces:[]}};
+ ui.ctx.battle=battle;
+ const update=progress=>{
+  const province={__class__:'GuildBattlegroundProvince',id:1,ownerId:2,lockedUntil:0,gainAttritionChance:10,conquestProgress:[{participantId:1,progress,maxProgress:120}]};
+  if(!battle.map.provinces.length)battle.map.provinces=[province];
+  battle=Model.updateBattle(battle,[{requestClass:'GuildBattlegroundService',requestMethod:'getProvinces',responseData:[province]}]).battle;
+  ui.ctx.battle=battle;ui.ctx.rows=Model.rows(battle,false).rows;
+  vm.runInContext('updateSectorPopup(rows,Date.now()/1000)',ui.ctx);
+ };
+ update(20);assert.equal(ui.popup.hidden,false);
+ update(108);assert.equal(ui.popup.hidden,false);
+ update(109);assert.equal(ui.popup.hidden,true);
+ assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed.v2')),{});
+ update(0);assert.equal(ui.popup.hidden,false);
+});
 test('settings fold state restores both open and closed sections and saves toggles',()=>{
  const source=fs.readFileSync(__dirname+'/panel.js','utf8');
  const start=source.indexOf("    const foldKey="),end=source.indexOf("    for(const key of ['min','max'])",start);

@@ -1551,7 +1551,7 @@ Otwórz mapę Pól Chwały w grze.
       if(!open.length){list.textContent='Brak otwartych sektorów sąsiadujących z naszymi polami.';return;}
       list.copyText=open.map(row=>{
         const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';
-        return `${type}${row.color} ${row.sector} | ${row.progress}/${row.maxProgress??'—'} | ${row.gainAttritionChance==null?'—':row.gainAttritionChance+'%'}`;
+        return `${type}${row.color} ${row.sector} | ${row.progress}/${row.maxProgress??'—'} | ${row.gainAttritionChance==null?'—':row.gainAttritionChance+'%'}${row.ignored?' ✋':''}`;
       }).join('\n');
       for(const row of open){
         const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #345058';

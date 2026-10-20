@@ -27,6 +27,13 @@
   const ownerAmount=totalCost!==null&&sum!==null?Math.max(0,totalCost-sum-(minusOne?1:0)):null;
   return {rows,totalCost,ownerAmount,sum};
  }
+ function arcProfit(base,amount,bonus){
+  const text=String(bonus).trim().replace(',','.');
+  if(!/^\d{1,4}(?:\.\d{1,4})?$/.test(text)||Number(text)>1000||!Number.isSafeInteger(base)||base<0||!Number.isSafeInteger(amount)||amount<0)return null;
+  const scale=10**(text.split('.')[1]||'').length,denominator=100*scale,numerator=denominator+Math.round(Number(text)*scale);
+  const reward=Math.floor((base*numerator+denominator/2)/denominator);
+  return {reward,profit:reward-amount,multiplier:numerator/denominator};
+ }
  function createTracker(){
   const entities=new Map();let opened=null;
   function consume(payload,methods=[]){
@@ -144,6 +151,6 @@
    return {additional,cumulative:paid+additional};
   });
  }
- const api={findConstruction,pearlAmounts,createTracker,contributionRequest,lockAmounts,lockStages,liveLocks,ownerContribution};root.FoePearls=api;
+ const api={findConstruction,pearlAmounts,arcProfit,createTracker,contributionRequest,lockAmounts,lockStages,liveLocks,ownerContribution};root.FoePearls=api;
  if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

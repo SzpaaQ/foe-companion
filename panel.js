@@ -505,6 +505,7 @@ Otwórz mapę Pól Chwały w grze.
             >
           </label>
 
+          <label>Bonus Arki (%) <input id="arc-bonus" type="text" inputmode="decimal" value="92.7" style="width:75px;padding:6px;margin-left:8px" aria-label="Bonus nagrody Arki w procentach"></label>
           <label><input id="auto-copy" type="checkbox" checked> Kopiuj kwotę (klawisze 1–5)</label>
           </details><details id="settings-open" open><summary>Wysuwaj panel</summary>
           <div class="settings-open">
@@ -1195,6 +1196,7 @@ Otwórz mapę Pól Chwały w grze.
 
     // Wczytaj ustawienia z localStorage
     const LS_MULTIPLIER    = 'foe-companion.multiplier';
+    const LS_ARC_BONUS     = 'foe-companion.arcBonus';
     const LS_AUTO_OPEN     = 'foe-companion.autoOpen';
     const LS_AUTO_OPEN_GBG = 'foe-companion.autoOpenGbg';
     const LS_AUTO_OPEN_QUANTUM = 'foe-companion.autoOpenQuantum';
@@ -1210,6 +1212,7 @@ Otwórz mapę Pól Chwały w grze.
     const LS_AUTO_COPY     = 'foe-companion.autoCopy';
 
     const savedMultiplier   = localStorage.getItem(LS_MULTIPLIER);
+    $('arc-bonus').value=localStorage.getItem(LS_ARC_BONUS)??'92.7';
     const savedAutoOpen     = localStorage.getItem(LS_AUTO_OPEN);
     const savedAutoOpenGbg  = localStorage.getItem(LS_AUTO_OPEN_GBG);
     const savedAutoCopy     = localStorage.getItem(LS_AUTO_COPY);
@@ -1783,6 +1786,9 @@ Otwórz mapę Pól Chwały w grze.
 
         const amount = document.createElement('strong');
         amount.textContent = row.amount === null ? '—' : String(row.amount);
+        const arc=FoePearls.arcProfit(row.base,row.amount,$('arc-bonus').value);
+        amount.title=arc?`P${row.rank}: ${arc.profit>=0?'Zysk':'Strata'} ${Math.abs(arc.profit)} PR\nNagroda z Arką ×${arc.multiplier}: ${arc.reward} PR\nWpłata: ${row.amount} PR`:row.base===null?'Brak podstawowej nagrody PR.':'Ustaw poprawny bonus Arki (0–1000%).';
+        amount.style.cursor='help';
 
         const copy = document.createElement('button');
         copy.textContent = '📋';
@@ -2009,6 +2015,12 @@ Otwórz mapę Pól Chwały w grze.
 
     $('multiplier').oninput = () => {
       localStorage.setItem(LS_MULTIPLIER, $('multiplier').value);
+      paintPearl();
+    };
+    $('arc-bonus').oninput=()=>{
+      const valid=FoePearls.arcProfit(100,0,$('arc-bonus').value)!==null;
+      $('arc-bonus').setCustomValidity(valid?'':'Wpisz bonus od 0 do 1000%, do czterech miejsc po przecinku.');
+      if(valid)localStorage.setItem(LS_ARC_BONUS,$('arc-bonus').value);
       paintPearl();
     };
 

@@ -23,9 +23,9 @@
   const groups=new Map();
   for(const item of items){
    const key=item.cityentity_id||item.name;let g=groups.get(key);
-   if(!g){g={name:item.name,category:item.category,count:0,effects:emptyExtra()};groups.set(key,g);}
+   if(!g){g={name:item.name,category:item.category,count:0,effects:emptyExtra(),activeEffects:emptyExtra()};groups.set(key,g);}
    g.count++;
-   for(const k of EXTRA_KEYS)g.effects[k]+=item.effects[k]||0;
+   for(const k of EXTRA_KEYS){g.effects[k]+=item.effects[k]||0;g.activeEffects[k]+=item.activeEffects?.[k]||0;}
   }
   return [...groups.values()].sort((a,b)=>(categoryOrder.indexOf(a.category)<0?99:categoryOrder.indexOf(a.category))-(categoryOrder.indexOf(b.category)<0?99:categoryOrder.indexOf(b.category))||a.name.localeCompare(b.name,'pl'));
  }
@@ -95,7 +95,7 @@
       for(const k of KEYS)if(sum[k])benefits.push(prodEmoji[k]+' '+sum[k].toLocaleString('pl')+(time?' / '+time:''));
      }
      const options=(c?.production?.options||[]).filter(opt=>KEYS.some(k=>products(opt)[k]));
-     builds.push({name,cityentity_id:e.cityentity_id,category:c?.constructionMenu?.category,underConstruction:true,effects:extraEffects,raw:options.length===1?products(options[0]):null,hasProduction:options.length>0,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
+     builds.push({name,cityentity_id:e.cityentity_id,category:c?.constructionMenu?.category,underConstruction:true,effects:extraEffects,activeEffects:{guild_raids_action_points_collection:e.connected!==0?extraEffects.guild_raids_action_points_collection:0},raw:options.length===1?products(options[0]):null,hasProduction:options.length>0,at:s.next_state_transition_at||null,benefits:benefits.join('\n')});continue;
     }
     const ready=s.__class__==='ProductionFinishedState'||s.__class__==='ProductionReadyState';
     if(s.__class__!=='ProducingState'&&!ready){
@@ -145,5 +145,5 @@
   }
   return {consume,summary,definitions,get map(){return map;}};
  }
- const api={createTracker,KEYS,EXTRA_KEYS,groupedBuildings,groupedExtras,isSettlementResponse,calculationVersion:2};root.FoeQuantum=api;if(typeof module!=='undefined')module.exports=api;
+ const api={createTracker,KEYS,EXTRA_KEYS,groupedBuildings,groupedExtras,isSettlementResponse,calculationVersion:3};root.FoeQuantum=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

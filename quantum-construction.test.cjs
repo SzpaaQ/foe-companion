@@ -26,6 +26,9 @@ test('construction keeps effects and production separate from current totals',()
  assert.equal(s.totals.guild_raids_money,house.production.guild_raids_money);
  const doctor=s.builds.find(b=>!b.hasProduction);
  assert.equal(doctor.effects.guild_raids_action_points_collection,260);
+ assert.equal(doctor.activeEffects.guild_raids_action_points_collection,260);
+ assert.equal(s.actionsPerHour,5310);
+ assert.equal(s.currentBonuses.happiness,160);
  assert.match(doctor.benefits,/260/);
  const tables=render(s);assert.equal(tables.length,2);
  for(const table of tables){
@@ -38,7 +41,7 @@ test('construction keeps effects and production separate from current totals',()
  }
  const extra=tables[1].children;
  const i=extra.findIndex(c=>c.textContent==='Suma'),j=extra.findIndex(c=>c.textContent==='🚧 Suma z budową');
- assert.equal(extra[i+2].textContent,'50');assert.equal(extra[j+2].textContent,'310');
+ assert.equal(extra[i+2].textContent,'310');assert.equal(extra[j+2].textContent,'310');
 });
 test('overview tables also appear when only buildings under construction exist',()=>{
  const s=fixture(true);assert.equal(s.groups.length,0);assert.equal(s.extras.length,0);

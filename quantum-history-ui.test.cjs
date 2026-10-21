@@ -17,6 +17,7 @@ test('history opens a modal, renders frozen tables and exports a local JSON blob
  ctx.FoeQuantumHistory.mount({root:host,button,history});await button.onclick();const dialog=host.children[0];assert.equal(dialog.open,true);
  const all=e=>typeof e==='string'?[]:[e,...e.children.flatMap(all)];const event=all(dialog).find(e=>e.tag==='details');event.open=true;event.listeners.toggle();
  const before=event.children.find(e=>e.tag==='details'&&e.children[0]?.textContent==='Przed i Po');before.open=true;before.listeners.toggle();
+ assert.ok(all(event).some(e=>e.textContent==='Zbieram: '));assert.ok(all(event).some(e=>e.tag==='strong'&&e.textContent==='1× Dom wielopiętrowy'));assert.ok(all(event).filter(e=>e.tag==='input').every(e=>e.style.cssText.includes('text-align:right')));
  assert.ok(all(before).some(e=>e.textContent==='Zestawienie'));assert.ok(all(before).some(e=>e.textContent==='Pozostałe budynki'));
  assert.ok(!all(dialog).some(e=>/Licznik zbiorów|Historia lokalna|Najazd:|guild_raids_/.test(e.textContent)));assert.ok(all(before).some(e=>e.textContent==='Następny zbiór:'));
  const actions=event.children.find(e=>e.tag==='details'&&e.children[0]?.textContent.startsWith('Działania'));actions.open=true;dialog.scrollTop=123;

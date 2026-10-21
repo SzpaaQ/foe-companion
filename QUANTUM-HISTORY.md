@@ -45,3 +45,8 @@ quantum-construction.test.cjs module-loading.test.cjs panel-render.test.cjs
 - Pole uwagi zapisuje się po zakończeniu edycji (opuszczeniu pola), pozostaje po ponownym uruchomieniu i trafia do eksportu JSON. Edycja grupy dotyczy jej obecnych składników.
 - Usuwanie kafelka nie usuwa innych rodzajów budynków z tej samej odpowiedzi gry. Zachowane migawki Przed/Po są oryginalnymi danymi obserwacji.
 - Porównanie Przed/Po ma dwie wycentrowane kolumny; na ekranach do 600 px układa się pionowo. Eksport po prawej, zamknięcie × bez obramowania. Dodano odstęp od suwaka panelu najazdów.
+
+
+### Korekta prezentacji historii
+
+Kolejne działania tego samego rodzaju są jednym wierszem, niezależnie od typu budynku: „Zbieram: **3× Browar · 2× Piekarnia**”, „Sprzedaję: **1× Posiadłość**”, „Stawiam: **1× Posiadłość**”. Zmiana rodzaju działania rozpoczyna kolejny wiersz; późniejsze zbiory nie łączą się przez sprzedaż lub budowę. Grupowanie działa w obrębie istniejącej grupy historii. Tekst nie ma tła ani obramowania kafelków. Treść uwag i placeholder są wyrównane do prawej. Dotychczasowe różne uwagi są zachowane i wyświetlane razem; edycja uwagi całego wiersza aktualizuje wszystkie jego składniki.

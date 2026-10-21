@@ -140,6 +140,22 @@
   }
   return rows;
  }
+ // Collapse uninterrupted runs of the same operation, aggregating all building types.
+ function actionRuns(actions){
+  const runs=[];
+  for(const row of actionRows(actions)){
+   let run=runs.at(-1);
+   if(!run||run.run!==row.run||run.kind!==row.kind){
+    run={kind:row.kind,run:row.run,at:row.at,endAt:row.endAt,buildings:[],refs:[],notes:[]};runs.push(run);
+   }
+   run.endAt=row.endAt;run.refs.push(...row.refs);
+   if(row.note&&!run.notes.includes(row.note))run.notes.push(row.note);
+   const building=run.buildings.find(b=>b.building===row.building&&b.name===row.name);
+   if(building){building.count+=row.count;building.refs.push(...row.refs);}
+   else run.buildings.push({building:row.building,name:row.name,count:row.count,refs:[...row.refs]});
+  }
+  return runs.map(run=>({...run,note:run.notes.join(' · ')}));
+ }
  function mount({root:host,button,history,getWidth=()=>350}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');
@@ -277,16 +293,20 @@
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
     details.historyBuild=()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
-     const rows=actionRows(event.actions);
+     const rows=actionRuns(event.actions);
      const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+rows.length+')');
      for(const action of rows){
       const row=el('div',actions);row.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:5px 0;border-bottom:1px solid #29434b';
       el('span',row,new Date(action.at).toLocaleTimeString('pl-PL'));
-      const prefix={added:'+',removed:'−',collection:'Zbiór ',changed:'Zmiana ',connection:'Połączenie '}[action.kind]||'';
-      const chip=el('span',row,prefix+(action.count>1?action.count+'× ':'')+action.name);
-      chip.style.cssText='border:1px solid #45636b;background:#24414a;border-radius:5px;padding:3px 7px';
-      const input=el('input',row);input.type='text';input.dataset.historyNote='1';input.onblur=()=>Promise.resolve().then(paint);input.value=action.note;input.placeholder='Dopisz uwagę…';input.maxLength=2000;input.setAttribute('aria-label','Uwagi: '+action.name);
-      input.style.cssText='flex:1;min-width:100px;max-width:100%;background:transparent;color:inherit;border:0;border-bottom:1px solid #45636b;font:inherit;padding:4px';
+      const label={added:'Stawiam:',removed:'Sprzedaję:',collection:'Zbieram:',changed:'Zmieniam:',connection:'Połączenie:'}[action.kind]||'';
+      const description=el('span',row);description.style.cssText='min-width:0;overflow-wrap:anywhere';
+      if(label)el('span',description,label+' ');
+      action.buildings.forEach((building,index)=>{
+       if(index)el('span',description,' · ');
+       el('strong',description,(building.building?building.count+'× ':'')+building.name);
+      });
+      const input=el('input',row);input.type='text';input.dataset.historyNote='1';input.onblur=()=>Promise.resolve().then(paint);input.value=action.note;input.placeholder='Dopisz uwagę…';input.maxLength=2000;input.setAttribute('aria-label','Uwagi: '+action.buildings.map(b=>b.name).join(', '));
+      input.style.cssText='flex:1;min-width:100px;max-width:100%;background:transparent;color:inherit;border:0;border-bottom:1px solid #45636b;font:inherit;padding:4px;text-align:right';
       input.onchange=()=>history.editRows(action.refs,input.value);
       const remove=smallButton(row,'×',()=>history.removeRows(action.refs));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
      }
@@ -305,5 +325,5 @@
   dialog.addEventListener('close',()=>button.focus());history.onChange=paint;
   download.onclick=async()=>{await history.ready();const blob=new Blob([history.export()],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a',dialog);link.href=url;link.download='najazdy-kwantowe-historia-'+new Date().toISOString().slice(0,10)+'.json';link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  }
- root.FoeQuantumHistory={create,changes,groupEvents,actionRows,mount};if(typeof module!=='undefined')module.exports=root.FoeQuantumHistory;
+ root.FoeQuantumHistory={create,changes,groupEvents,actionRows,actionRuns,mount};if(typeof module!=='undefined')module.exports=root.FoeQuantumHistory;
 })(globalThis);

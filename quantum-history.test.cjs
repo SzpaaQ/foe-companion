@@ -120,3 +120,28 @@ test('legacy noise is hidden and known pickups show building names',async()=>{
  const e=h.history.document.events[0];const rows=H.actionRows([{...e,kind:'baseline'}, {...e,kind:'change',collected:[],changes:[{kind:'completed',building:house}]},e]);
  assert.equal(rows.length,1);assert.equal(rows[0].kind,'collection');assert.equal(rows[0].name,'Dom wielopiętrowy');
 });
+
+
+test('operation runs aggregate alternating building types but stop at sales and builds',()=>{
+ const brewery=defs.find(d=>d.name==='Browar').id,bakery=defs.find(d=>d.name==='Piekarnia').id;
+ const list=[{id:1,cityentity_id:brewery},{id:2,cityentity_id:bakery},{id:3,cityentity_id:brewery}];
+ const snap={map:{entities:list},summary:{groups:[{items:list.map(e=>({...e,name:e.id===2?'Piekarnia':'Browar'}))}]}};
+ const event=(id,kind,building=brewery)=>({id:String(id),run:'r',at:id*200000,kind:kind==='collection'?'collection':'change',before:snap,after:snap,collected:kind==='collection'?[building===bakery?2:1]:[],changes:kind==='collection'?[]:[{kind,id,building}]});
+ const actions=[event(1,'collection'),event(2,'collection',bakery),event(3,'collection'),event(4,'removed'),event(5,'added'),event(6,'added',bakery),event(7,'collection'),event(8,'collection')];
+ const runs=H.actionRuns(actions);
+ assert.deepEqual(runs.map(r=>r.kind),['collection','removed','added','collection']);
+ assert.deepEqual(runs.map(r=>r.buildings.map(b=>[b.name,b.count])),[[['Browar',2],['Piekarnia',1]],[['Browar',1]],[['Browar',1],['Piekarnia',1]],[['Browar',2]]]);
+ assert.equal(runs[0].refs.length,3);assert.equal(runs[3].refs.length,2);
+ assert.equal(H.actionRuns([actions[0],{...actions[1],run:'other'}]).length,2);
+});
+
+test('grouped operations preserve existing notes and edit/delete every constituent persistently',async()=>{
+ const h=setup();await h.receive(map([entity()]));await h.receive(map([entity(),entity(2)]));await h.receive(map([entity(),entity(2),entity(3)]));
+ const refs=H.actionRuns(h.history.document.events)[0].refs;
+ await h.history.editRows([refs[0]],'Pierwsza uwaga');await h.history.editRows([refs[1]],'Druga uwaga');
+ let run=H.actionRuns(h.history.document.events)[0];assert.equal(run.note,'Pierwsza uwaga · Druga uwaga');assert.equal(run.buildings[0].count,2);
+ await h.history.editRows(run.refs,'Wspólna uwaga');
+ const reload=setup(h.storage);await reload.receive(map([entity(),entity(2),entity(3)]));run=H.actionRuns(reload.history.document.events)[0];
+ assert.equal(run.note,'Wspólna uwaga');assert.equal(run.buildings[0].count,2);
+ await reload.history.removeRows(run.refs);assert.equal(JSON.parse(reload.history.export()).events.length,0);
+});

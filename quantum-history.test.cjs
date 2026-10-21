@@ -145,3 +145,36 @@ test('grouped operations preserve existing notes and edit/delete every constitue
  assert.equal(run.note,'Wspólna uwaga');assert.equal(run.buildings[0].count,2);
  await reload.history.removeRows(run.refs);assert.equal(JSON.parse(reload.history.export()).events.length,0);
 });
+
+test('undo merge survives reload, preserves later observations and note edits',async()=>{
+ const h=setup();await h.receive(map([entity()]));await h.receive(pickup(entity(1,37000)));
+ h.setTime(37000000);await h.receive(pickup(entity(1,73000)));
+ const original=h.history.document.events;await h.history.merge(original[1].id);
+ assert.equal(h.history.undoCount,1);assert.equal(H.groupEvents(h.history.document.events).length,1);
+ const refs=H.actionRows([h.history.document.events[1]])[0].refs;await h.history.editRows(refs,'Zachowaj notatkę');
+ h.setTime(37000100);await h.receive(map([entity(1,73000),entity(2)]));const added=h.history.document.events.at(-1);
+ const reloaded=setup(h.storage);await reloaded.receive(map([entity(1,73000),entity(2)]));await reloaded.history.undo();
+ assert.equal(reloaded.history.document.events.length,3);assert.deepEqual(reloaded.history.document.events.at(-1),added);
+ assert.equal(reloaded.history.document.events[1].cycle,2);assert.equal(H.groupEvents(reloaded.history.document.events).length,2);
+ assert.equal(H.actionRows([reloaded.history.document.events[1]])[0].note,'Zachowaj notatkę');assert.equal(reloaded.history.undoCount,0);
+});
+test('deletion undo restores rows and notes; only three operations are retained',async()=>{
+ const h=setup();await h.receive(map([entity()]));for(let i=2;i<=5;i++)await h.receive(map(Array.from({length:i},(_,j)=>entity(j+1))));
+ const original=h.history.document.events;const refs=H.actionRows(original)[0].refs;await h.history.editRows(refs,'Notatka');
+ await h.history.removeRows([refs[0]]);await h.history.undo();assert.equal(H.actionRows(h.history.document.events)[0].note,'Notatka');
+ assert.equal(h.history.document.events.length,4);
+ for(const e of original)await h.history.remove([e.id]);assert.equal(h.history.undoCount,3);
+ for(let i=0;i<4;i++)await h.history.undo();assert.deepEqual(h.history.document.events.map(e=>e.id),original.slice(1).map(e=>e.id));
+});
+test('split repairs an old merge, retains notes and boundaries, and is undoable',async()=>{
+ const h=setup();await h.receive(map([entity()]));await h.receive(pickup(entity(1,37000)));
+ h.setTime(37000000);await h.receive(pickup(entity(1,73000)));await h.receive(map([entity(1,73000),entity(2)]));
+ await h.history.merge(h.history.document.events[1].id);
+ const merged=h.history.document.events,refs=H.actionRows([merged[1]])[0].refs;await h.history.editRows(refs,'Wieczorny zbiór');
+ await h.history.split(refs);const groups=H.groupEvents(h.history.document.events);assert.equal(groups.length,2);
+ assert.equal(groups[0].cycle,1);assert.equal(groups[1].cycle,2);assert.equal(groups[1].actions.length,2);
+ assert.deepEqual(groups[1].before,merged[1].before);assert.deepEqual(groups[0].after,merged[0].after);
+ assert.equal(H.actionRows(groups[1].actions)[0].note,'Wieczorny zbiór');
+ await h.history.undo();assert.equal(H.groupEvents(h.history.document.events).length,1);
+ assert.equal(H.actionRuns(h.history.document.events).filter(r=>r.kind==='collection').length,2);
+});

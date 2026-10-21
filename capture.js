@@ -1,5 +1,9 @@
 (() => {
   'use strict';
+  for(const type of ['keydown','keypress','keyup'])window.addEventListener(type,event=>{
+    const host=document.activeElement;
+    if(host?.dataset?.foeEditing==='1')event.stopImmediatePropagation();
+  },true);
   const LIMIT = 24000000;
   const battlegroundLive=globalThis.FoeBattlegroundLive?.createTracker();
   globalThis.FoeBattlegroundLive?.observeSockets(window,data=>emit(location.origin+'/socket/',null,data,true,'socket'),connected=>battlegroundLive.setConnected(connected));

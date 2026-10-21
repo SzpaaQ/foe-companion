@@ -32,7 +32,7 @@
  function isSettlementResponse(data){return (Array.isArray(data)?data:[data]).some(r=>r?.requestClass==='CityMapService'&&r.requestMethod==='getCityMap'&&r.responseData?.gridId==='guild_raids');}
  function walk(data,fn){const q=[data];for(let i=0;i<q.length&&i<250000;i++){const v=q[i];if(!v||typeof v!=='object')continue;fn(v);for(const c of Object.values(v))if(c&&typeof c==='object')q.push(c);}}
  function products(option){const sum=empty();for(const p of option?.products||[]){const r=p.playerResources?.resources;if(r)for(const k of KEYS)sum[k]+=Number(r[k])||0;}return sum;}
- const armyNames={guild_raids_spearman:'Włócznik',guild_raids_armoredswordsman:'Ciężkozbrojny',guild_raids_bombarde:'Bombarda'};
+ const armyNames={guild_raids_catapult:'Katapulta',guild_raids_spearman:'Włócznik',guild_raids_armoredswordsman:'Ciężkozbrojny',guild_raids_bombarde:'Bombarda'};
  function summarizeArmy(info,updatedAt){
   const groups=new Map();
   for(const u of info.units){

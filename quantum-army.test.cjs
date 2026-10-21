@@ -28,8 +28,9 @@ test('army UI renders empty state and snapshot even without settlement data',()=
  const el=()=>({style:{},children:[],append(...v){this.children.push(...v);},replaceChildren(){this.children=[];}});
  const box=el(),tracker=Q.createTracker();
  const context={$:()=>box,quantumTracker:tracker,document:{createElement:el},formatTime:()=> '12:00',text:(parent,value)=>{const node=el();node.textContent=value;parent.append(node);return node;}};
- vm.runInNewContext("{"+code+"}",context);assert.match(box.children[1].textContent,/Otwórz okno armii/);
+ vm.runInNewContext("{"+code+"}",context);assert.match(box.children[1].textContent,/Otwórz armię w grze/);
  tracker.consume(response([unit({currentHitpoints:4,is_attacking:true})]));vm.runInNewContext("{"+code+"}",context);
- assert.ok(box.children.some(n=>n.textContent==='Łącznie: 1 · Wybrane do ataku: 1'));
- assert.ok(box.children.some(n=>n.textContent?.includes('4/10')));
+ assert.ok(box.children.some(n=>n.textContent==='1× Bombarda'));
+ assert.equal(box.children.length,2);
+ tracker.consume(response([unit({unitTypeId:'guild_raids_catapult'})]));vm.runInNewContext("{"+code+"}",context);assert.equal(box.children[1].textContent,'1× Katapulta');
 });

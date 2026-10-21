@@ -48,13 +48,16 @@ test('history opens a non-modal draggable window, renders frozen tables and expo
  assert.ok(all(event).some(e=>e.textContent==='Zbieram: '));assert.ok(all(event).some(e=>e.tag==='strong'&&e.textContent==='1× Dom wielopiętrowy'));assert.ok(all(event).filter(e=>e.tag==='input').every(e=>e.style.cssText.includes('text-align:right')));
  assert.ok(all(before).some(e=>e.textContent==='Zestawienie'));assert.ok(all(before).some(e=>e.textContent==='Pozostałe budynki'));
  assert.ok(!all(dialog).some(e=>/Licznik zbiorów|Historia lokalna|Najazd:|guild_raids_/.test(e.textContent)));assert.ok(all(before).some(e=>e.textContent==='Następny zbiór:'));
- const actions=event.children.find(e=>e.tag==='details'&&e.children[0]?.textContent.startsWith('Działania'));actions.open=true;dialog.scrollTop=123;
+ const content=dialog.children.find(e=>e.style.cssText?.includes('min-height:0'));assert.ok(content);assert.match(top.style.cssText,/padding:10px 14px/);assert.ok(!top.style.cssText.includes('sticky'));
+ const notes=all(event).filter(e=>e.tag==='input');assert.ok(notes.every(e=>e.placeholder==='Dodaj notatkę…'&&e.style.cssText.includes('outline:none')&&!e.style.cssText.includes('border-bottom')));
+ assert.ok(all(dialog).some(e=>e.textContent==='↶ Cofnij'));assert.ok(all(event).some(e=>e.title?.startsWith('Rozdziel od tego działania')));
+ const actions=event.children.find(e=>e.tag==='details'&&e.children[0]?.textContent.startsWith('Działania'));actions.open=true;content.scrollTop=123;
  assert.deepEqual(all(actions).filter(e=>['Stawiam: ','Zbieram: '].includes(e.textContent)).map(e=>e.textContent),['Stawiam: ','Zbieram: ']);
  await all(actions).find(e=>e.title==='Usuń działanie').onclick();
  const refreshed=all(dialog).find(e=>e.tag==='details');assert.equal(refreshed.open,true);
  assert.equal(refreshed.children.find(e=>e.tag==='details'&&e.children[0]?.textContent.startsWith('Działania')).open,true);
  assert.equal(refreshed.children.find(e=>e.tag==='details'&&e.children[0]?.textContent==='Przed i Po').open,true);
- assert.equal(dialog.scrollTop,123);assert.equal(doc.events.length,1);assert.equal(doc.events[0].id,'a');
+ assert.equal(content.scrollTop,123);assert.equal(doc.events.length,1);assert.equal(doc.events[0].id,'a');
  await all(dialog).find(e=>e.textContent==='Eksport JSON').onclick();assert.deepEqual(JSON.parse(await blob.text()),JSON.parse(JSON.stringify(doc)));assert.equal(revoked,true);
  all(dialog).find(e=>e.title==='Zamknij historię').onclick();assert.equal(dialog.open,false);assert.equal(button.focused,true);
 });

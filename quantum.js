@@ -32,14 +32,39 @@
  function isSettlementResponse(data){return (Array.isArray(data)?data:[data]).some(r=>r?.requestClass==='CityMapService'&&r.requestMethod==='getCityMap'&&r.responseData?.gridId==='guild_raids');}
  function walk(data,fn){const q=[data];for(let i=0;i<q.length&&i<250000;i++){const v=q[i];if(!v||typeof v!=='object')continue;fn(v);for(const c of Object.values(v))if(c&&typeof c==='object')q.push(c);}}
  function products(option){const sum=empty();for(const p of option?.products||[]){const r=p.playerResources?.resources;if(r)for(const k of KEYS)sum[k]+=Number(r[k])||0;}return sum;}
+ const armyNames={guild_raids_spearman:'Włócznik',guild_raids_armoredswordsman:'Ciężkozbrojny',guild_raids_bombarde:'Bombarda'};
+ function summarizeArmy(info,updatedAt){
+  const groups=new Map();
+  for(const u of info.units){
+   const count=u.__class__==='ArmyUnitStack'?u.count:1;
+   if(!Number.isSafeInteger(count)||count<1)continue;
+   let row=groups.get(u.unitTypeId);
+   if(!row){row={id:u.unitTypeId,name:armyNames[u.unitTypeId]||u.unitTypeId,total:0,healthy:0,wounded:0,unknown:0,selected:0,hitpoints:[]};groups.set(u.unitTypeId,row);}
+   row.total+=count;
+   if(u.currentHitpoints===10)row.healthy+=count;
+   else if(Number.isFinite(u.currentHitpoints)&&u.currentHitpoints>0&&u.currentHitpoints<10)row.wounded+=count;
+   else row.unknown+=count;
+   if(u.is_attacking){row.selected+=count;row.hitpoints.push({hp:u.currentHitpoints,count});}
+  }
+  return {updatedAt,stale:false,rows:[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'pl'))};
+ }
  function createTracker(){
-  const definitions=new Map();let map=null,raid=null,wallet={},version=0,activeGrid=null;
+  const definitions=new Map();let map=null,raid=null,wallet={},version=0,activeGrid=null,army=null;
   function consume(data,{fallback=false}={}){
+   for(const r of Array.isArray(data)?data:[data]){
+    const info=r?.responseData;
+    // Only a full own-army response is authoritative; previews and battle units are not inventory.
+    if(r?.requestClass==='ArmyUnitManagementService'&&r.requestMethod==='getArmyInfo'&&info?.__class__==='ArmyInfo'&&Array.isArray(info.units)&&info.units.length&&info.units.every(u=>u.unitTypeId?.startsWith('guild_raids_'))){
+     army=summarizeArmy(info,Date.now()/1000);version++;
+    }else if(army&&((r?.requestClass==='BattlefieldService'&&info?.battleType?.type==='guild_raids')||(r?.requestClass==='ArmyUnitManagementService'&&(r.requestMethod!=='getArmyInfo'||info?.units?.length===0)))){
+     army={...army,stale:true};version++;
+    }
+   }
    walk(data,v=>{
     if(v.__class__==='GenericCityEntity'&&typeof v.id==='string'&&v.components){if(!fallback||!definitions.has(v.id))definitions.set(v.id,v);version++;}
     if(typeof v.gridId==='string'&&Array.isArray(v.entities))activeGrid=v.gridId;
     if(v.gridId==='guild_raids'&&Array.isArray(v.entities)){map=v;version++;}
-    if(v.__class__==='GuildRaidsRunningState'){raid={name:v.raidInstance?.raidName,difficulty:v.raidInstance?.difficultyLevel,endsAt:v.endsAt};version++;}
+    if(v.__class__==='GuildRaidsRunningState'){if(raid&&raid.endsAt!==v.endsAt)army=null;raid={name:v.raidInstance?.raidName,difficulty:v.raidInstance?.difficultyLevel,endsAt:v.endsAt};version++;}
     if(v.__class__==='ResourceBag'){
      const r=v.resources?.resources||v.resources;
      if(r&&Object.keys(r).some(k=>k.startsWith('guild_raids_'))){for(const [k,n] of Object.entries(r))if(k.startsWith('guild_raids_')&&typeof n==='number')wallet[k]=n;version++;}
@@ -143,7 +168,7 @@
    for(const e of map.entities){if(e.connected===0)continue;for(const b of component(e)?.boosts?.boosts||[])if(b.type==='guild_raids_action_points_collection')actionsPerHour+=Number(b.value)||0;}
    return {groups,totals,builds,extras,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
   }
-  return {consume,summary,definitions,get map(){return map;}};
+  return {consume,summary,definitions,get map(){return map;},get army(){return army;}};
  }
  const api={createTracker,KEYS,EXTRA_KEYS,groupedBuildings,groupedExtras,isSettlementResponse,calculationVersion:3};root.FoeQuantum=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

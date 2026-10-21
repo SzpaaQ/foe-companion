@@ -42,10 +42,9 @@
     const player=a.map.entities.find(e=>e.player_id!=null)?.player_id;
     if(player==null)return;
     const key=world+':'+player;
-    let first=false;
-    if(profile!==key){const loaded=await storage.load(key);doc=loaded||{schemaVersion:1,world,playerId:player,events:[]};profile=key;first=true;}
+    if(profile!==key){const loaded=await storage.load(key);doc=loaded||{schemaVersion:1,world,playerId:player,events:[]};profile=key;}
     const run=String(a.summary?.raid?.endsAt||a.map.entities.find(e=>e.type==='main_building')?.id||'unknown');
-    const diff=b?.map?changes(b,a):[];
+    const diff=b?.map?changes(b,a).filter(c=>c.kind!=='completed'):[];
     const pickup=responses.filter(r=>r?.requestClass==='CityProductionService'&&['pickupProduction','pickupAll'].includes(r.requestMethod)&&r.responseData&&!r.responseData.error);
     const touched=new Set();
     function walk(v){if(!v||typeof v!=='object')return;if(v.__class__==='CityMapEntity'&&v.cityentity_id?.includes('GuildRaids'))touched.add(v.id);for(const child of Object.values(v))if(child&&typeof child==='object')walk(child);}
@@ -63,8 +62,8 @@
      cycle=same?previous.cycle:(previous?.cycle||0)+1;
      const estimate=Object.fromEntries(root.FoeQuantum.KEYS.map(k=>[k,items.reduce((sum,i)=>sum+(i.production?.[k]||0),0)]));
      doc.events.push({id:crypto.randomUUID(),at,run,kind:'collection',cycle,due,cycleDue:same?(previous.cycleDue??previous.due):due,cycleAt:same?(previous.cycleAt??previous.at):at,collected:items.map(i=>i.id),estimate,changes:diff,before:b,after:a});
-    }else if(first||!b?.map||diff.length||collected.length){
-     doc.events.push({id:crypto.randomUUID(),at,run,kind:first||!b?.map?'baseline':'change',changes:diff,collected,before:first?null:b,after:a});
+    }else if(diff.length){
+     doc.events.push({id:crypto.randomUUID(),at,run,kind:'change',changes:diff,collected,before:b,after:a});
     }else return;
     await save();
    });
@@ -72,6 +71,14 @@
   return {observe,ready:()=>queue,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
    export(){return JSON.stringify({exportedAt:new Date(now()).toISOString(),...copy(doc)},null,2);},
    remove(ids){return enqueue(async()=>{if(!doc)return;const selected=new Set(ids);doc.events=doc.events.filter(e=>!selected.has(e.id));await save();});},
+   editRows(refs,note){return enqueue(async()=>{
+    for(const ref of refs){const e=doc?.events.find(e=>e.id===ref.id);if(e)(e.notes||={})[ref.key]=String(note).slice(0,2000);}
+    if(doc)await save();
+   });},
+   removeRows(refs){return enqueue(async()=>{
+    for(const ref of refs){const e=doc?.events.find(e=>e.id===ref.id);if(e){e.hiddenRows||=[];if(!e.hiddenRows.includes(ref.key))e.hiddenRows.push(ref.key);}}
+    if(doc){doc.events=doc.events.filter(e=>actionRows([e]).length);await save();}
+   });},
    merge(id){return enqueue(async()=>{
     if(!doc)return;const groups=groupEvents(doc.events),index=groups.findIndex(g=>g.id===id),selected=groups[index];
     if(!selected)return;
@@ -110,20 +117,45 @@
   return groups;
  }
  const labels={added:'Dodano budynek',removed:'Usunięto budynek',changed:'Zmieniono budynek',completed:'Ukończono budowę',connection:'Zmieniono połączenie z drogą',expansion:'Powiększono osadę'};
+ // Stable per-building row keys preserve notes when adjacent actions are grouped.
+ function actionRows(actions){
+  const rows=[];
+  for(const action of actions){
+   if(action.kind==='baseline')continue;
+   const snaps=[action.before,action.after];
+   const items=snaps.flatMap(s=>[...(s?.summary?.groups||[]).flatMap(g=>g.items),...(s?.summary?.builds||[]),...(s?.summary?.extras||[])]);
+   const maps=snaps.flatMap(s=>s?.map?.entities||[]);
+   const entries=(action.changes||[]).flatMap((c,i)=>c.kind==='completed'?[]:[{...c,key:'change:'+i}]);
+   for(const id of action.collected||[]){const entity=maps.find(e=>e.id===id),item=items.find(e=>e.id===id);const building=entity?.cityentity_id||item?.cityentity_id;
+    if(building)entries.push({kind:'collection',id,building,key:'collection:'+id});
+   }
+   for(const entry of entries){
+    if(action.hiddenRows?.includes(entry.key))continue;
+    const name=items.find(i=>i.cityentity_id===entry.building)?.name||entry.building||labels[entry.kind]||entry.kind;
+    const note=action.notes?.[entry.key]||'';
+    const previous=rows.at(-1),ref={id:action.id,key:entry.key};
+    if(previous&&previous.run===action.run&&previous.kind===entry.kind&&previous.building===entry.building&&entry.building&&previous.note===note&&action.at-previous.endAt<=120000){previous.count++;previous.endAt=action.at;previous.refs.push(ref);}
+    else rows.push({kind:entry.kind,building:entry.building,name,note,at:action.at,endAt:action.at,run:action.run,count:1,refs:[ref]});
+   }
+  }
+  return rows;
+ }
  function mount({root:host,button,history,getWidth=()=>350}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');
-  dialog.style.cssText='color:#e7eeee;background:#102126;border:1px solid #56727b;padding:10px;width:min(900px,90vw);max-height:85vh;overflow:auto;pointer-events:auto;font:11px/1.35 system-ui';
+  dialog.style.cssText='color:#e7eeee;background:#102126;border:1px solid #56727b;padding:14px;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;max-height:85vh;overflow:auto;scrollbar-gutter:stable;pointer-events:auto;font:11px/1.35 system-ui';
   const smallButton=(parent,label,handler)=>{const b=el('button',parent,label);b.style.cssText='font:11px/1.2 system-ui;padding:2px 5px;margin:0 0 0 5px;min-width:0';b.onclick=event=>{event?.preventDefault();event?.stopPropagation();return handler();};return b;};
   const top=el('div',dialog);top.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap';el('h2',top,'Historia zbiorów').style.cssText='font-size:14px;margin:4px 0';
-  const download=smallButton(top,'Eksport JSON',()=>{}),close=smallButton(top,'Zamknij',()=>dialog.close());
+  const download=smallButton(top,'Eksport JSON',()=>{}),close=smallButton(top,'×',()=>dialog.close());
+  download.style.marginLeft='auto';close.setAttribute('aria-label','Zamknij historię');close.title='Zamknij historię';close.style.cssText='border:0;background:transparent;color:inherit;font-size:24px;padding:0 5px;cursor:pointer';
+  const css=el('style',dialog);css.textContent='.qh-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.qh-compare>div{min-width:0;overflow-wrap:anywhere}@media(max-width:600px){.qh-compare{grid-template-columns:1fr}}';
   const status=el('p',dialog),list=el('div',dialog);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
   function snapshot(parent,snap){
    if(!snap?.summary)return;
    const summary=snap.summary,FoeQuantum=root.FoeQuantum;
-   const wrap=el('div',parent);wrap.style.cssText='width:'+Math.round(getWidth()||350)+'px;max-width:100%;margin:8px 0 0 auto;color:#e7eeee;line-height:1.4';
+   const wrap=el('div',parent);wrap.style.cssText='width:'+Math.round(getWidth()||350)+'px;max-width:100%;box-sizing:border-box;margin:8px auto 0;padding-right:8px;color:#e7eeee;line-height:1.4';
    const stockBox=el('div',wrap),groups=el('div',wrap);
    const $=id=>id==='quantum-summary'?stockBox:groups;
    const text=(parent,value,tag='p')=>el(tag,parent,value);
@@ -228,13 +260,14 @@
   }
   function paint(){
    if(!dialog.open)return;
+   if((host.activeElement||document.activeElement)?.dataset?.historyNote==='1')return;
    const scrollTop=dialog.scrollTop,states=new Map();
    for(const view of views){const state=remember(view.node);for(const id of view.ids)states.set(id,state);}
    views=[];const doc=history.document;list.replaceChildren();
    status.textContent=history.error;status.hidden=!history.error;
    download.disabled=!doc?.events.length;
    if(!doc?.events.length){el('p',list,'Brak historii. Otwórz osadę kwantową w grze.');return;}
-   const grouped=groupEvents(doc.events);
+   const grouped=groupEvents(doc.events).filter(e=>actionRows(e.actions).length);
    for(const event of grouped.slice(-limit).reverse()){
     const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:5px 7px;margin:4px 0;border-radius:4px';
     views.push({node:details,ids:event.actions.map(e=>e.id)});
@@ -244,15 +277,23 @@
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
     details.historyBuild=()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
-     const savedItems=[...(event.after?.summary?.groups||[]).flatMap(g=>g.items),...(event.before?.summary?.groups||[]).flatMap(g=>g.items),...(event.after?.summary?.extras||[]),...(event.before?.summary?.extras||[]),...(event.after?.summary?.builds||[]),...(event.before?.summary?.builds||[])];
-     const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+event.actions.length+')');
-     for(const action of event.actions){
-      const description=(action.changes||[]).map(change=>(labels[change.kind]||change.kind)+(change.building?' · '+(savedItems.find(i=>i.cityentity_id===change.building)?.name||change.building):'')).join(' · ')||(action.kind==='collection'?'Odbiór produkcji':'Zapis stanu');
-      const row=el('div',actions);row.style.cssText='display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #29434b';
-      el('span',row,new Date(action.at).toLocaleTimeString('pl-PL')+' · '+description).style.flex='1';
-      const remove=smallButton(row,'×',()=>history.remove([action.id]));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
+     const rows=actionRows(event.actions);
+     const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+rows.length+')');
+     for(const action of rows){
+      const row=el('div',actions);row.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:5px 0;border-bottom:1px solid #29434b';
+      el('span',row,new Date(action.at).toLocaleTimeString('pl-PL'));
+      const prefix={added:'+',removed:'−',collection:'Zbiór ',changed:'Zmiana ',connection:'Połączenie '}[action.kind]||'';
+      const chip=el('span',row,prefix+(action.count>1?action.count+'× ':'')+action.name);
+      chip.style.cssText='border:1px solid #45636b;background:#24414a;border-radius:5px;padding:3px 7px';
+      const input=el('input',row);input.type='text';input.dataset.historyNote='1';input.onblur=()=>Promise.resolve().then(paint);input.value=action.note;input.placeholder='Dopisz uwagę…';input.maxLength=2000;input.setAttribute('aria-label','Uwagi: '+action.name);
+      input.style.cssText='flex:1;min-width:100px;max-width:100%;background:transparent;color:inherit;border:0;border-bottom:1px solid #45636b;font:inherit;padding:4px';
+      input.onchange=()=>history.editRows(action.refs,input.value);
+      const remove=smallButton(row,'×',()=>history.removeRows(action.refs));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
      }
-     for(const [label,snap] of [['Przed działaniem',event.before],['Po działaniu',event.after]])if(snap){const d=el('details',details);d.style.cssText='background:#0d2026;padding:7px 9px;margin-top:6px;border-radius:3px';el('summary',d,label);d.historyBuild=()=>{if(d.open&&!d.dataset.built){d.dataset.built='1';snapshot(d,snap);}};d.addEventListener('toggle',d.historyBuild);}
+     const comparison=el('details',details);el('summary',comparison,'Przed i Po');
+     comparison.historyBuild=()=>{if(!comparison.open||comparison.dataset.built)return;comparison.dataset.built='1';const columns=el('div',comparison);columns.className='qh-compare';
+      for(const [label,snap] of [['Przed',event.before],['Po',event.after]]){const column=el('div',columns);el('h3',column,label).style.textAlign='center';if(snap)snapshot(column,snap);else el('p',column,'Brak zapisanego stanu.');}
+     };comparison.addEventListener('toggle',comparison.historyBuild);
     };
     details.addEventListener('toggle',details.historyBuild);
     restore(details,event.actions.map(e=>states.get(e.id)).find(Boolean));
@@ -260,9 +301,9 @@
    if(grouped.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
    dialog.scrollTop=scrollTop;
   }
-  button.onclick=async()=>{dialog.showModal();status.textContent='Wczytywanie historii…';await history.ready();paint();};
+  button.onclick=async()=>{dialog.style.width='min('+Math.max(900,2*(getWidth()||350)+120)+'px,96vw)';dialog.showModal();status.textContent='Wczytywanie historii…';await history.ready();paint();};
   dialog.addEventListener('close',()=>button.focus());history.onChange=paint;
   download.onclick=async()=>{await history.ready();const blob=new Blob([history.export()],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a',dialog);link.href=url;link.download='najazdy-kwantowe-historia-'+new Date().toISOString().slice(0,10)+'.json';link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  }
- root.FoeQuantumHistory={create,changes,groupEvents,mount};if(typeof module!=='undefined')module.exports=root.FoeQuantumHistory;
+ root.FoeQuantumHistory={create,changes,groupEvents,actionRows,mount};if(typeof module!=='undefined')module.exports=root.FoeQuantumHistory;
 })(globalThis);

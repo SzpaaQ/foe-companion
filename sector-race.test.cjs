@@ -6,7 +6,7 @@ test('race requires another guild besides owner and our guild, schedule capped a
  assert.equal(model.rows(battle,false).rows.find(r=>r.id===1).race,false);
  battle.map.provinces[2].ownerId=3;
  const row=model.rows(battle,false).rows.find(r=>r.id===1);assert.equal(row.race,true);
- assert.match(model.line({...row,until:Date.now()/1000+1700}),/🏁/);
- assert.doesNotMatch(model.line({...row,until:Date.now()/1000+1900}),/🏁/);
- assert.doesNotMatch(model.line({...row,until:0}),/🏁/);
+ assert.match(model.line({...row,until:Date.now()/1000+1700}),/🏃‍♂️/);
+ assert.doesNotMatch(model.line({...row,until:Date.now()/1000+1900}),/🏃‍♂️/);
+ assert.doesNotMatch(model.line({...row,until:0}),/🏃‍♂️/);
 });

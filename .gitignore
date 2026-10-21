@@ -6,3 +6,10 @@ har/
 *.png
 __pycache__/
 node_modules/
+
+# Lokalne eksporty i pliki robocze
+/0
+/kwanty-zbiory/
+*.zip
+*.tmp
+*.log

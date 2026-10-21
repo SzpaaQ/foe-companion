@@ -105,7 +105,7 @@ function line(row) {
     const time = row.until ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',hour12:false}).format(row.until*1000) : '';
     const battleType = row.isAttackBattleType === true ? '🟥 ' : row.isAttackBattleType === false ? '🟦 ' : '';
     const remaining=row.until-Date.now()/1000;
-    return `${time ? time + ' ' : ''}${battleType}${row.color} ${row.sector}${row.race&&remaining>0&&remaining<=1800?' 🏁':''}`;
+    return `${time ? time + ' ' : ''}${battleType}${row.color} ${row.sector}${row.race&&remaining>0&&remaining<=1800?' 🏃‍♂️':''}`;
   }
 
   // --- Zbiory ---

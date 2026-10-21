@@ -159,16 +159,16 @@
  function mount({root:host,button,history,getWidth=()=>350}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');
-  dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483647;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:14px;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;max-height:85vh;overflow:auto;scrollbar-gutter:stable;pointer-events:auto;font:11px/1.35 system-ui';
+  dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483647;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:14px;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:auto;scrollbar-gutter:stable;pointer-events:auto;font:11px/1.35 system-ui';
   const smallButton=(parent,label,handler)=>{const b=el('button',parent,label);b.style.cssText='font:11px/1.2 system-ui;padding:2px 5px;margin:0 0 0 5px;min-width:0';b.onclick=event=>{event?.preventDefault();event?.stopPropagation();return handler();};return b;};
   const top=el('div',dialog);top.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:1;background:#102126;cursor:grab;touch-action:none;user-select:none';el('h2',top,'Historia zbiorów').style.cssText='font-size:14px;margin:4px 0';
   const download=smallButton(top,'Eksport JSON',()=>{}),close=smallButton(top,'×',()=>dialog.close());
   download.style.marginLeft='auto';close.setAttribute('aria-label','Zamknij historię');close.title='Zamknij historię';close.style.cssText='border:0;background:transparent;color:inherit;font-size:24px;padding:0 5px;cursor:pointer';
-  top.title='Przeciągnij pasek, aby przenieść okno';
+  top.title='Przeciągnij pasek, aby przenieść okno (do 80% szerokości poza prawy brzeg). Szerokość zmienisz za prawy dolny róg.';
   let position=null,drag=null;
   function place(x,y){
    const rect=dialog.getBoundingClientRect();
-   position={x:Math.max(0,Math.min(x,Math.max(0,root.innerWidth-rect.width))),y:Math.max(0,Math.min(y,Math.max(0,root.innerHeight-70)))};
+   position={x:Math.max(0,Math.min(x,Math.max(0,root.innerWidth-rect.width*0.2))),y:Math.max(0,Math.min(y,Math.max(0,root.innerHeight-70)))};
    dialog.style.left=position.x+'px';dialog.style.top=position.y+'px';
   }
   top.addEventListener('pointerdown',event=>{
@@ -187,6 +187,7 @@
   }
   for(const type of ['pointerup','pointercancel','lostpointercapture'])top.addEventListener(type,endDrag);
   root.addEventListener('resize',()=>{if(dialog.open&&position)place(position.x,position.y);});
+  const sizeObserver=new ResizeObserver(()=>{if(dialog.open&&position)place(position.x,position.y);});sizeObserver.observe(dialog);
   dialog.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();dialog.close();}});
   const css=el('style',dialog);css.textContent='.qh-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.qh-compare>div{min-width:0;overflow-wrap:anywhere}@media(max-width:600px){.qh-compare{grid-template-columns:1fr}}';
   const status=el('p',dialog),list=el('div',dialog);let limit=30;
@@ -345,7 +346,7 @@
    if(grouped.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
    dialog.scrollTop=scrollTop;
   }
-  button.onclick=async()=>{dialog.style.width='min('+Math.max(900,2*(getWidth()||350)+120)+'px,96vw)';if(!dialog.open)dialog.show();const rect=dialog.getBoundingClientRect();place(position?.x??(root.innerWidth-rect.width)/2,position?.y??Math.max(12,root.innerHeight*0.06));status.textContent='Wczytywanie historii…';await history.ready();paint();};
+  button.onclick=async()=>{if(!position)dialog.style.width='min('+Math.max(900,2*(getWidth()||350)+120)+'px,96vw)';if(!dialog.open)dialog.show();const rect=dialog.getBoundingClientRect();place(position?.x??(root.innerWidth-rect.width)/2,position?.y??Math.max(12,root.innerHeight*0.06));status.textContent='Wczytywanie historii…';await history.ready();paint();};
   dialog.addEventListener('close',()=>button.focus());history.onChange=paint;
   download.onclick=async()=>{await history.ready();const blob=new Blob([history.export()],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a',dialog);link.href=url;link.download='najazdy-kwantowe-historia-'+new Date().toISOString().slice(0,10)+'.json';link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  }

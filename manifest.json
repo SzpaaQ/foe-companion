@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FoE Companion — baza",
-  "version": "0.6.0",
-  "version_name": "0.6.00",
+  "version": "0.6.1",
+  "version_name": "0.6.01",
   "background": {"service_worker":"background.js"},
   "permissions": ["storage"],
   "host_permissions": ["http://127.0.0.1/*","https://*.forgeofempires.com/*"],

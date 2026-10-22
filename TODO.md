@@ -1,3 +1,136 @@
+#### kolejne modyfikacje w historii zbiorów w najazdach kwantowych
+po kliknięciu połącz z poprzednim zbiorem jest problem - niechcący to kliknąłem i połączyłem źle, muszę mieć możliwość cofnięcia
+podobnie z funkcją usuwania wpisu w działaniach
+
+teraz mam oznaczone działa w jednym zbire w ten sposób:
+
+```
+18:47:34
+Stawiam: 4× Browar · 2× Pręgierz
+Dopisz uwagę…
+×
+18:46:16
+Zbieram: 1× Ratusz · 3× Dom oszalowany · 1× Dom szkieletowy · 17× Posiadłość
+sprzedaję posiadłości aby pomieścić browary
+×
+08:38:01
+Stawiam: 1× Piekarnia · 2× Dom oszalowany · 2× Grupa drzew · 8× Posiadłość · 1× Browar
+Dopisz uwagę…
+×
+08:37:32
+Zbieram: 13× Browar · 2× Piekarnia
+Dopisz uwagę…
+×
+08:37:22
+Stawiam: 1× Browar
+Dopisz uwagę…
+×
+08:37:18
+Zbieram: 1× Alchemik
+Dopisz uwagę…
+×
+08:36:48
+Stawiam: 2× Browar
+```
+zwróć uwage na godziny - to nie jest jeden zbiór więc jakoś dojdę do tego, ale musimy to popprawić
+dlatego może przycisk cofnij max 3 operacje
+
+dodatkowo wpis działania zmien dopisz uwagę na dodaj notatkę. tytlko z wpisywaniem też jest problem:
+gra ma skróty klawiaturowe na pojedynczych literach. pisząc cokolwiek w notatkach gra zaczyna przeskakiwać między funkcjami pomyśl jak to rozwiązać
+inputy bez borderów i outline gdy na to najadę lub focus ma nie migać nic - ma być widoczny tylko migający znacznik wprowadzania tekstu
+
+kolejny problem to header okienka modala nie jest na samej górze - w przypadku przewijania jest przezroczysty pas między paskiem tytułowym a górną granicą okienka (margin od góry możemy zastąpić paddingiem? lub jakoś inaczej przykleic go do górnej krawiędzi)
+
+
+
+w sekcji Wojsko ma być tylko krótki wpis
+obecnie mamy tak:
+Ostatni odczyt: 21.10, 23:24:41
+Stan mógł się zmienić. Otwórz ponownie okno armii kwantowej, aby go odświeżyć.
+
+Jednostka   Razem   Zdrowe  Ranne   W ataku
+Bombarda    150 150 0   0
+Ciężkozbrojny   5   5   0   0
+guild_raids_catapult    84  81  3   8
+Łącznie: 239 · Wybrane do ataku: 8
+
+guild_raids_catapult — HP w ataku: 10/10, 10/10, 10/10, 10/10, 10/10, 10/10, 10/10, 10/10
+
+
+ma być tylko
+150x Bombarda
+5x ciężko zbrojny itd
+przy okazji guild_raids_catapult to katapulty
+
+
+a jeśli nie odczytano jeszcze wojska to teskt otwórz armię w grze
+
+
+i pytanie czy z rozszerzenia mozemy zrobić zrzut okna z zapisaniem obrazu do pamięci przeglądarki? chciałbym dodać zrzut osady do zbiorów w sekcjach przed i po.
+obrazek musiałby być mały, ale po kliknięciu otwierać powiększenie.
+Wtedy potrzebowalibyśmy niewielkiego przycisku przy zbiorach sekcja "Przed i Po" z emoji aparatu.
+zdjęcie okna wyświetlane bezpośrednio pod "Przed" i Po", a nad kopią panelu z zestawieniem itp
+daj znać czy to jest wykonalne i przygotuj plan.
+jeszcze nie wykonuj
+
+
+Lista z 21 Października
+# historia najazdów kwantowych
+tutaj zmiany:
+ukończono budowę i dodano budynek to jedna akcja. dlatego robimy wyjątki dla wpisów, które nie będą zapisywane:
+- ukonczono budowę
+- Zapis stanu
+- Odbiór produkcji - chyba, że możemy odczytać i zapisać z jakiego budynku - wtedy to ma sens
+- Początek obserwacji
+dodatkowo chcę aby te pola były edytowalne np chcę coś dopisać do wpisu, ma się to zapisać
+
+chciałbym też uprościć to maksymalnie czyli zamiast dodano budynek browar będzie "+Browar"
+dodatkowo jeśli 3 wpisy są takie same czyli dodano posiadłość i posiadłość to grupujmy to wyświetlając 1 wpis +3 x Posiadłość i w przypadku działań na budynkach (zbiór lub budowa) robimy małe kafelki - czyli border i może subtelne tło dla "+3x Posiadłość" lub "-Browar"
+wpis
+17:51:27 · Ukończono budowę · Pręgierz · Ukończono budowę · Dom oszalowany
+będzie wtedy wyglądał mniej więcej tak:
+17:51:27 · [+1x Pręgierz] [+1x Dom oszalowany]
+ale tutaj każdy budynek powinien mieć własny wpis, czyli rozbijmy to na 2 wiersze
+
+dodatkowo przyciski export json prz\yklejamy do prawej, a przycisk zamknij ma być ładnym close / times w prawym górnym rogu bez borderów itd
+
+Panele w sekcjach Po i przed działaniem niech zostaną tej szerokości ale je wycentrujmy. albo inaczej - zróbmy to w jednej sekcji: dwie kolumny Przed i Po wtedy centrujemy te panele w swojej kolumnie, ale tak aby były oba widoczne bez suwaka poziomego - jeśli szerokość jest niewystarczajaca to musimy poszerzyć modala
+
+w panelu gdy mamy sporo różnych budynków pojawiają się suwaki - pinonowy lekko zasłania tekst musimy dać jakiś padding od prawej dla zawartości, lub w przypadku najazdów niech panel będzie nieco szerszy (60px?)
+
+w ustawieniach:
+w sekcji pola chwały musimy mieć checkboxy dla ataku i negocjacji wyświetlaj przyciski - jeśli odznaczona to przyciski mają być niewidoczne. podobnie z budynkami i przyciskami zbiorów. domyślnie odznaczone - są to funkcje które mogą powodować bana dlatego w ustawieniach gdzieś powinien być mały tekst informujący o ryzyku bana
+
+w changelogu trzeba dodać wpisy
++wersja 0.6.00
+
+Nie zaczynaj jesczze pracy. podziel task to na etapy i będziemy robić po kolei, czekaj na polecenie wykonania
+
+
+Lista z 17 października 2026
+# Osobny program - nie wdrażać, ale zaproponować plan działania
+Symulator osady najazdów do testów.
+chcę mieć tam wizualizację czyli prostokątny obszar złożony z kwadracików 7*4 poziomo i 6x4 pionowo
+na początku odblokowany jest prostokąt 3x4 (*4, bo rozszerzenie jest 4x4), zablokowane niech będą lekko szare
+Ratusz 7x6 jest domyślnie postawiony w rogu odblokowanego pola
+po prawej lista budynków i rozszerzenia do wyboru.
+chcę widzieć wzszystkie statystyki i historię kupna sprzedaży budynku i chcę mieć przycisk cofnij, bo będziemy testować zbiory w różnych wariantach ale chcę policzyć wydatki i ile jest zasobów
+muszę mieć wgląd na następny zbiór po żonglowaniu.
+
+dobrze gdybym mógł wczytać zbiór z pliku json i na tym pracować. na polu osady chcę móc układać budynki. w symulatorze chcę mieć możliwość analizy i znajdowania najlepszego żonglowania i planu na zbiory
+
+napiszemy to w pythonie
+
+
+# Wiadomości
+w socket są przekazywane wiadomości, chcę aby wiadomości, z perłą architektury pokazywały powiuadomienie (podobnie jak z otawrtymi sektorami)
+w powiadomieniu gozina nazwa perły i czatu, niech samo nie znika - dopiero po zamknięciu
+
+
+
+
+
+
 # Oczekujące zmiany
 
 Lista z 6 października 2026. Wdrożenie dopiero na wyraźne polecenie użytkownika.

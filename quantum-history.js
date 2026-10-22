@@ -81,6 +81,7 @@
   }
   return {observe,ready:()=>queue,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
    export(){return JSON.stringify({exportedAt:new Date(now()).toISOString(),...copy(doc)},null,2);},
+   get lastCycle(){return doc?.events.reduce((max,e)=>e.kind==='collection'&&e.cycle>max?e.cycle:max,0)||null;},
    get undoLabel(){return doc?.undo?.at(-1)?.label||'';},
    get undoCount(){return doc?.undo?.length||0;},
    undo(){return enqueue(async()=>{
@@ -365,7 +366,7 @@
    // Pasek górny z tytułem i przyciskami
    const topBar=document.createElement('div');topBar.style.cssText='flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;border-bottom:1px solid #345058';
    framing.append(topBar);
-   const title=document.createElement('span');title.textContent='Kadrowanie zrzutu';title.style.cssText='font-weight:bold;font-size:14px;color:#f1d69a';topBar.append(title);
+   const title=document.createElement('span');const cycle=history.lastCycle;title.textContent='Najazdy kwantowe'+(cycle!=null?' · Zbiór #'+cycle:'');title.style.cssText='font-weight:bold;font-size:14px;color:#f1d69a';topBar.append(title);
    const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;align-items:center';topBar.append(btnRow);
    const captureBtn=document.createElement('button');captureBtn.textContent='📷 Wykonaj zrzut';captureBtn.style.cssText='background:#2e7d32;border:0;color:#fff;font-size:13px;cursor:pointer;padding:5px 12px;pointer-events:all';btnRow.append(captureBtn);
    const cancelBtn=document.createElement('button');cancelBtn.textContent='✕ Anuluj';cancelBtn.style.cssText='background:transparent;border:1px solid #56727b;color:#e7eeee;font-size:13px;cursor:pointer;padding:5px 10px;pointer-events:all';btnRow.append(cancelBtn);

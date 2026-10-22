@@ -204,7 +204,7 @@
   }
   return runs.map(run=>({...run,note:run.notes.join(' · ')}));
  }
- function mount({root:host,button,history,getWidth=()=>350,getSnapshot=()=>null}){
+ function mount({root:host,button,history,getWidth=()=>350,getSnapshot=()=>null,getSettings=()=>({})}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');dialog.className='qh-window';
   dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483646;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:0;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:hidden;pointer-events:auto;font:11px/1.35 system-ui';
@@ -243,7 +243,7 @@
   const status=el('p',content),list=el('div',content);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
-  function snapshot(parent,snap,{expanded=false}={}){
+  function snapshot(parent,snap,{expanded=false,showActions=false,actions=[]}={}){
    if(!snap?.summary)return;
    const summary=snap.summary,FoeQuantum=root.FoeQuantum;
    const imgMaxWidth=Math.round(getWidth()||350);
@@ -341,6 +341,24 @@
           addConstructionTotal(tbl2,activeCols.map(col=>col.key),extTotals,buildExtras,'effects');
         }
       }
+      // Sekcja działań — skondensowana, bez edycji
+      if(showActions&&actions.length){
+        const runs=actionRuns(actions);
+        if(runs.length){
+          const hrA=document.createElement('hr');hrA.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';wrap.append(hrA);
+          const secA=document.createElement('details');secA.open=true;secA.style.cssText='';wrap.append(secA);
+          const secALabel=document.createElement('summary');secALabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px;text-align:left';secALabel.textContent='Działania ('+runs.length+')';secA.append(secALabel);
+          const kindLabel={added:'Stawiam:',removed:'Sprzedaję:',collection:'Zbieram:',changed:'Zmieniam:',connection:'Połączenie:'};
+          for(const run of [...runs].reverse()){
+            const row=document.createElement('div');row.style.cssText='display:flex;align-items:baseline;gap:6px;padding:2px 0;font-size:11px;border-bottom:1px solid #1e3540;flex-wrap:wrap';secA.append(row);
+            const time=document.createElement('span');time.textContent=new Date(run.at).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});time.style.cssText='color:#8a9fa5;flex-shrink:0';row.append(time);
+            const desc=document.createElement('span');desc.style.cssText='flex:1;min-width:0';row.append(desc);
+            const lbl=kindLabel[run.kind];if(lbl){const s=document.createElement('span');s.textContent=lbl+' ';s.style.cssText='color:#a99885';desc.append(s);}
+            run.buildings.forEach((b,i)=>{if(i)desc.append(document.createTextNode(' · '));const strong=document.createElement('strong');strong.textContent=(b.building?b.count+'× ':'')+b.name;desc.append(strong);});
+            if(run.note){const note=document.createElement('span');note.textContent=' '+run.note;note.style.cssText='color:#6a7a7e;font-style:italic';row.append(note);}
+          }
+        }
+      }
   }
   let views=[];
   async function captureScreenshot(){
@@ -372,7 +390,9 @@
    // Treść — zestawienie kwantowe
    const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent';framing.append(body);
    const snap=getSnapshot();
-   if(snap){snapshot(body,snap,{expanded:true});}
+   const settings=getSettings();
+   const lastActions=history.lastGroup?.actions||[];
+   if(snap){snapshot(body,snap,{expanded:true,showActions:!!settings.showActions,actions:lastActions});}
    else{const p=document.createElement('p');p.textContent='Brak danych osady — otwórz osadę w grze.';p.style.color='#90a5ad';body.append(p);}
    // Pasek dolny z przyciskami i info — ukrywany podczas zrzutu
    const bottomBar=document.createElement('div');bottomBar.style.cssText='flex-shrink:0;border-top:1px solid #345058';framing.append(bottomBar);

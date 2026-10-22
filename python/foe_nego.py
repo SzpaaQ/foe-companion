@@ -1401,11 +1401,9 @@ class NegotiationApp(tk.Tk):
             return
 
         if self.negotiation_stage == "ZAKONCZONA":
-            self._console_log(
-                "AUTO: negocjacja jest zakończona. "
-                "Kliknij NOWA NEGOCJACJA."
-            )
-            return
+            self._console_log("AUTO: rozpoczynam nową negocjację.")
+            self.new_game()
+            # new_game resetuje stage na NOWA — kontynuujemy poniżej
 
         self.full_auto_running = True
         self.full_auto_result_stable_count = 0
@@ -2942,11 +2940,9 @@ class NegotiationApp(tk.Tk):
                     activebackground="#b71c1c",
                 )
             else:
-                auto_state = (
-                    "disabled"
-                    if stage == "ZAKONCZONA"
-                    else "normal"
-                )
+                # Przy ZAKONCZONA przycisk pozostaje aktywny —
+                # kliknięcie AUTO automatycznie rozpocznie nową negocjację.
+                auto_state = "normal"
                 self.full_auto_button.configure(
                     text="AUTO",
                     state=auto_state,

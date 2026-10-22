@@ -35,35 +35,7 @@ Obsługiwane mapy: `waterfall_archipelago` i `volcano_archipelago`. Własna gild
 - Status i komunikaty mają stałą wysokość. Dłuższy komunikat jest dostępny po najechaniu myszką.
 - W ustawieniach można skonfigurować alert dźwiękowy przed otwarciem sektora.
 
-### Walki
-
-`⚔️` uruchamia ręczną szybką walkę, `▶` autoatak, a `⏹` zatrzymuje kolejne akcje. Wysłane żądanie jest kończone. Ręczna walka pomija ustawienie „Pozostaw walk".
-
-Każda nowa walka: pobranie armii → wymiana jednostek → potwierdzenie składu → szybka walka. Między falami tej samej walki nie ma wymiany jednostek. Po zakończeniu pobierany jest aktualny stan mapy.
-
-Autoatak korzysta z zapasu walk (domyślnie 3) i zakresu przerwy (domyślnie 0,3–0,4 s). Zatrzymuje się po trzech kolejnych porażkach lub błędzie. Gdy mapa nie zawiera jeszcze rekordu podboju, obecna implementacja dopuszcza pierwszą walkę bez sprawdzenia zapasu. Inni gracze mogą zmienić progres już po odczycie.
-
-Błąd `invalid wave` zatrzymuje autoatak, ale pozwala ponowić ręczną próbę. Inny niepotwierdzony wynik może wymagać sprawdzenia stanu i odświeżenia gry. Automatyzacja nie wznawia się po przeładowaniu strony.
-
-### Negocjacje
-
-`🤝` rozpoczyna pojedynczą negocjację; przycisk automatyzacji powtarza negocjacje w wybranym sektorze. Status nad sektorami pokazuje start, turę i wynik. Historia tur znajduje się pod rozpiską. Pusta konsola jest przezroczysta i nie ma tekstu zastępczego. Przerwany start nie pozostawia komunikatu „Uruchamiam negocjację".
-
-Po wykorzystaniu tur przegrana negocjacja jest poddawana. Automatyzacja może rozpocząć następną po ponownym sprawdzeniu progresu i zapasu. Uwzględnia dwa punkty progresu za negocjację; brak potwierdzonego limitu zatrzymuje dalsze akcje.
-
-Przy błędzie żądania rozszerzenie sprawdza trwającą negocjację Pól Chwały, poddaje ją i zatrzymuje automatyzację. Dotyczy to również braku towarów, choć ogólne `Error` nie zawsze pozwala ustalić przyczynę. Solver ma ograniczony koszt obliczeń i nie gwarantuje wygranej. Brak zgodnego rozwiązania kończy się poddaniem i zatrzymaniem.
-
----
-
-## Negocjacje poza Polami Chwały
-
-Po otwarciu standardowej negocjacji w grze pojawia się zakładka **🤝 Nego**. Obsługuje negocjacje misji (`quest`) oraz inne konteksty korzystające z tego samego protokołu pięciu rozmówców i maksymalnie dziesięciu towarów. Pola Chwały mają osobną obsługę.
-
-Przycisk **Negocjuj** odczytuje bieżący stan i historię, a następnie rozgrywa pozostałe tury. Zakładka pokazuje towary, propozycje, odpowiedzi i wynik. Po wyczerpaniu tur negocjacja jest poddawana; dodatkowe tury nie są kupowane. Podczas pracy solvera nie wykonuj równocześnie tur w oknie gry.
-
-W ustawieniach można wyłączyć automatyczne wysuwanie panelu po wykryciu negocjacji. Samo wykrycie nie uruchamia solvera. Obsługa pozostałych kontekstów wymaga zgodnego formatu odpowiedzi; testy offline nie zastępują weryfikacji w grze.
-
-Alerty Pól Chwały mają wybór pięciu zapamiętywanych sygnałów: trzy piknięcia, ding-dong, pojedynczy sygnał, melodyjka i alarm. Przycisk **Test dźwięku** odtwarza wybrany wariant.
+> ⚠️ **Uwaga:** Przyciski automatycznych walk i negocjacji są dostępne w ustawieniach, ale ich używanie **może skutkować banem konta** w Forge of Empires. Używasz ich na własną odpowiedzialność.
 
 ---
 
@@ -128,8 +100,8 @@ Każda zakładka ma własne notatki. Kalkulator przechowuje je osobno dla każde
 
 - **Perły** — przelicznik i bonus Arki, kopiowanie kwoty klawiszami 1–5.
 - **Wysuwaj panel** — automatyczne otwieranie panelu przy perłach, Polach Chwały, osadzie kwantowej i negocjacjach.
-- **Pola chwały** — przyciski ataku/negocjacji, alert dźwiękowy.
-- **Budynki** — przyciski zbiorów.
+- **Pola chwały** — alert dźwiękowy przed otwarciem sektora (przyciski walk/negocjacji dostępne w ustawieniach — patrz ostrzeżenie powyżej).
+- **Budynki** — przyciski zbiorów (patrz ostrzeżenie powyżej).
 - **Najazdy kwantowe** — dziennik zbiorów, panel na zrzucie, działania na zrzucie.
 
 > Korzystanie z przycisków ataku, negocjacji i zbiorów może wiązać się z ryzykiem bana konta w grze.

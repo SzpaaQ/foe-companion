@@ -430,9 +430,11 @@
        const column=el('div',columns);
        const header=el('div',column);header.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px';
        el('h3',header,label).style.cssText='margin:0;text-align:center';
-       // Przycisk aparatu
+       // Przycisk aparatu — tylko dla ostatniego zbioru danego run
+       const isLatest=!grouped.slice(grouped.indexOf(event)+1).some(g=>g.run===event.run);
        const camBtn=el('button',header,'📷');camBtn.title='Zrób zrzut ekranu dla "'+label+'" (nadpisuje istniejący)';camBtn.setAttribute('aria-label','Zrzut ekranu: '+label);
        camBtn.style.cssText='background:transparent;border:0;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1';
+       if(!isLatest)camBtn.hidden=true;
        camBtn.onclick=async()=>{
         camBtn.disabled=true;camBtn.textContent='⏳';
         // Ukryj panel i modal na czas zrzutu

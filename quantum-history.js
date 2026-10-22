@@ -247,7 +247,7 @@
    if(!snap?.summary)return;
    const summary=snap.summary,FoeQuantum=root.FoeQuantum;
    const imgMaxWidth=Math.round(getWidth()||350);
-   const wrap=el('div',parent);wrap.style.cssText='width:'+(imgMaxWidth+50)+'px;max-width:100%;box-sizing:border-box;margin:0;padding-right:8px;color:#e7eeee;line-height:1.4';
+   const wrap=el('div',parent);wrap.style.cssText='width:'+(imgMaxWidth+50)+'px;max-width:100%;box-sizing:border-box;margin:0 auto;padding-right:8px;color:#e7eeee;line-height:1.4';
    const stockBox=el('div',wrap),groups=el('div',wrap);
    const $=id=>id==='quantum-summary'?stockBox:groups;
    const text=(parent,value,tag='p')=>el(tag,parent,value);
@@ -471,8 +471,8 @@
        history.saveScreenshot(targetId,'Przed',prevPo);
       }
       for(const [label,snap] of [['Przed',event.before],['Po',event.after]]){
-       const column=el('div',columns);
-       const header=el('div',column);header.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px';
+       const column=el('div',columns);column.style.cssText='display:flex;flex-direction:column;align-items:center';
+       const header=el('div',column);header.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;width:100%';
        el('h3',header,label).style.cssText='margin:0;text-align:center';
        // Przycisk aparatu — tylko dla ostatniego zbioru danego run
        const isLatest=!grouped.slice(grouped.indexOf(event)+1).some(g=>g.run===event.run);
@@ -494,9 +494,9 @@
       }
       function renderThumbnail(column,label,dataUrl){
        column.querySelector('.qh-thumb')?.remove();
-       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='position:relative;margin:6px 0 0;width:100%';
+       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='position:relative;margin:6px 0 15px;max-width:100%';
        const img=el('img',wrap);img.src=dataUrl;img.alt='Zrzut ekranu: '+label;
-       img.style.cssText='width:100%;display:block;cursor:zoom-in;object-fit:cover;border:1px solid #345058';
+       img.style.cssText='max-width:100%;display:block;cursor:zoom-in;object-fit:cover;border:1px solid #345058';
        img.title='Kliknij, aby powiększyć';img.onclick=()=>showLightbox(dataUrl);
        const dlBtn=el('button',wrap,'⬇');dlBtn.setAttribute('aria-label','Pobierz zrzut: '+label);
        dlBtn.style.cssText='position:absolute;top:4px;right:4px;background:#0006;border:0;color:#fff;font-size:14px;cursor:pointer;padding:2px 5px;line-height:1;opacity:0.75';

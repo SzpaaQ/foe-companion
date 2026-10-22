@@ -141,6 +141,11 @@
     for(let n=i;n<list.length;n++)list[n].cycle+=delta;
     const anchors=new Map();for(const e of list){if(!anchors.has(e.cycle))anchors.set(e.cycle,e);const anchor=anchors.get(e.cycle);e.cycleDue=anchor.due;e.cycleAt=anchor.at;}
     event.manuallyGrouped=true;await save();
+   });},
+   saveScreenshot(id,label,dataUrl){return enqueue(async()=>{
+    const event=doc?.events.find(e=>e.id===id);if(!event)return;
+    event.screenshots||={};event.screenshots[label]=dataUrl;
+    await save();
    });}
   };
  }
@@ -335,6 +340,20 @@
       }
   }
   let views=[];
+  async function captureScreenshot(){
+   return new Promise(resolve=>{
+    if(!root.chrome?.runtime?.sendMessage){resolve({ok:false,error:'Brak dostępu do runtime'});return;}
+    root.chrome.runtime.sendMessage({type:'captureTab'},(response)=>{
+     if(root.chrome.runtime.lastError){resolve({ok:false,error:root.chrome.runtime.lastError.message});return;}
+     resolve(response||{ok:false,error:'Brak odpowiedzi'});
+    });
+   });
+  }
+  function showLightbox(dataUrl){
+   const overlay=el('div',host);overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#000a;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+   const img=el('img',overlay);img.src=dataUrl;img.style.cssText='max-width:95vw;max-height:92vh;object-fit:contain;border:2px solid #56727b;border-radius:4px;box-shadow:0 8px 40px #000c';
+   const close=()=>overlay.remove();overlay.onclick=close;overlay.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key===' ')close();});overlay.tabIndex=0;overlay.focus();
+  }
   const childDetails=node=>Array.from(node.children||[]).flatMap(child=>child.tagName==='DETAILS'?[child]:childDetails(child));
   const remember=node=>({open:node.open,children:childDetails(node).map(remember)});
   function restore(node,state){
@@ -382,7 +401,39 @@
      }
      const comparison=el('details',details);el('summary',comparison,'Przed i Po');
      comparison.historyBuild=()=>{if(!comparison.open||comparison.dataset.built)return;comparison.dataset.built='1';const columns=el('div',comparison);columns.className='qh-compare';
-      for(const [label,snap] of [['Przed',event.before],['Po',event.after]]){const column=el('div',columns);el('h3',column,label).style.textAlign='center';if(snap)snapshot(column,snap);else el('p',column,'Brak zapisanego stanu.');}
+      for(const [label,snap] of [['Przed',event.before],['Po',event.after]]){
+       const column=el('div',columns);
+       const header=el('div',column);header.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px';
+       el('h3',header,label).style.cssText='margin:0;text-align:center';
+       // Przycisk aparatu
+       const camBtn=el('button',header,'📷');camBtn.title='Zrób zrzut ekranu dla "'+label+'"';camBtn.setAttribute('aria-label','Zrzut ekranu: '+label);
+       camBtn.style.cssText='background:transparent;border:0;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1';
+       camBtn.onclick=async()=>{
+        camBtn.disabled=true;camBtn.textContent='⏳';
+        const result=await captureScreenshot();
+        if(result.ok){
+         // Zapisz do pierwszego eventu z grupy (lub jedynego)
+         const targetId=event.actions[0]?.id||event.id;
+         await history.saveScreenshot(targetId,label,result.dataUrl);
+         renderThumbnail(column,label,result.dataUrl);
+        }else{
+         camBtn.textContent='📷';camBtn.disabled=false;
+         const err=el('span',header,'⚠ '+result.error);err.style.cssText='font-size:10px;color:#e57373';setTimeout(()=>err.remove(),4000);
+        }
+       };
+       // Miniaturka jeśli już zapisana
+       const existing=event.actions.map(a=>a.screenshots?.[label]).find(Boolean);
+       if(existing)renderThumbnail(column,label,existing);
+       if(snap)snapshot(column,snap);else el('p',column,'Brak zapisanego stanu.');
+      }
+      function renderThumbnail(column,label,dataUrl){
+       // Usuń poprzednią miniaturkę jeśli jest
+       column.querySelector('.qh-thumb')?.remove();
+       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='margin:6px auto 0;text-align:center';
+       const img=el('img',wrap);img.src=dataUrl;img.alt='Zrzut ekranu: '+label;
+       img.style.cssText='max-width:100%;max-height:120px;border:1px solid #345058;border-radius:3px;cursor:zoom-in;object-fit:cover';
+       img.title='Kliknij, aby powiększyć';img.onclick=()=>showLightbox(dataUrl);
+      }
      };comparison.addEventListener('toggle',comparison.historyBuild);
     };
     details.addEventListener('toggle',details.historyBuild);

@@ -16,6 +16,12 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
       .then(r=>r.ok?r.json():null).then(reply).catch(()=>reply(null));
     return true;
   }
+  if(message?.type==='captureTab'){
+    chrome.tabs.captureVisibleTab(sender.tab.windowId,{format:'jpeg',quality:70})
+      .then(dataUrl=>reply({ok:true,dataUrl}))
+      .catch(err=>reply({ok:false,error:String(err)}));
+    return true;
+  }
   if(message?.type==='DEV_RELOAD'){
     if(reloading){reply({ok:true});return;}
     reloading=true;

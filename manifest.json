@@ -4,7 +4,7 @@
   "version": "0.6.1",
   "version_name": "0.6.01",
   "background": {"service_worker":"background.js"},
-  "permissions": ["storage"],
+  "permissions": ["storage","tabs"],
   "host_permissions": ["http://127.0.0.1/*","https://*.forgeofempires.com/*"],
   "description": "Lokalny panel danych Forge of Empires i rozpiska Pól Chwały.",
   "minimum_chrome_version": "111",

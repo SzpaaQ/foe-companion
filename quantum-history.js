@@ -479,10 +479,13 @@
      const collEv=event.actions.find(e=>e.kind==='collection');
      const cf=collEv&&cumFights.get(collEv.id);
      if(cf!=null){
-      const fightsBtn=smallButton(heading,'⚔️ '+Math.round(cf.base).toLocaleString('pl-PL'),()=>{});
-      fightsBtn.style.cssText='float:right;cursor:default;background:transparent;border:1px solid #345058;color:#f1d69a;font-size:11px;padding:1px 5px;margin:0 2px 0 0';
+      const fightsBtn=document.createElement('button');
+      fightsBtn.style.cssText='float:right;cursor:default;background:transparent;border:1px solid #345058;color:#f1d69a;font-size:11px;padding:1px 5px;margin:0 2px 0 0;display:inline-flex;align-items:center;gap:3px';
       fightsBtn.title='Walki wykonane od początku najazdu do tego zbioru';
       fightsBtn.onclick=e=>{e.preventDefault();e.stopPropagation();};
+      const icon=document.createElement('span');icon.textContent='⚔️';fightsBtn.append(icon);
+      const num=document.createElement('span');num.textContent=Math.round(cf.base).toLocaleString('pl-PL');num.style.cssText='display:inline-block;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums';fightsBtn.append(num);
+      heading.append(fightsBtn);
      }
     }
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');

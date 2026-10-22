@@ -82,6 +82,7 @@
   return {observe,ready:()=>queue,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
    export(){return JSON.stringify({exportedAt:new Date(now()).toISOString(),...copy(doc)},null,2);},
    get lastCycle(){return doc?.events.reduce((max,e)=>e.kind==='collection'&&e.cycle>max?e.cycle:max,0)||null;},
+   get lastGroup(){const evs=doc?.events;if(!evs?.length)return null;const groups=groupEvents(evs).filter(g=>actionRows(g.actions).length);return groups.at(-1)||null;},
    get undoLabel(){return doc?.undo?.at(-1)?.label||'';},
    get undoCount(){return doc?.undo?.length||0;},
    undo(){return enqueue(async()=>{
@@ -363,30 +364,30 @@
    // Panel kadrowania — identyczny styl co aside w panel.js
    const framing=document.createElement('div');framing.style.cssText='position:fixed;top:0;right:0;width:min(400px,96vw);height:100vh;background:#102126;color:#e7eeee;box-shadow:-8px 0 30px #0008;z-index:2147483646;pointer-events:all;display:flex;flex-direction:column;overflow:hidden;font:14px/1.5 system-ui';
    document.body.append(framing);
-   // Pasek górny z tytułem i przyciskami
-   const topBar=document.createElement('div');topBar.style.cssText='flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;border-bottom:1px solid #345058';
-   framing.append(topBar);
-   const title=document.createElement('span');const cycle=history.lastCycle;title.textContent='Najazdy kwantowe'+(cycle!=null?' · Zbiór #'+cycle:'');title.style.cssText='font-weight:bold;font-size:14px;color:#f1d69a';topBar.append(title);
-   const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;align-items:center';topBar.append(btnRow);
-   const captureBtn=document.createElement('button');captureBtn.textContent='📷 Wykonaj zrzut';captureBtn.style.cssText='background:#2e7d32;border:0;color:#fff;font-size:13px;cursor:pointer;padding:5px 12px;pointer-events:all';btnRow.append(captureBtn);
-   const cancelBtn=document.createElement('button');cancelBtn.textContent='✕ Anuluj';cancelBtn.style.cssText='background:transparent;border:1px solid #56727b;color:#e7eeee;font-size:13px;cursor:pointer;padding:5px 10px;pointer-events:all';btnRow.append(cancelBtn);
+   // Tytuł — widoczny na zrzucie
+   const titleBar=document.createElement('div');titleBar.style.cssText='flex-shrink:0;padding:8px 16px 6px;border-bottom:1px solid #345058';
+   framing.append(titleBar);
+   const lastGroup=history.lastGroup;
+   const titleEl=document.createElement('span');titleEl.textContent=lastGroup?groupLabel(lastGroup):'Najazdy kwantowe';titleEl.style.cssText='font-weight:bold;font-size:11px;color:#f1d69a';titleBar.append(titleEl);
    // Treść — zestawienie kwantowe
    const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent';framing.append(body);
    const snap=getSnapshot();
    if(snap){snapshot(body,snap,{expanded:true});}
    else{const p=document.createElement('p');p.textContent='Brak danych osady — otwórz osadę w grze.';p.style.color='#90a5ad';body.append(p);}
-   // Info
-   const info=document.createElement('p');info.textContent='Ustaw widok osady, a następnie kliknij "Wykonaj zrzut".';info.style.cssText='flex-shrink:0;margin:0;padding:8px 16px;font-size:11px;color:#8a9fa5;border-top:1px solid #345058';framing.append(info);
+   // Pasek dolny z przyciskami i info — ukrywany podczas zrzutu
+   const bottomBar=document.createElement('div');bottomBar.style.cssText='flex-shrink:0;border-top:1px solid #345058';framing.append(bottomBar);
+   const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;align-items:center;padding:8px 16px 6px';bottomBar.append(btnRow);
+   const captureBtn=document.createElement('button');captureBtn.textContent='📷 Wykonaj zrzut';captureBtn.style.cssText='background:#2e7d32;border:0;color:#fff;font-size:13px;cursor:pointer;padding:5px 12px;pointer-events:all';btnRow.append(captureBtn);
+   const cancelBtn=document.createElement('button');cancelBtn.textContent='✕ Anuluj';cancelBtn.style.cssText='background:transparent;border:1px solid #56727b;color:#e7eeee;font-size:13px;cursor:pointer;padding:5px 10px;pointer-events:all';btnRow.append(cancelBtn);
+   const info=document.createElement('p');info.textContent='Ustaw widok osady, a następnie kliknij "Wykonaj zrzut".';info.style.cssText='margin:0;padding:0 16px 8px;font-size:11px;color:#8a9fa5';bottomBar.append(info);
    const close=()=>{framing.remove();if(panelHost)panelHost.style.visibility=prevPanel;dialog.style.visibility=prevDialog;};
    cancelBtn.onclick=close;
    captureBtn.onclick=async()=>{
     captureBtn.disabled=true;captureBtn.textContent='⏳';
-    topBar.style.visibility='hidden';
-    info.style.visibility='hidden';
+    bottomBar.style.visibility='hidden';
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     const result=await captureScreenshot();
-    topBar.style.visibility='';
-    info.style.visibility='';
+    bottomBar.style.visibility='';
     framing.remove();
     if(panelHost)panelHost.style.visibility=prevPanel;
     dialog.style.visibility=prevDialog;
@@ -421,6 +422,7 @@
    if(node.open)node.historyBuild?.();
    childDetails(node).forEach((child,i)=>restore(child,state.children[i]));
   }
+  const groupLabel=event=>(event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Żonglowanie')+' · '+new Date(event.at).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   function paint(){
    if(!dialog.open)return;
    undo.disabled=!history.undoCount;undo.title=history.undoLabel?'Cofnij: '+history.undoLabel+' ('+history.undoCount+'/3)':'Brak operacji do cofnięcia';
@@ -435,8 +437,7 @@
    for(const event of grouped.slice(-limit).reverse()){
     const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:5px 7px;margin:4px 0;border-radius:4px';
     views.push({node:details,ids:event.actions.map(e=>e.id)});
-    const title=event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Żonglowanie';
-    const heading=el('summary',details,title+' · '+new Date(event.at).toLocaleString('pl-PL'));
+    const heading=el('summary',details,groupLabel(event));
     const remove=smallButton(heading,'×',()=>history.remove(event.actions.map(e=>e.id)));remove.title='Usuń cały wpis';remove.setAttribute('aria-label','Usuń cały wpis');remove.style.float='right';
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}

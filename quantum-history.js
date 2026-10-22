@@ -211,7 +211,7 @@
   const undo=smallButton(top,'↶ Cofnij',()=>history.undo());
   const download=smallButton(top,'Eksport JSON',()=>{}),close=smallButton(top,'×',()=>dialog.close());
   download.style.marginLeft='auto';close.setAttribute('aria-label','Zamknij historię');close.title='Zamknij historię';close.style.cssText='border:0;background:transparent;color:inherit;font-size:24px;padding:0 5px;cursor:pointer';
-  top.title='Przeciągnij pasek, aby przenieść okno (do 80% szerokości poza prawy brzeg). Szerokość zmienisz za prawy dolny róg.';
+
   let position=null,drag=null;
   function place(x,y){
    const rect=dialog.getBoundingClientRect();

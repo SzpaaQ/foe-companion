@@ -491,7 +491,7 @@
        history.saveScreenshot(targetId,'Przed',prevPo);
       }
       for(const [label,snap] of [['Przed',event.before],['Po',event.after]]){
-       const column=el('div',columns);column.style.cssText='display:flex;flex-direction:column;align-items:center';
+       const column=el('div',columns);column.style.cssText='display:flex;flex-direction:column;align-items:flex-start';
        const header=el('div',column);header.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;width:100%';
        el('h3',header,label).style.cssText='margin:0;text-align:center';
        // Przycisk aparatu — tylko dla ostatniego zbioru danego run
@@ -514,7 +514,7 @@
       }
       function renderThumbnail(column,label,dataUrl){
        column.querySelector('.qh-thumb')?.remove();
-       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='position:relative;margin:6px 0 15px;max-width:100%';
+       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='position:relative;margin:6px auto 15px;max-width:100%';
        const img=el('img',wrap);img.src=dataUrl;img.alt='Zrzut ekranu: '+label;
        img.style.cssText='max-width:100%;display:block;cursor:zoom-in;object-fit:cover;border:1px solid #345058';
        img.title='Kliknij, aby powiększyć';img.onclick=()=>showLightbox(dataUrl);

@@ -252,7 +252,7 @@
    const $=id=>id==='quantum-summary'?stockBox:groups;
    const text=(parent,value,tag='p')=>el(tag,parent,value);
       const box=$('quantum-summary');box.style.cssText='font-size:13px;line-height:1.4;color:#f0e6d2;margin-bottom:12px';
-      const stocks=text(box,'','div');stocks.style.cssText='display:flex;flex-wrap:wrap;gap:10px;font-weight:bold;border-bottom:1px solid #4a3525;padding-bottom:6px;margin-bottom:8px';
+      const stocks=text(box,'','div');stocks.style.cssText='display:flex;flex-wrap:wrap;gap:10px;font-weight:bold;border-bottom:1px solid #4a3525;padding-bottom:6px;margin-bottom:8px;justify-content:center';
       const num=n=>Number.isFinite(n)?n.toLocaleString('pl-PL'):'—';
       for(const [key,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩'],['guild_raids_rope','➰']]){
         const node=text(stocks,icon+' '+num(summary.wallet[key]),'span');

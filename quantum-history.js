@@ -479,9 +479,9 @@
      const collEv=event.actions.find(e=>e.kind==='collection');
      const cf=collEv&&cumFights.get(collEv.id);
      if(cf!=null){
-      const fightsBtn=smallButton(heading,'⚔️ '+Math.round(cf.total).toLocaleString('pl-PL'),()=>{});
+      const fightsBtn=smallButton(heading,'⚔️ '+Math.round(cf.base).toLocaleString('pl-PL'),()=>{});
       fightsBtn.style.cssText='float:right;cursor:default;background:transparent;border:1px solid #345058;color:#f1d69a;font-size:11px;padding:1px 5px;margin:0 2px 0 0';
-      fightsBtn.title='Walki od początku najazdu (łącznie z prognozą do końca)';
+      fightsBtn.title='Walki wykonane od początku najazdu do tego zbioru';
       fightsBtn.onclick=e=>{e.preventDefault();e.stopPropagation();};
      }
     }

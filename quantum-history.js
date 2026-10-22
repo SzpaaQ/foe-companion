@@ -352,19 +352,21 @@
    });
   }
   function showLightbox(dataUrl){
-   const lb=el('dialog',host);lb.style.cssText='padding:0;background:#000a;border:0;max-width:100vw;max-height:100vh;width:100vw;height:100vh;position:relative;display:flex;align-items:center;justify-content:center';
+   const lb=document.createElement('dialog');document.body.append(lb);
+   lb.style.cssText='padding:0;background:#000a;border:0;max-width:100vw;max-height:100vh;width:100vw;height:100vh;position:relative;display:flex;align-items:center;justify-content:center';
    lb.setAttribute('aria-label','Podgląd zrzutu ekranu');
-   const img=el('img',lb);img.src=dataUrl;img.style.cssText='max-width:95vw;max-height:92vh;object-fit:contain;border:2px solid #56727b;border-radius:4px;box-shadow:0 8px 40px #000c;cursor:zoom-out';
-   const toolbar=el('div',lb);toolbar.style.cssText='position:absolute;top:12px;right:16px;display:flex;gap:8px;z-index:10';
-   const dlBtn=el('button',toolbar,'⬇ Pobierz');dlBtn.setAttribute('aria-label','Pobierz zrzut ekranu');dlBtn.style.cssText='background:#1a3a3a;border:1px solid #56727b;color:#fff;font-size:13px;border-radius:4px;cursor:pointer;padding:4px 10px;opacity:0.9';
+   const img=document.createElement('img');img.src=dataUrl;lb.append(img);
+   img.style.cssText='max-width:95vw;max-height:92vh;object-fit:contain;border:2px solid #56727b;border-radius:4px;box-shadow:0 8px 40px #000c;cursor:zoom-out';
+   const toolbar=document.createElement('div');toolbar.style.cssText='position:absolute;top:12px;right:16px;display:flex;gap:8px;z-index:10';lb.append(toolbar);
+   const dlBtn=document.createElement('button');dlBtn.textContent='⬇ Pobierz';dlBtn.setAttribute('aria-label','Pobierz zrzut ekranu');dlBtn.style.cssText='background:#1a3a3a;border:1px solid #56727b;color:#fff;font-size:13px;border-radius:4px;cursor:pointer;padding:4px 10px;opacity:0.9';toolbar.append(dlBtn);
    dlBtn.onmouseenter=()=>dlBtn.style.opacity='1';dlBtn.onmouseleave=()=>dlBtn.style.opacity='0.9';
-   const closeBtn=el('button',toolbar,'×');closeBtn.setAttribute('aria-label','Zamknij podgląd');closeBtn.style.cssText='background:transparent;border:0;color:#fff;font-size:32px;line-height:1;cursor:pointer;padding:0 4px;opacity:0.8';
+   const closeBtn=document.createElement('button');closeBtn.textContent='×';closeBtn.setAttribute('aria-label','Zamknij podgląd');closeBtn.style.cssText='background:transparent;border:0;color:#fff;font-size:32px;line-height:1;cursor:pointer;padding:0 4px;opacity:0.8';toolbar.append(closeBtn);
    closeBtn.onmouseenter=()=>closeBtn.style.opacity='1';closeBtn.onmouseleave=()=>closeBtn.style.opacity='0.8';
    const close=()=>{lb.close();lb.remove();document.removeEventListener('keydown',onKey,true);};
    const onKey=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
    document.addEventListener('keydown',onKey,true);
    lb.addEventListener('cancel',e=>e.preventDefault());
-   dlBtn.onclick=e=>{e.stopPropagation();const a=el('a',lb);a.href=dataUrl;a.download='zrzut-osady-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.jpg';a.click();a.remove();};
+   dlBtn.onclick=e=>{e.stopPropagation();const a=document.createElement('a');a.href=dataUrl;a.download='zrzut-osady-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.jpg';document.body.append(a);a.click();a.remove();};
    closeBtn.onclick=e=>{e.stopPropagation();close();};
    img.onclick=close;
    lb.showModal();

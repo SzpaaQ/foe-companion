@@ -388,7 +388,7 @@
    const lastGroup=history.lastGroup;
    const titleEl=document.createElement('span');titleEl.textContent=lastGroup?groupLabel(lastGroup):'Najazdy kwantowe';titleEl.style.cssText='font-weight:bold;font-size:11px;color:#f1d69a';titleBar.append(titleEl);
    // Treść — zestawienie kwantowe
-   const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent';framing.append(body);
+   const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent;text-align:left';framing.append(body);
    const snap=getSnapshot();
    const settings=getSettings();
    const lastActions=history.lastGroup?.actions||[];

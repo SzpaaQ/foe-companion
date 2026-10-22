@@ -343,10 +343,12 @@
   async function captureScreenshot(){
    return new Promise(resolve=>{
     if(!root.chrome?.runtime?.sendMessage){resolve({ok:false,error:'Brak dostępu do runtime'});return;}
-    root.chrome.runtime.sendMessage({type:'captureTab'},(response)=>{
-     if(root.chrome.runtime.lastError){resolve({ok:false,error:root.chrome.runtime.lastError.message});return;}
-     resolve(response||{ok:false,error:'Brak odpowiedzi'});
-    });
+    try{
+     root.chrome.runtime.sendMessage({type:'captureTab'},(response)=>{
+      if(root.chrome.runtime.lastError){resolve({ok:false,error:root.chrome.runtime.lastError.message});return;}
+      resolve(response||{ok:false,error:'Brak odpowiedzi'});
+     });
+    }catch(e){resolve({ok:false,error:e.message});}
    });
   }
   function showLightbox(dataUrl){
@@ -423,11 +425,13 @@
         if(panelHost)panelHost.style.visibility='hidden';
         dialog.style.visibility='hidden';
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-        const result=await captureScreenshot();
-        if(panelHost)panelHost.style.visibility=prevPanel;
-        dialog.style.visibility=prevDialog;
+        let result;
+        try{result=await captureScreenshot();}
+        finally{
+         if(panelHost)panelHost.style.visibility=prevPanel;
+         dialog.style.visibility=prevDialog;
+        }
         if(result.ok){
-         // Zapisz do pierwszego eventu z grupy (lub jedynego)
          const targetId=event.actions[0]?.id||event.id;
          await history.saveScreenshot(targetId,label,result.dataUrl);
          renderThumbnail(column,label,result.dataUrl);

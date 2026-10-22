@@ -284,7 +284,7 @@
         const sec=document.createElement('details');sec.open=expanded;sec.style.cssText='';
         const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
         $('quantum-groups').append(sec);
-        const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
+        const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px;text-align:left';secLabel.textContent='Zestawienie';sec.append(secLabel);
         const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:'+resourceColumns+';gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
         // Nagłówki
         for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText=(h?'text-align:right':'text-align:left')+';font-weight:bold;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
@@ -314,7 +314,7 @@
           const sec2=document.createElement('details');sec2.open=expanded;sec2.style.cssText='';
           const hrP=document.createElement('hr');hrP.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrP);
           $('quantum-groups').append(sec2);
-          const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
+          const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px;text-align:left';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
           const tbl2=document.createElement('div');
           tbl2.style.cssText=`display:grid;grid-template-columns:1fr ${activeCols.map(()=>'auto').join(' ')};gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;`;
           sec2.append(tbl2);

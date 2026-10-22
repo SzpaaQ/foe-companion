@@ -779,7 +779,7 @@ Otwórz mapę Pól Chwały w grze.
       }
       for(const [key,expiry] of Object.entries(popupDismissed))if(expiry<=now)delete popupDismissed[key];
       savePopupDismissed();
-      const lines=[...popupEntries.values()].sort((a,b)=>a.until-b.until).map(entry=>sectorPopupText(entry,now,true));
+      const lines=[...popupEntries.values()].sort((a,b)=>a.until-b.until).slice(0,10).map(entry=>sectorPopupText(entry,now,true));
       const text=lines.join('\n');if($('sector-popup-list').textContent!==text)$('sector-popup-list').textContent=text;
       sectorPopup.hidden=!lines.length;
       // Anchor to the actual handle width, also when the panel is expanded.

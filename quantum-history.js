@@ -454,11 +454,37 @@
    download.disabled=!doc?.events.length;
    if(!doc?.events.length){el('p',list,'Brak historii. Otwórz osadę kwantową w grze.');return;}
    const grouped=groupEvents(doc.events).filter(e=>actionRows(e.actions).length);
+   // Kumulatywne walki per event (od początku runu do tego eventu włącznie)
+   const cumFights=new Map(); // eventId → walki
+   const runState=new Map(); // run → {prevAt, prevAph}
+   for(const e of [...doc.events].filter(ev=>ev.kind==='collection').sort((a,b)=>a.at-b.at)){
+    const prev=runState.get(e.run);
+    const aph=e.before?.summary?.actionsPerHour??e.after?.summary?.actionsPerHour;
+    const prevFights=prev?.cumFights??0;
+    let fights=prevFights;
+    if(prev&&aph!=null){const dtH=(e.at-prev.prevAt)/3600000;fights+=prev.prevAph/3500*dtH;}
+    // Dodaj ogon do końca najazdu jeśli to jest ostatni zbiór z tym endsAt
+    const endsAt=e.after?.summary?.raid?.endsAt??e.before?.summary?.raid?.endsAt;
+    const curAph=e.after?.summary?.actionsPerHour??aph;
+    const tailFights=(endsAt&&curAph)?(()=>{const dtH=(endsAt*1000-e.at)/3600000;return dtH>0&&dtH<14*24?curAph/3500*dtH:0;})():0;
+    cumFights.set(e.id,{base:fights,tail:tailFights,total:fights+tailFights});
+    runState.set(e.run,{prevAt:e.at,prevAph:curAph??aph??0,cumFights:fights});
+   }
    for(const event of grouped.slice(-limit).reverse()){
     const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:5px 7px;margin:4px 0;border-radius:4px';
     views.push({node:details,ids:event.actions.map(e=>e.id)});
     const heading=el('summary',details,groupLabel(event));
     const remove=smallButton(heading,'×',()=>history.remove(event.actions.map(e=>e.id)));remove.title='Usuń cały wpis';remove.setAttribute('aria-label','Usuń cały wpis');remove.style.float='right';
+    if(event.kind==='collection'){
+     const collEv=event.actions.find(e=>e.kind==='collection');
+     const cf=collEv&&cumFights.get(collEv.id);
+     if(cf!=null){
+      const fightsBtn=smallButton(heading,'⚔️ '+Math.round(cf.total).toLocaleString('pl-PL'),()=>{});
+      fightsBtn.style.cssText='float:right;cursor:default;background:transparent;border:1px solid #345058;color:#f1d69a;font-size:11px;padding:1px 5px;margin:0 2px 0 0';
+      fightsBtn.title='Walki od początku najazdu (łącznie z prognozą do końca)';
+      fightsBtn.onclick=e=>{e.preventDefault();e.stopPropagation();};
+     }
+    }
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
     details.historyBuild=()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
@@ -529,41 +555,6 @@
     restore(details,event.actions.map(e=>states.get(e.id)).find(Boolean));
    }
    if(grouped.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
-   // Statystyki walk per najazd
-   const runs=new Map();
-   for(const e of doc.events){
-    if(e.kind!=='collection')continue;
-    if(!runs.has(e.run))runs.set(e.run,{events:[],run:e.run});
-    runs.get(e.run).events.push(e);
-   }
-   if(runs.size){
-    const statsWrap=el('div',list);statsWrap.style.cssText='margin-top:12px;border-top:2px solid #345058;padding-top:8px';
-    el('div',statsWrap,'⚔️ Statystyki walk').style.cssText='font-weight:bold;font-size:12px;color:#8fcfcf;margin-bottom:6px';
-    const tbl=el('div',statsWrap);tbl.style.cssText='display:grid;grid-template-columns:1fr auto auto;gap:2px 12px;font-size:11px;font-variant-numeric:tabular-nums';
-    for(const h of ['Najazd','Zbiory','Walki']){const hd=el('span',tbl,h);hd.style.cssText='font-weight:bold;color:#8a9fa5;border-bottom:1px solid #345058;padding-bottom:2px';}
-    for(const [,r] of [...runs].reverse()){
-     const evs=[...r.events].sort((a,b)=>a.at-b.at);
-     const cycles=new Set(evs.map(e=>e.cycle)).size;
-     // Sumuj walki jako Σ actionsPerHour(i) × Δt(i) / 3500
-     // Δt(i) = czas od poprzedniego zbioru do tego zbioru; dla pierwszego Δt = 0 (nie znamy startu)
-     let fights=0;let hasData=false;
-     for(let i=1;i<evs.length;i++){
-      const aph=(evs[i-1].after?.summary?.actionsPerHour??evs[i-1].before?.summary?.actionsPerHour);
-      if(aph==null)continue;
-      const dtH=(evs[i].at-evs[i-1].at)/3600000;
-      fights+=aph/3500*dtH;hasData=true;
-     }
-     // Dodaj ostatni interwał: od ostatniego zbioru do końca najazdu jeśli znamy endsAt
-     const lastEndsAt=evs.at(-1)?.after?.summary?.raid?.endsAt??evs.at(-1)?.before?.summary?.raid?.endsAt;
-     const lastAph=evs.at(-1)?.after?.summary?.actionsPerHour??evs.at(-1)?.before?.summary?.actionsPerHour;
-     if(lastEndsAt&&lastAph){const dtH=(lastEndsAt*1000-evs.at(-1).at)/3600000;if(dtH>0&&dtH<14*24)fights+=lastAph/3500*dtH;hasData=true;}
-     const runLabel=evs.reduce((label,e)=>{const s=e.after?.summary?.raid?.name||e.before?.summary?.raid?.name;return s||label;},'');
-     const nameEl=el('span',tbl,runLabel||(new Date(evs[0].at).toLocaleDateString('pl-PL')));nameEl.style.cssText='color:#e7eeee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';nameEl.title=runLabel||'';
-     el('span',tbl,String(cycles)).style.cssText='text-align:right;color:#dfd1b8';
-     const fightsEl=el('span',tbl,hasData?Math.round(fights).toLocaleString('pl-PL'):'—');fightsEl.style.cssText='text-align:right;color:#f1d69a;font-weight:bold';
-     if(hasData&&lastAph)fightsEl.title='Suma interwałów między zbiorami'+(lastEndsAt?' + czas do końca najazdu':'');
-    }
-   }
    content.scrollTop=scrollTop;
   }
   button.onclick=async()=>{if(!position)dialog.style.width='min('+Math.max(900,2*(getWidth()||350)+120)+'px,96vw)';if(!dialog.open)dialog.show();const rect=dialog.getBoundingClientRect();place(position?.x??(root.innerWidth-rect.width)/2,position?.y??Math.max(12,root.innerHeight*0.06));status.textContent='Wczytywanie historii…';await history.ready();paint();};

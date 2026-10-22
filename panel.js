@@ -972,7 +972,7 @@ Otwórz mapę Pól Chwały w grze.
     const quantumSection=document.createElement('section');quantumSection.id='quantum';quantumSection.hidden=true;quantumSection.setAttribute('role','tabpanel');
     quantumSection.innerHTML='<h2>Najazdy kwantowe</h2><div id="quantum-summary"></div><div id="quantum-groups"></div><div id="quantum-army"></div><button id="quantum-history" style="margin-top:12px">Historia zbiorów</button>';
     $('settings').before(quantumSection);
-    FoeQuantumHistory.mount({root,button:$('quantum-history'),history:quantumHistory,getWidth:()=>$('quantum-summary').getBoundingClientRect().width});
+    FoeQuantumHistory.mount({root,button:$('quantum-history'),history:quantumHistory,getWidth:()=>$('quantum-summary').getBoundingClientRect().width,getSnapshot:()=>quantumTracker.map?{map:quantumTracker.map,summary:quantumTracker.summary()}:null});
     const title=document.createElement('h3');title.id='pearl-name';$('pearl-status').before(title);
     const totalLabel=document.createElement('label');totalLabel.innerHTML='Total PR <input id="pearl-total" type="number" min="0" step="1" placeholder="Koszt poziomu" style="width:130px;padding:6px">';
     $('pearl-status').before(totalLabel);

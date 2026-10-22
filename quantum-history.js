@@ -202,7 +202,7 @@
   }
   return runs.map(run=>({...run,note:run.notes.join(' · ')}));
  }
- function mount({root:host,button,history,getWidth=()=>350}){
+ function mount({root:host,button,history,getWidth=()=>350,getSnapshot=()=>null}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');dialog.className='qh-window';
   dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483646;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:0;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:hidden;pointer-events:auto;font:11px/1.35 system-ui';
@@ -351,6 +351,44 @@
     }catch(e){resolve({ok:false,error:e.message});}
    });
   }
+  function startFraming(onCapture){
+   // Chowamy główny panel i okno historii
+   const panelHost=host.host;
+   const prevPanel=panelHost?.style.visibility||'';
+   const prevDialog=dialog.style.visibility||'';
+   if(panelHost)panelHost.style.visibility='hidden';
+   dialog.style.visibility='hidden';
+   // Panel kadrowania — identyczny styl co aside w panel.js
+   const framing=document.createElement('div');framing.style.cssText='position:fixed;top:0;right:0;width:min(400px,96vw);height:100vh;background:#102126;color:#e7eeee;box-shadow:-8px 0 30px #0008;z-index:2147483646;pointer-events:all;display:flex;flex-direction:column;overflow:hidden;font:14px/1.5 system-ui';
+   document.body.append(framing);
+   // Pasek górny z tytułem i przyciskami
+   const topBar=document.createElement('div');topBar.style.cssText='flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;border-bottom:1px solid #345058';
+   framing.append(topBar);
+   const title=document.createElement('span');title.textContent='Kadrowanie zrzutu';title.style.cssText='font-weight:bold;font-size:14px;color:#f1d69a';topBar.append(title);
+   const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;align-items:center';topBar.append(btnRow);
+   const captureBtn=document.createElement('button');captureBtn.textContent='📷 Wykonaj zrzut';captureBtn.style.cssText='background:#2e7d32;border:0;color:#fff;font-size:13px;cursor:pointer;padding:5px 12px;pointer-events:all';btnRow.append(captureBtn);
+   const cancelBtn=document.createElement('button');cancelBtn.textContent='✕ Anuluj';cancelBtn.style.cssText='background:transparent;border:1px solid #56727b;color:#e7eeee;font-size:13px;cursor:pointer;padding:5px 10px;pointer-events:all';btnRow.append(cancelBtn);
+   // Treść — zestawienie kwantowe
+   const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent';framing.append(body);
+   const snap=getSnapshot();
+   if(snap){snapshot(body,snap);}
+   else{const p=document.createElement('p');p.textContent='Brak danych osady — otwórz osadę w grze.';p.style.color='#90a5ad';body.append(p);}
+   // Info
+   const info=document.createElement('p');info.textContent='Ustaw widok osady, a następnie kliknij "Wykonaj zrzut".';info.style.cssText='flex-shrink:0;margin:0;padding:8px 16px;font-size:11px;color:#8a9fa5;border-top:1px solid #345058';framing.append(info);
+   const close=()=>{framing.remove();if(panelHost)panelHost.style.visibility=prevPanel;dialog.style.visibility=prevDialog;};
+   cancelBtn.onclick=close;
+   captureBtn.onclick=async()=>{
+    captureBtn.disabled=true;captureBtn.textContent='⏳';
+    framing.style.visibility='hidden';
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const result=await captureScreenshot();
+    framing.remove();
+    if(panelHost)panelHost.style.visibility=prevPanel;
+    dialog.style.visibility=prevDialog;
+    if(result.ok){onCapture(result.dataUrl);}
+    else{const err=document.createElement('div');err.textContent='⚠ '+result.error;err.style.cssText='position:fixed;bottom:20px;right:20px;background:#b71c1c;color:#fff;padding:8px 14px;font-size:13px;z-index:2147483647';document.body.append(err);setTimeout(()=>err.remove(),4000);}
+   };
+  }
   function showLightbox(dataUrl){
    const backdrop=document.createElement('div');backdrop.style.cssText='position:fixed;inset:0;z-index:2147483646;background:transparent;pointer-events:all';document.body.append(backdrop);
    const lb=document.createElement('dialog');lb.style.cssText='padding:0;background:#000a;border:0;max-width:100vw;max-height:100vh;width:100vw;height:100vh;position:relative;display:flex;align-items:center;justify-content:center;pointer-events:all;z-index:2147483647';document.body.append(lb);
@@ -436,28 +474,12 @@
        camBtn.style.cssText='background:transparent;border:0;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1';
        if(!isLatest)camBtn.hidden=true;
        camBtn.onclick=async()=>{
-        camBtn.disabled=true;camBtn.textContent='⏳';
-        // Ukryj panel i modal na czas zrzutu
-        const panelHost=host.host;
-        const prevPanel=panelHost?.style.visibility||'';
-        const prevDialog=dialog.style.visibility||'';
-        if(panelHost)panelHost.style.visibility='hidden';
-        dialog.style.visibility='hidden';
-        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-        let result;
-        try{result=await captureScreenshot();}
-        finally{
-         if(panelHost)panelHost.style.visibility=prevPanel;
-         dialog.style.visibility=prevDialog;
-        }
-        if(result.ok){
-         const targetId=event.actions[0]?.id||event.id;
-         await history.saveScreenshot(targetId,label,result.dataUrl);
-         renderThumbnail(column,label,result.dataUrl);
-        }else{
+        const targetId=event.actions[0]?.id||event.id;
+        startFraming(async dataUrl=>{
+         await history.saveScreenshot(targetId,label,dataUrl);
+         renderThumbnail(column,label,dataUrl);
          camBtn.textContent='📷';camBtn.disabled=false;
-         const err=el('span',header,'⚠ '+result.error);err.style.cssText='font-size:10px;color:#e57373';setTimeout(()=>err.remove(),4000);
-        }
+        });
        };
        // Miniaturka jeśli już zapisana (lub skopiowana z poprzedniego Po)
        const existing=event.actions.map(a=>a.screenshots?.[label]).find(Boolean)||(label==='Przed'?prevPo:null);

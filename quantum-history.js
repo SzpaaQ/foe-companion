@@ -379,7 +379,7 @@
    cancelBtn.onclick=close;
    captureBtn.onclick=async()=>{
     captureBtn.disabled=true;captureBtn.textContent='⏳';
-    framing.style.visibility='hidden';
+    // Panel kadrowania pozostaje widoczny podczas zrzutu
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     const result=await captureScreenshot();
     framing.remove();

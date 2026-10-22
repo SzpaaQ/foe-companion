@@ -244,7 +244,8 @@
   function snapshot(parent,snap,{expanded=false}={}){
    if(!snap?.summary)return;
    const summary=snap.summary,FoeQuantum=root.FoeQuantum;
-   const wrap=el('div',parent);wrap.style.cssText='width:'+Math.round(getWidth()||350)+'px;max-width:100%;box-sizing:border-box;margin:8px auto 0;padding-right:8px;color:#e7eeee;line-height:1.4';
+   const imgMaxWidth=Math.round(getWidth()||350);
+   const wrap=el('div',parent);wrap.style.cssText='width:'+(imgMaxWidth+50)+'px;max-width:100%;box-sizing:border-box;margin:0;padding-right:8px;color:#e7eeee;line-height:1.4';
    const stockBox=el('div',wrap),groups=el('div',wrap);
    const $=id=>id==='quantum-summary'?stockBox:groups;
    const text=(parent,value,tag='p')=>el(tag,parent,value);
@@ -270,7 +271,7 @@
       const constructionStyle=';opacity:0.5';
       const addConstructionTotal=(table,keys,totals,pending,field)=>{
         if(!pending.length)return;
-        const label=text(table,'🚧 Suma z budową','span');label.style.cssText='font-weight:bold;padding:2px 0'+constructionStyle;
+        const label=text(table,'🚧 Suma z budową','span');label.style.cssText='font-weight:bold;padding:2px 0;text-align:left'+constructionStyle;
         label.title='Suma bieżących wierszy i budynków w budowie. Produkcja według bonusów zestawienia; bez przeliczania wpływu nowych budynków na pozostałe.';
         for(const key of keys){const value=(totals[key]||0)+pending.reduce((sum,item)=>sum+(item[field][key]||0)-(field==='effects'?(item.activeEffects?.[key]||0):0),0);const cell=text(table,value?num(value):'—','span');cell.style.cssText='text-align:right;font-weight:bold;padding:2px 0'+constructionStyle;}
       };
@@ -290,7 +291,7 @@
           for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e')+(item.underConstruction?constructionStyle:'');tbl.append(c);}
         }
         // Suma
-        const totalsRow=document.createElement('span');totalsRow.textContent='Suma';totalsRow.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(totalsRow);
+        const totalsRow=document.createElement('span');totalsRow.textContent='Suma';totalsRow.style.cssText='font-weight:bold;padding:2px 0;text-align:left;border-top:1px solid #4a3525';tbl.append(totalsRow);
         for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=summary.totals[k]?summary.totals[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl.append(c);}
         addConstructionTotal(tbl,FoeQuantum.KEYS,summary.totals,buildProduction,'production');
       }
@@ -333,7 +334,7 @@
             }
           }
           // Suma
-          const sumName=document.createElement('span');sumName.textContent='Suma';sumName.style.cssText='font-weight:bold;padding:2px 0;border-top:1px solid #4a3525';tbl2.append(sumName);
+          const sumName=document.createElement('span');sumName.textContent='Suma';sumName.style.cssText='font-weight:bold;padding:2px 0;text-align:left;border-top:1px solid #4a3525';tbl2.append(sumName);
           for(const col of activeCols){const c=document.createElement('span');const v=extTotals[col.key];c.textContent=v?v.toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;font-weight:bold;padding:2px 0;border-top:1px solid #4a3525;color:'+(v<0?'#e57373':'#f0e6d2');tbl2.append(c);}
           addConstructionTotal(tbl2,activeCols.map(col=>col.key),extTotals,buildExtras,'effects');
         }
@@ -379,14 +380,17 @@
    cancelBtn.onclick=close;
    captureBtn.onclick=async()=>{
     captureBtn.disabled=true;captureBtn.textContent='⏳';
-    // Panel kadrowania pozostaje widoczny podczas zrzutu
+    topBar.style.visibility='hidden';
+    info.style.visibility='hidden';
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     const result=await captureScreenshot();
+    topBar.style.visibility='';
+    info.style.visibility='';
     framing.remove();
     if(panelHost)panelHost.style.visibility=prevPanel;
     dialog.style.visibility=prevDialog;
     if(result.ok){onCapture(result.dataUrl);}
-    else{const err=document.createElement('div');err.textContent='⚠ '+result.error;err.style.cssText='position:fixed;bottom:20px;right:20px;background:#b71c1c;color:#fff;padding:8px 14px;font-size:13px;z-index:2147483647';document.body.append(err);setTimeout(()=>err.remove(),4000);}
+    else{captureBtn.disabled=false;captureBtn.textContent='📷 Wykonaj zrzut';const err=document.createElement('div');err.textContent='⚠ '+result.error;err.style.cssText='position:fixed;bottom:20px;right:20px;background:#b71c1c;color:#fff;padding:8px 14px;font-size:13px;z-index:2147483647';document.body.append(err);setTimeout(()=>err.remove(),4000);}
    };
   }
   function showLightbox(dataUrl){

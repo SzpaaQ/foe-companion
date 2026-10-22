@@ -533,8 +533,8 @@
    const runs=new Map();
    for(const e of doc.events){
     if(e.kind!=='collection')continue;
-    if(!runs.has(e.run))runs.set(e.run,{firstActionsPerHour:e.before?.summary?.actionsPerHour??e.after?.summary?.actionsPerHour??null,cycles:new Set(),at:e.at,run:e.run});
-    const r=runs.get(e.run);r.cycles.add(e.cycle);if(e.at<r.at)r.at=e.at;
+    if(!runs.has(e.run))runs.set(e.run,{events:[],run:e.run});
+    runs.get(e.run).events.push(e);
    }
    if(runs.size){
     const statsWrap=el('div',list);statsWrap.style.cssText='margin-top:12px;border-top:2px solid #345058;padding-top:8px';
@@ -542,14 +542,26 @@
     const tbl=el('div',statsWrap);tbl.style.cssText='display:grid;grid-template-columns:1fr auto auto;gap:2px 12px;font-size:11px;font-variant-numeric:tabular-nums';
     for(const h of ['Najazd','Zbiory','Walki']){const hd=el('span',tbl,h);hd.style.cssText='font-weight:bold;color:#8a9fa5;border-bottom:1px solid #345058;padding-bottom:2px';}
     for(const [,r] of [...runs].reverse()){
-     const cycles=r.cycles.size;
-     const aph=r.firstActionsPerHour;
-     const fights=aph!=null?Math.round(aph/3500*cycles):null;
-     const runLabel=doc.events.filter(e=>e.run===r.run&&e.kind==='collection').reduce((label,e)=>{const s=e.after?.summary?.raid?.name||e.before?.summary?.raid?.name;return s||label;},'');
-     const nameEl=el('span',tbl,runLabel||(new Date(r.at).toLocaleDateString('pl-PL')));nameEl.style.cssText='color:#e7eeee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';nameEl.title=runLabel||'';
+     const evs=[...r.events].sort((a,b)=>a.at-b.at);
+     const cycles=new Set(evs.map(e=>e.cycle)).size;
+     // Sumuj walki jako Σ actionsPerHour(i) × Δt(i) / 3500
+     // Δt(i) = czas od poprzedniego zbioru do tego zbioru; dla pierwszego Δt = 0 (nie znamy startu)
+     let fights=0;let hasData=false;
+     for(let i=1;i<evs.length;i++){
+      const aph=(evs[i-1].after?.summary?.actionsPerHour??evs[i-1].before?.summary?.actionsPerHour);
+      if(aph==null)continue;
+      const dtH=(evs[i].at-evs[i-1].at)/3600000;
+      fights+=aph/3500*dtH;hasData=true;
+     }
+     // Dodaj ostatni interwał: od ostatniego zbioru do końca najazdu jeśli znamy endsAt
+     const lastEndsAt=evs.at(-1)?.after?.summary?.raid?.endsAt??evs.at(-1)?.before?.summary?.raid?.endsAt;
+     const lastAph=evs.at(-1)?.after?.summary?.actionsPerHour??evs.at(-1)?.before?.summary?.actionsPerHour;
+     if(lastEndsAt&&lastAph){const dtH=(lastEndsAt*1000-evs.at(-1).at)/3600000;if(dtH>0&&dtH<14*24)fights+=lastAph/3500*dtH;hasData=true;}
+     const runLabel=evs.reduce((label,e)=>{const s=e.after?.summary?.raid?.name||e.before?.summary?.raid?.name;return s||label;},'');
+     const nameEl=el('span',tbl,runLabel||(new Date(evs[0].at).toLocaleDateString('pl-PL')));nameEl.style.cssText='color:#e7eeee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';nameEl.title=runLabel||'';
      el('span',tbl,String(cycles)).style.cssText='text-align:right;color:#dfd1b8';
-     const fightsEl=el('span',tbl,fights!=null?String(fights):'—');fightsEl.style.cssText='text-align:right;color:#f1d69a;font-weight:bold';
-     if(aph!=null)fightsEl.title='Wg '+aph.toLocaleString('pl-PL')+' akcji/h z pierwszego zbioru';
+     const fightsEl=el('span',tbl,hasData?Math.round(fights).toLocaleString('pl-PL'):'—');fightsEl.style.cssText='text-align:right;color:#f1d69a;font-weight:bold';
+     if(hasData&&lastAph)fightsEl.title='Suma interwałów między zbiorami'+(lastEndsAt?' + czas do końca najazdu':'');
     }
    }
    content.scrollTop=scrollTop;

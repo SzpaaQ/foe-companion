@@ -412,12 +412,20 @@
      }
      const comparison=el('details',details);el('summary',comparison,'Przed i Po');
      comparison.historyBuild=()=>{if(!comparison.open||comparison.dataset.built)return;comparison.dataset.built='1';const columns=el('div',comparison);columns.className='qh-compare';
+      // Auto-kopiuj "Po" z poprzedniego zbioru do "Przed" jeśli jeszcze nie ma
+      const prevGroup=grouped.slice(0,grouped.indexOf(event)).reverse().find(g=>g.run===event.run&&g.kind==='collection');
+      const prevPo=prevGroup?.actions.map(a=>a.screenshots?.['Po']).find(Boolean);
+      const hasPrzed=event.actions.some(a=>a.screenshots?.['Przed']);
+      if(prevPo&&!hasPrzed){
+       const targetId=event.actions[0]?.id||event.id;
+       history.saveScreenshot(targetId,'Przed',prevPo);
+      }
       for(const [label,snap] of [['Przed',event.before],['Po',event.after]]){
        const column=el('div',columns);
        const header=el('div',column);header.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px';
        el('h3',header,label).style.cssText='margin:0;text-align:center';
        // Przycisk aparatu
-       const camBtn=el('button',header,'📷');camBtn.title='Zrób zrzut ekranu dla "'+label+'"';camBtn.setAttribute('aria-label','Zrzut ekranu: '+label);
+       const camBtn=el('button',header,'📷');camBtn.title='Zrób zrzut ekranu dla "'+label+'" (nadpisuje istniejący)';camBtn.setAttribute('aria-label','Zrzut ekranu: '+label);
        camBtn.style.cssText='background:transparent;border:0;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1';
        camBtn.onclick=async()=>{
         camBtn.disabled=true;camBtn.textContent='⏳';
@@ -443,8 +451,8 @@
          const err=el('span',header,'⚠ '+result.error);err.style.cssText='font-size:10px;color:#e57373';setTimeout(()=>err.remove(),4000);
         }
        };
-       // Miniaturka jeśli już zapisana
-       const existing=event.actions.map(a=>a.screenshots?.[label]).find(Boolean);
+       // Miniaturka jeśli już zapisana (lub skopiowana z poprzedniego Po)
+       const existing=event.actions.map(a=>a.screenshots?.[label]).find(Boolean)||(label==='Przed'?prevPo:null);
        if(existing)renderThumbnail(column,label,existing);
        if(snap)snapshot(column,snap);else el('p',column,'Brak zapisanego stanu.');
       }

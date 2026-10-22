@@ -20,7 +20,7 @@ test('history opens a non-modal draggable window, renders frozen tables and expo
  vm.runInNewContext(fs.readFileSync(__dirname+'/quantum-history.js','utf8'),ctx);
  ctx.FoeQuantumHistory.mount({root:host,button,history});await button.onclick();const dialog=host.children[0];assert.equal(dialog.open,true);
  const top=dialog.children[0];
- assert.match(dialog.style.cssText,/position:fixed/);assert.match(dialog.style.cssText,/z-index:2147483647/);
+ assert.match(dialog.style.cssText,/position:fixed/);assert.match(dialog.style.cssText,/z-index:2147483646/);
  const pointer=(target,x,y,id=1)=>({target,button:0,pointerId:id,clientX:x,clientY:y,preventDefault(){},stopPropagation(){}});
  top.listeners.pointerdown(pointer(top,270,74));assert.equal(top.capture,1);
  top.listeners.pointermove(pointer(top,370,124));assert.equal(dialog.style.left,'350px');assert.equal(dialog.style.top,'104px');

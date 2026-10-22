@@ -200,7 +200,7 @@
  function mount({root:host,button,history,getWidth=()=>350}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');dialog.className='qh-window';
-  dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483647;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:0;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:hidden;pointer-events:auto;font:11px/1.35 system-ui';
+  dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483646;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:0;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:hidden;pointer-events:auto;font:11px/1.35 system-ui';
   const smallButton=(parent,label,handler)=>{const b=el('button',parent,label);b.style.cssText='font:11px/1.2 system-ui;padding:2px 5px;margin:0 0 0 5px;min-width:0';b.onclick=event=>{event?.preventDefault();event?.stopPropagation();return handler();};return b;};
   const top=el('div',dialog);top.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0;padding:10px 14px;z-index:1;background:#102126;cursor:grab;touch-action:none;user-select:none';el('h2',top,'Historia zbiorów').style.cssText='font-size:14px;margin:4px 0';
   const undo=smallButton(top,'↶ Cofnij',()=>history.undo());
@@ -377,7 +377,7 @@
       const input=el('input',row);input.type='text';input.dataset.historyNote='1';input.onblur=()=>Promise.resolve().then(paint);input.value=action.note;input.placeholder='Dodaj notatkę…';input.maxLength=2000;input.setAttribute('aria-label','Notatka: '+action.buildings.map(b=>b.name).join(', '));
       input.style.cssText='flex:1;min-width:100px;max-width:100%;background:transparent;color:inherit;border:0;outline:none;box-shadow:none;font:inherit;padding:4px;text-align:right';
       input.onchange=()=>history.editRows(action.refs,input.value);
-      const split=smallButton(row,'↳',()=>history.split(action.refs));split.title='Rozdziel od tego działania (to działanie i późniejsze utworzą osobną grupę)';split.setAttribute('aria-label','Rozdziel od tego działania');split.disabled=action.refs[0]?.id===event.actions[0]?.id;
+      const split=smallButton(row,'✂️',()=>history.split(action.refs));split.title='Rozdziel od tego działania (to działanie i późniejsze utworzą osobną grupę)';split.setAttribute('aria-label','Rozdziel od tego działania');split.disabled=action.refs[0]?.id===event.actions[0]?.id;
       const remove=smallButton(row,'×',()=>history.removeRows(action.refs));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
      }
      const comparison=el('details',details);el('summary',comparison,'Przed i Po');

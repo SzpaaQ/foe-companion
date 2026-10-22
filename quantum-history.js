@@ -356,11 +356,11 @@
    const img=el('img',overlay);img.src=dataUrl;img.style.cssText='max-width:95vw;max-height:92vh;object-fit:contain;border:2px solid #56727b;border-radius:4px;box-shadow:0 8px 40px #000c;cursor:zoom-out';
    const closeBtn=el('button',overlay,'×');closeBtn.setAttribute('aria-label','Zamknij podgląd');closeBtn.style.cssText='position:absolute;top:12px;right:16px;background:transparent;border:0;color:#fff;font-size:32px;line-height:1;cursor:pointer;padding:4px 8px;opacity:0.8;z-index:1';
    closeBtn.onmouseenter=()=>closeBtn.style.opacity='1';closeBtn.onmouseleave=()=>closeBtn.style.opacity='0.8';
-   const close=()=>overlay.remove();
+   const close=()=>{overlay.remove();document.removeEventListener('keydown',onKey,true);};
+   const onKey=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
+   document.addEventListener('keydown',onKey,true);
    closeBtn.onclick=e=>{e.stopPropagation();close();};
    img.onclick=close;
-   overlay.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}});
-   overlay.tabIndex=0;overlay.focus();
   }
   const childDetails=node=>Array.from(node.children||[]).flatMap(child=>child.tagName==='DETAILS'?[child]:childDetails(child));
   const remember=node=>({open:node.open,children:childDetails(node).map(remember)});

@@ -346,7 +346,7 @@
         const runs=actionRuns(actions);
         if(runs.length){
           const hrA=document.createElement('hr');hrA.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';wrap.append(hrA);
-          const secA=document.createElement('details');secA.open=true;secA.style.cssText='';wrap.append(secA);
+          const secA=document.createElement('details');secA.open=true;secA.style.cssText='text-align:left';wrap.append(secA);
           const secALabel=document.createElement('summary');secALabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px;text-align:left';secALabel.textContent='Działania ('+runs.length+')';secA.append(secALabel);
           const kindLabel={added:'Stawiam:',removed:'Sprzedaję:',collection:'Zbieram:',changed:'Zmieniam:',connection:'Połączenie:'};
           for(const run of [...runs].reverse()){

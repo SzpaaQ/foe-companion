@@ -241,7 +241,7 @@
   const status=el('p',content),list=el('div',content);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
-  function snapshot(parent,snap){
+  function snapshot(parent,snap,{expanded=false}={}){
    if(!snap?.summary)return;
    const summary=snap.summary,FoeQuantum=root.FoeQuantum;
    const wrap=el('div',parent);wrap.style.cssText='width:'+Math.round(getWidth()||350)+'px;max-width:100%;box-sizing:border-box;margin:8px auto 0;padding-right:8px;color:#e7eeee;line-height:1.4';
@@ -278,15 +278,15 @@
       if(summary.groups.length||buildProduction.length){
         const allItems=summary.groups.flatMap(g=>g.items);
         const grouped=[...FoeQuantum.groupedBuildings(allItems),...buildProduction];
-        const sec=document.createElement('details');sec.open=false;sec.style.cssText='';
+        const sec=document.createElement('details');sec.open=expanded;sec.style.cssText='';
         const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
         $('quantum-groups').append(sec);
         const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
         const tbl=document.createElement('div');tbl.style.cssText='display:grid;grid-template-columns:'+resourceColumns+';gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;';sec.append(tbl);
         // Nagłówki
-        for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
+        for(const h of ['','🪙','🔨','🔩']){const hd=document.createElement('span');hd.textContent=h;hd.style.cssText=(h?'text-align:right':'text-align:left')+';font-weight:bold;padding:1px 0;border-bottom:1px solid #4a3525';tbl.append(hd);}
         for(const item of grouped){
-          const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — bieżąca suma obejmuje tylko aktywne efekty.';tbl.append(nameCell);
+          const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0;text-align:left'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — bieżąca suma obejmuje tylko aktywne efekty.';tbl.append(nameCell);
           for(const k of FoeQuantum.KEYS){const c=document.createElement('span');c.textContent=item.production[k]?item.production[k].toLocaleString('pl-PL'):'—';c.style.cssText='text-align:right;padding:1px 0;color:'+(item.production[k]?'#f0e6d2':'#6a7a7e')+(item.underConstruction?constructionStyle:'');tbl.append(c);}
         }
         // Suma
@@ -308,7 +308,7 @@
         ];
         const activeCols=extraColDefs.filter(col=>grouped.some(g=>g.effects[col.key]!==0));
         if(activeCols.length){
-          const sec2=document.createElement('details');sec2.open=false;sec2.style.cssText='';
+          const sec2=document.createElement('details');sec2.open=expanded;sec2.style.cssText='';
           const hrP=document.createElement('hr');hrP.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrP);
           $('quantum-groups').append(sec2);
           const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
@@ -316,12 +316,12 @@
           tbl2.style.cssText=`display:grid;grid-template-columns:1fr ${activeCols.map(()=>'auto').join(' ')};gap:0 8px;font-size:11px;font-variant-numeric:tabular-nums;`;
           sec2.append(tbl2);
           // Nagłówki
-          const hName=document.createElement('span');hName.style.cssText='font-weight:bold;padding:1px 0;border-bottom:1px solid #4a3525';tbl2.append(hName);
+          const hName=document.createElement('span');hName.style.cssText='font-weight:bold;padding:1px 0;text-align:left;border-bottom:1px solid #4a3525';tbl2.append(hName);
           for(const col of activeCols){const hd=document.createElement('span');hd.textContent=col.label;hd.title=col.title;hd.style.cssText='font-weight:bold;text-align:right;padding:1px 0;border-bottom:1px solid #4a3525';tbl2.append(hd);}
           // Wiersze
           const extTotals=Object.fromEntries(FoeQuantum.EXTRA_KEYS.map(k=>[k,0]));
           for(const item of grouped){
-            const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — bieżąca suma obejmuje tylko aktywne efekty.';tbl2.append(nameCell);
+            const nameCell=document.createElement('span');const b=document.createElement('strong');b.textContent=item.count+'×';nameCell.append(b,' '+item.name+(item.underConstruction?' 🚧':''));nameCell.style.cssText='padding:1px 0;text-align:left'+(item.underConstruction?constructionStyle:'');if(item.underConstruction)nameCell.title='W budowie — bieżąca suma obejmuje tylko aktywne efekty.';tbl2.append(nameCell);
             for(const col of activeCols){
               const v=item.effects[col.key]||0;
               const c=document.createElement('span');
@@ -371,7 +371,7 @@
    // Treść — zestawienie kwantowe
    const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent';framing.append(body);
    const snap=getSnapshot();
-   if(snap){snapshot(body,snap);}
+   if(snap){snapshot(body,snap,{expanded:true});}
    else{const p=document.createElement('p');p.textContent='Brak danych osady — otwórz osadę w grze.';p.style.color='#90a5ad';body.append(p);}
    // Info
    const info=document.createElement('p');info.textContent='Ustaw widok osady, a następnie kliknij "Wykonaj zrzut".';info.style.cssText='flex-shrink:0;margin:0;padding:8px 16px;font-size:11px;color:#8a9fa5;border-top:1px solid #345058';framing.append(info);

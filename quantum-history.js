@@ -257,7 +257,7 @@
       }
       const mood=text(stocks,'✨ '+(summary.currentBonuses.euphoria?'150%':summary.currentBonuses.unhappy?'niska':'100%'),'span');mood.style.color=summary.currentBonuses.euphoria?'#4caf50':'#dfd1b8';
       const hourly=text(box,'🪙 +'+summary.bonuses.coins+'% / 🔨 +'+summary.bonuses.supplies+'% · ⚡ '+num(summary.actionsPerHour)+'/h · ⚔️ '+(summary.actionsPerHour/3500).toLocaleString('pl-PL',{maximumFractionDigits:2})+'/h','div');hourly.style.cssText='text-align:center;font-size:12px;color:#a99885;margin-bottom:8px';
-      const table=document.createElement('table');table.style.cssText='background:#0b191e;border-radius:5px;width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px';box.append(table);
+      const table=document.createElement('table');table.style.cssText='background:#0b191e;width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px';box.append(table);
       const tr=document.createElement('tr');table.append(tr);text(tr,'Następny zbiór:','th');
       const next=summary.totals;
       for(const [key,icon] of [['guild_raids_money','🪙'],['guild_raids_supplies','🔨'],['guild_raids_chrono_alloy','🔩']]){const cell=text(tr,icon+' '+num(next?.[key]),'td');cell.style.cssText='padding:6px 4px;border-left:1px solid #4a3525;text-align:center;font-weight:bold';}
@@ -278,7 +278,7 @@
       if(summary.groups.length||buildProduction.length){
         const allItems=summary.groups.flatMap(g=>g.items);
         const grouped=[...FoeQuantum.groupedBuildings(allItems),...buildProduction];
-        const sec=document.createElement('details');sec.open=true;sec.style.cssText='';
+        const sec=document.createElement('details');sec.open=false;sec.style.cssText='';
         const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
         $('quantum-groups').append(sec);
         const secLabel=document.createElement('summary');secLabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';secLabel.textContent='Zestawienie';sec.append(secLabel);
@@ -308,7 +308,7 @@
         ];
         const activeCols=extraColDefs.filter(col=>grouped.some(g=>g.effects[col.key]!==0));
         if(activeCols.length){
-          const sec2=document.createElement('details');sec2.open=true;sec2.style.cssText='';
+          const sec2=document.createElement('details');sec2.open=false;sec2.style.cssText='';
           const hrP=document.createElement('hr');hrP.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrP);
           $('quantum-groups').append(sec2);
           const sec2Label=document.createElement('summary');sec2Label.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px';sec2Label.textContent='Pozostałe budynki';sec2.append(sec2Label);
@@ -466,14 +466,14 @@
       }
       function renderThumbnail(column,label,dataUrl){
        column.querySelector('.qh-thumb')?.remove();
-       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='margin:6px auto 0;text-align:center';
+       const wrap=el('div',column);wrap.className='qh-thumb';wrap.style.cssText='position:relative;margin:6px 0 0;width:100%';
        const img=el('img',wrap);img.src=dataUrl;img.alt='Zrzut ekranu: '+label;
-       img.style.cssText='max-width:100%;max-height:120px;border:1px solid #345058;border-radius:3px;cursor:zoom-in;object-fit:cover;display:block;margin:0 auto';
+       img.style.cssText='width:100%;display:block;cursor:zoom-in;object-fit:cover;border:1px solid #345058';
        img.title='Kliknij, aby powiększyć';img.onclick=()=>showLightbox(dataUrl);
-       const dlBtn=el('button',wrap,'⬇ Pobierz');dlBtn.setAttribute('aria-label','Pobierz zrzut: '+label);
-       dlBtn.style.cssText='margin-top:4px;background:transparent;border:0;color:#8fcfcf;font-size:11px;cursor:pointer;padding:2px 4px;opacity:0.8';
-       dlBtn.onmouseenter=()=>dlBtn.style.opacity='1';dlBtn.onmouseleave=()=>dlBtn.style.opacity='0.8';
-       dlBtn.onclick=()=>{const a=el('a',wrap);a.href=dataUrl;a.download='zrzut-osady-'+label.toLowerCase()+'-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.jpg';a.click();a.remove();};
+       const dlBtn=el('button',wrap,'⬇');dlBtn.setAttribute('aria-label','Pobierz zrzut: '+label);
+       dlBtn.style.cssText='position:absolute;top:4px;right:4px;background:#0006;border:0;color:#fff;font-size:14px;cursor:pointer;padding:2px 5px;line-height:1;opacity:0.75';
+       dlBtn.onmouseenter=()=>dlBtn.style.opacity='1';dlBtn.onmouseleave=()=>dlBtn.style.opacity='0.75';
+       dlBtn.onclick=e=>{e.stopPropagation();const a=el('a',wrap);a.href=dataUrl;a.download='zrzut-osady-'+label.toLowerCase()+'-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.jpg';a.click();a.remove();};
       }
      };comparison.addEventListener('toggle',comparison.historyBuild);
     };

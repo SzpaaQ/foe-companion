@@ -6,18 +6,64 @@
 - powiadomienie + dźwięk gdy wróg atakuje pilnowany sektor
 - stan w localStorage foe-companion.sectorGuard
 
-##### POLA CHWAŁY — do dopracowania
+##### POLA CHWAŁY — do dopracowania (zaimplementowane)
 - dropdown chowa się przy kliknięciu zamiast zostawać otwarty (fix: composedPath w shadow DOM)
 - skondensować dropdown (mniejszy, bardziej kompaktowy)
 
-##### kolejna funkcja do rozważenia (nie rób jeszcze)
-autonegocjacje nowootwartych sektorów. z ustawieniem max oporu
-czyli gdy otworzy się nowy sektor powinno wykonać x udanych negocjacji również w ustawieniach opcja
-tutaj musiałby być limit oporu dla którego taka funkcja by działała i jeśli opór zostanie przekroczony przycisk musiałby znikać.
-funkcja działałaby tylko dla sektorów, które:
-- mają postęp poniżej 50%
-- szansa na zwiększenie oporu to 20%
-przycisk z emoji i tooltipem przy przycisku kopiuj (otwarte sektory)
+##### POLA CHWAŁY — automatyzacja otwartych sektorów (plan, NIE WDRAŻAĆ JESZCZE)
+
+Uzgodniono 2026-10-23. Ten plan zastępuje pomysł automatyzacji wyłącznie nowo otwartych sektorów. Wdrożenie dopiero na osobne polecenie użytkownika.
+
+1. Zakres i sterowanie
+- Oba tryby działają w istniejącym modalu otwartych sektorów, bez nowego okna ani przycisku przy Kopiuj.
+- Osobne przełączniki: 🤝 Autonegocjacje otwartych sektorów oraz ⚔️ Autoatak otwartych sektorów.
+- Obejmują wszystkie dostępne otwarte sektory spełniające warunki, także otwarte przed uruchomieniem. Kolejne otwarcia dołączają do kolejki.
+- Status: oczekiwanie / aktualny sektor / licznik sukcesów lub porażek / przyczyna zatrzymania. STOP zawsze dostępny podczas pracy.
+- Zapis ustawień; po odświeżeniu gry tryby wyłączone i wymagają ręcznego uruchomienia.
+
+2. Autonegocjacje — ustawienia i kwalifikacja
+- Maksymalny opór gracza, liczba udanych negocjacji na sektor i limit progresu sektora w procentach.
+- Limit progresu zastępuje sztywne 50%; dotyczy postępu naszej gildii. Start kolejnej negocjacji tylko poniżej limitu.
+- Szansa wzrostu oporu dokładnie 20%. Opór gracza nie może przekraczać ustawionego maksimum.
+- Pomijanie sektorów oznaczonych jako ignorowane, własnych, zablokowanych i niedostępnych z naszego terytorium.
+- Liczyć wyłącznie potwierdzone wygrane. Porażki nie zwiększają licznika sukcesów.
+- Limit sukcesów dotyczy jednego otwarcia sektora. Wyłączenie/włączenie i odświeżenie nie zeruje wykonanego limitu; nowe otwarcie daje nowy limit.
+- Identyfikator otwarcia musi uwzględniać świat, gracza, edycję/mapę, sektor i cykl blokady/otwarcia; sam numer sektora nie wystarcza.
+- Po przekroczeniu oporu zatrzymać ten tryb i ukryć możliwość startu do spełnienia warunków. Zachować STOP/status trwającej akcji. Nie wznawiać samoczynnie po spadku oporu.
+- Do uzgodnienia przed implementacją: limit porażek negocjacji (limit 3 poniżej jest ustalony dla autoataku, nie negocjacji).
+
+3. Autoatak — ustawienia i kwalifikacja
+- Checkboxy: sektory z bonusem atakującym oraz sektory z bonusem obronnym. Można wybrać oba; bez wyboru nie uruchamiać.
+- Wybór według typu sektora z danych gry, nie według koloru właściciela.
+- Respektować oznaczenie ignorowania sektora oraz istniejący limit progresu w ustawieniach; sprawdzić jego jednostkę i zachować dotychczasowe znaczenie.
+- Zachować istniejącą rezerwę walk, przerwy między akcjami i inne obowiązujące ograniczenia autoataku.
+- Po osiągnięciu limitu na sektorze przejść do kolejnego pasującego sektora.
+- TWARDY STOP po 3 potwierdzonych porażkach łącznie od uruchomienia tego trybu, na wszystkich sektorach razem. Wygrana ani zmiana sektora nie zerują licznika.
+- Trzecia porażka wyłącza cały tryb autoataku; żadnego przejścia do następnego sektora ani wznowienia przez timer. Wznowienie tylko ręczne, rozpoczynające nową serię z licznikiem 0/3.
+- Liczyć końcowy wynik walki, nie każdą falę; błąd transportu nie jest potwierdzoną porażką, lecz powodem zatrzymania.
+
+4. Kolejka i współpraca z pilnowaniem sektorów
+- Jedna akcja naraz: wspólna blokada dla tych trybów, ręcznych akcji i istniejącego pilnowania/zamykania sektorów.
+- Proponowana kolejność: najwcześniejsze otwarcie, przy remisie stała kolejność sektorów.
+- Jeśli oba tryby działają, proponowane pierwszeństwo serii negocjacji; autoatak czeka, potem ponownie sprawdza warunki.
+- Brak pasujących sektorów oznacza oczekiwanie, nie wykonywanie akcji na innym, niespełniającym warunków sektorze.
+- Pilnowanie sektorów nie może reaktywować zatrzymanego trybu ani obchodzić blokady wspólnej akcji.
+
+5. Aktualność danych i zatrzymanie
+- Przed każdą nową walką/negocjacją sprawdzić aktualną dostępność, ignorowanie, progres, odpowiedni typ i pozostałe warunki danego trybu.
+- Zapewnić aktualny odczyt oporu, nie polegać wyłącznie na ostatniej wartości wyświetlonej w panelu.
+- Przy nieznanym limicie/progresie/oporze potrzebnym do kwalifikacji nie zgadywać. Brak aktualnych danych lub utrata połączenia wstrzymuje/zatrzymuje akcje z czytelnym statusem.
+- Wynik musi być potwierdzony; niepewny wynik zatrzymuje automatyzację, bez ponawiania akcji w ciemno.
+- Osiągnięcie progu progresu blokuje rozpoczęcie następnej akcji. Już rozpoczęta akcja może podnieść progres ponad próg.
+- STOP usuwa oczekujące zadania/timery; rozpoczęta walka lub negocjacja jest dokańczana, bez rozpoczynania kolejnej.
+
+6. Etapy wdrożenia i sprawdzenie
+- Ustawienia i przełączniki w istniejącym modalu.
+- Wspólna kwalifikacja, kolejka, blokada akcji i identyfikacja otwarć.
+- Autonegocjacje z trwałym limitem sukcesów na otwarcie.
+- Autoatak z wyborem atak/obrona oraz twardym STOP po 3 porażkach.
+- Testy: granice progresu/oporu, dokładnie 20%, oba typy sektorów, ignorowanie zmienione w trakcie pracy, sukcesy negocjacji, nowe otwarcie i reload, 3 niekolejne porażki na różnych sektorach, walki wielofalowe, brak danych/socketu, STOP i spóźnione odpowiedzi, konflikt z pilnowaniem.
+- Testy offline; prawdziwych walk ani negocjacji nie wykonywać jako testów bez osobnego polecenia.
 
 --------------------------------------------------------------------------
 

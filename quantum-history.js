@@ -152,10 +152,11 @@
    setActionOrder(groupId,firstIds){return enqueue(async()=>{
     // Zapisuje kolejność wierszy działań dla danej grupy zbiorów.
     // groupId: id pierwszego zdarzenia grupy (event.id z groupEvents)
-    // firstIds: tablica refs[0].id kolejnych actionRun w nowej kolejności
+    // firstIds: tablica refs[0].id kolejnych actionRun w nowej kolejności; pusta = reset do chronologicznej
     if(!doc||!groupId||!Array.isArray(firstIds))return;
     doc.actionOrder||(doc.actionOrder={});
-    doc.actionOrder[groupId]=firstIds;
+    if(firstIds.length===0){delete doc.actionOrder[groupId];}
+    else{doc.actionOrder[groupId]=firstIds;}
     await save();
    });}
   };
@@ -260,7 +261,7 @@
   const list=el('div',content);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
-  function snapshot(parent,snap,{expanded=false,showActions=false,actions=[]}={}){
+  function snapshot(parent,snap,{expanded=false,showActions=false,actions=[],actionOrder=null}={}){
    if(!snap?.summary)return;
    const summary=snap.summary,FoeQuantum=root.FoeQuantum;
    const imgMaxWidth=Math.round(getWidth()||350);
@@ -377,7 +378,14 @@
       }
       // Sekcja działań — skondensowana, bez edycji
       if(showActions&&actions.length){
-        const runs=actionRuns(actions);
+        const natural=actionRuns(actions);
+        const runs=(()=>{
+          if(!actionOrder?.length)return natural;
+          const byFirst=new Map(natural.map(r=>[r.refs[0]?.id,r]));
+          const sorted=actionOrder.map(id=>byFirst.get(id)).filter(Boolean);
+          const rest=natural.filter(r=>!actionOrder.includes(r.refs[0]?.id));
+          return [...sorted,...rest];
+        })();
         if(runs.length){
           const hrA=document.createElement('hr');hrA.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';wrap.append(hrA);
           const secA=document.createElement('details');secA.open=true;secA.style.cssText='text-align:left';wrap.append(secA);
@@ -428,8 +436,9 @@
    const body=document.createElement('div');body.style.cssText='flex:1;overflow:auto;padding:16px;scrollbar-width:thin;scrollbar-color:#45616a transparent;text-align:left';framing.append(body);
    const snap=getSnapshot();
    const settings=getSettings();
-   const lastActions=history.lastGroup?.actions||[];
-   if(snap){snapshot(body,snap,{expanded:true,showActions:!!settings.showActions,actions:lastActions});}
+   const lastActions=lastGroup?.actions||[];
+   const lastActionOrder=lastGroup?history.document?.actionOrder?.[lastGroup.id]:null;
+   if(snap){snapshot(body,snap,{expanded:true,showActions:!!settings.showActions,actions:lastActions,actionOrder:lastActionOrder});}
    else{const p=document.createElement('p');p.textContent='Brak danych osady — otwórz osadę w grze.';p.style.color='#90a5ad';body.append(p);}
    // Pasek dolny z przyciskami i info — ukrywany podczas zrzutu
    const bottomBar=document.createElement('div');bottomBar.style.cssText='flex-shrink:0;border-top:1px solid #345058';framing.append(bottomBar);
@@ -539,7 +548,19 @@
       const rest=natural.filter(r=>!order.includes(r.refs[0]?.id));
       return [...sorted,...rest];
      })();
-     const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+rows.length+')');
+     const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';
+     const actionsSummary=el('summary',actions,'Działania ('+rows.length+')');
+     const hasCustomOrder=!!(history.document?.actionOrder?.[event.id]?.length);
+     if(hasCustomOrder){
+      const resetBtn=smallButton(actionsSummary,'↺ Resetuj kolejność',async()=>{
+       const doc=history.document;if(!doc)return;
+       doc.actionOrder||(doc.actionOrder={});
+       delete doc.actionOrder[event.id];
+       // Zapisz przez setActionOrder z pustą tablicą żeby wyczyścić
+       await history.setActionOrder(event.id,[]);
+       delete details.dataset.built;paint();
+      });resetBtn.title='Przywróć kolejność chronologiczną';resetBtn.style.cssText='font:11px/1.2 system-ui;padding:2px 5px;margin:0 0 0 5px;min-width:0;float:right';
+     }
      // Drag state
      let dragSrc=null,dragIdx=-1;
      for(const [rowIdx,action] of rows.entries()){

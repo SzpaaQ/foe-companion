@@ -2168,9 +2168,8 @@ Otwórz mapę Pól Chwały w grze.
       if(!battle){setBattleFeedback('Brak danych mapy — otwórz Pola Chwały w grze.');return;}
       const existing=root.querySelector('#sector-guard-modal');if(existing){existing.remove();return;}
       const modal=document.createElement('div');modal.id='sector-guard-modal';
-      // pointer-events:all konieczne — host ma pointer-events:none
       modal.style.cssText='position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:#0008;pointer-events:all';
-      const box=document.createElement('div');box.style.cssText='background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;min-width:360px;max-width:96vw;max-height:80vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c;pointer-events:all';
+      const box=document.createElement('div');box.style.cssText='background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;min-width:420px;max-width:96vw;max-height:85vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c;pointer-events:all';
       modal.append(box);
       // Naglowek
       const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
@@ -2183,50 +2182,85 @@ Otwórz mapę Pól Chwały w grze.
       const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;font-size:11px';
       const thead=document.createElement('thead');
       const hrow=document.createElement('tr');
-      for(const [txt,tip] of [
-        ['Sektor',''],
-        ['Postęp','Postęp przejęcia / max'],
-        ['⚔️','Atak / negocjacja'],
-        ['🔔','Pilnuj — powiadomienie gdy wróg atakuje'],
-        ['🕐','Zamknij o pełnej godzinie (30s przed)'],
-        ['⚡','Zamknij gdy wróg osiągnie >80%'],
-      ]){
+      const thStyle='padding:3px 6px;border-bottom:1px solid #345058;color:#8fcfcf;font-weight:normal;white-space:nowrap';
+      const cols=[
+        ['Sektor','','left'],
+        ['Postęp','Postęp przejęcia naszej gildii','center'],
+        ['🔥','Szansa na wzrost oporu','center'],
+        ['⚔️','Jednorazowa walka','center'],
+        ['▶','Autoatak','center'],
+        ['🤝','Jednorazowa negocjacja','center'],
+        ['▶▶','Auto-negocjacja','center'],
+        ['🔔','Pilnuj — powiadomienie gdy wróg atakuje','center'],
+        ['🕐','Zamknij o pełnej godzinie (30s przed)','center'],
+        ['⚡','Zamknij gdy wróg osiągnie >80%','center'],
+      ];
+      for(const [txt,tip,align] of cols){
         const th=document.createElement('th');th.textContent=txt;
         if(tip)th.setAttribute('data-tooltip',tip);
-        th.style.cssText='text-align:'+(txt==='Sektor'?'left':'center')+';padding:3px 6px;border-bottom:1px solid #345058;color:#8fcfcf;font-weight:normal';
+        th.style.cssText=thStyle+';text-align:'+align;
         hrow.append(th);
       }
       thead.append(hrow);table.append(thead);
       const tbody=document.createElement('tbody');
-      const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>(a.progress??0)-(b.progress??0)||a.id-b.id);
+      const tdBase='padding:3px 6px;border-bottom:1px solid #1e3540';
+      const btnStyle='padding:3px 5px;background:transparent;border-color:transparent;outline:none;font-size:13px;line-height:1;cursor:pointer';
+      const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>Number(a.ignored)-Number(b.ignored)||(a.progress??0)-(b.progress??0)||a.id-b.id);
       if(!open.length){const p=document.createElement('p');p.textContent='Brak otwartych sektorów.';p.style.color='#8a9fa5';box.append(p);}
+      const paintRow=tr=>{const g=getGuard(battle.map.id,tr.dataset.sid);tr.style.background=(g.guard||g.closeAtHour||g.closeWhenThreatened)?'rgba(30,100,200,0.15)':tr.dataset.ignored==='1'?'rgba(190,45,45,0.12)':'';};
       for(const row of open){
-        const g=getGuard(battle.map.id,row.id);
-        const tr=document.createElement('tr');
-        const refreshTr=()=>{const gNow=getGuard(battle.map.id,row.id);tr.style.background=(gNow.guard||gNow.closeAtHour||gNow.closeWhenThreatened)?'rgba(30,100,200,0.15)':'';};
-        refreshTr();
+        const tr=document.createElement('tr');tr.dataset.sid=row.id;tr.dataset.ignored=row.ignored?'1':'0';paintRow(tr);
+        const td=(content,extra='')=>{const t=document.createElement('td');t.style.cssText=tdBase+';text-align:center'+extra;t.append(content);tr.append(t);return t;};
         // Sektor
-        const tdName=document.createElement('td');
-        tdName.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector;
-        tdName.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540';tr.append(tdName);
+        const nameSpan=document.createElement('span');
+        nameSpan.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector;
+        const tdN=document.createElement('td');tdN.style.cssText=tdBase+';text-align:left;white-space:nowrap';tdN.append(nameSpan);tr.append(tdN);
         // Postep
-        const tdProg=document.createElement('td');tdProg.textContent=row.progress+'/'+(row.maxProgress??'—');
-        tdProg.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center;color:#a5b8bc';tr.append(tdProg);
-        // Atak / nego
-        const tdType=document.createElement('td');
-        tdType.textContent=row.isAttackBattleType===true?'⚔️':row.isAttackBattleType===false?'🤝':'—';
-        tdType.setAttribute('data-tooltip',row.isAttackBattleType===true?'Walka':'Negocjacja');
-        tdType.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center';tr.append(tdType);
-        // 3 checkboxy
+        const tdP=document.createElement('td');tdP.textContent=row.progress+'/'+(row.maxProgress??'—');tdP.style.cssText=tdBase+';text-align:center;color:#a5b8bc';tr.append(tdP);
+        // Szansa oporu
+        const tdC=document.createElement('td');tdC.textContent=(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');tdC.style.cssText=tdBase+';text-align:center;color:#a5b8bc';tr.append(tdC);
+        // ⚔️ jednorazowa walka
+        const actBtn=document.createElement('button');actBtn.style.cssText=btnStyle;
+        actBtn.textContent=battlePendingSector===row.id?'⏳':battleLastSector===row.id&&Date.now()<battleLastUntil?(battleLastOK?'✅':'⚠️'):'⚔️';
+        actBtn.disabled=!battleReady||!!battlePending||(battleWaveSector!==null&&battleWaveSector!==row.id)||autoSector!==null||autoNegSector!==null||negPending!==null;
+        actBtn.setAttribute('data-tooltip',battleWaveSector===row.id?'Kolejna fala':'Walka jednorazowa');
+        actBtn.onclick=()=>{modal.remove();startFight(row.id);};
+        if(!actionVisible('attack'))actBtn.style.display='none';
+        td(actBtn);
+        // ▶ autoatak
+        const autoBtn=document.createElement('button');autoBtn.style.cssText=btnStyle;
+        autoBtn.textContent=autoSector===row.id?'⏹':'▶';
+        autoBtn.disabled=autoSector!==row.id&&(!battleReady||!!battlePending||autoSector!==null||autoNegSector!==null||negPending!==null);
+        autoBtn.setAttribute('data-tooltip',autoSector===row.id?'Zatrzymaj autoatak':'Autoatak');
+        autoBtn.onclick=()=>{modal.remove();if(autoSector===row.id){requestStopAuto();return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id,true);};
+        if(!actionVisible('attack'))autoBtn.style.display='none';
+        td(autoBtn);
+        // 🤝 jednorazowa nego
+        const negBtnM=document.createElement('button');negBtnM.style.cssText=btnStyle;
+        negBtnM.textContent=negPendingSector===row.id?'⏳':negLastSector===row.id&&Date.now()<negLastUntil?(negLastOK?'✅':'⚠️'):'🤝';
+        negBtnM.disabled=!battleReady||negPending!==null||battlePending!==null||autoSector!==null||autoNegSector!==null;
+        negBtnM.setAttribute('data-tooltip','Negocjacja jednorazowa');
+        negBtnM.onclick=()=>{modal.remove();startNeg(row.id);};
+        if(!actionVisible('negotiation'))negBtnM.style.display='none';
+        td(negBtnM);
+        // ▶▶ autoneg
+        const autoNegBtnM=document.createElement('button');autoNegBtnM.style.cssText=btnStyle;
+        autoNegBtnM.textContent=autoNegSector===row.id?'⏹':'▶';
+        autoNegBtnM.disabled=autoNegSector!==row.id&&(!battleReady||negPending!==null||battlePending!==null||autoSector!==null||autoNegSector!==null);
+        autoNegBtnM.setAttribute('data-tooltip',autoNegSector===row.id?'Zatrzymaj auto-negocjację':'Auto-negocjacja');
+        autoNegBtnM.onclick=()=>{modal.remove();if(autoNegSector===row.id){stopAutoNeg('Auto-negocjacja zatrzymana.');return;}autoNegSector=row.id;stopNegButton.hidden=false;startNeg(row.id);};
+        if(!actionVisible('negotiation'))autoNegBtnM.style.display='none';
+        td(autoNegBtnM);
+        // 3 checkboxy pilnowania
+        const g=getGuard(battle.map.id,row.id);
         for(const key of ['guard','closeAtHour','closeWhenThreatened']){
-          const td=document.createElement('td');td.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center';
           const cb=document.createElement('input');cb.type='checkbox';cb.checked=g[key];cb.style.cursor='pointer';
           cb.onchange=()=>{
             setGuard(battle.map.id,row.id,{[key]:cb.checked});
             if(key==='closeAtHour'&&!cb.checked)cancelCloseAtHour(row.id);
-            refreshTr();paintOpenSectors();
+            paintRow(tr);paintOpenSectors();
           };
-          td.append(cb);tr.append(td);
+          td(cb);
         }
         tbody.append(tr);
       }
@@ -2234,9 +2268,7 @@ Otwórz mapę Pól Chwały w grze.
       const legend=document.createElement('p');legend.style.cssText='margin:8px 0 0;font-size:10px;color:#56727b';
       legend.textContent='🔔 Powiadomienie gdy wróg atakuje · 🕐 Autowalka 30s przed pełną godziną · ⚡ Autowalka gdy wróg >80%';
       box.append(legend);
-      // Tooltips — convertTitles działa przez MutationObserver ale wolamy recznie dla pewnosci
       convertTitles(modal);
-      // Zamknij ESC lub klik tla
       const onKey=e=>{if(e.key==='Escape'){e.stopPropagation();modal.remove();document.removeEventListener('keydown',onKey,true);}};
       document.addEventListener('keydown',onKey,true);
       modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();document.removeEventListener('keydown',onKey,true);}});

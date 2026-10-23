@@ -1,3 +1,8 @@
+# Szybkie wejście w projekt
+
+- Przed analizą kodu przeczytaj `AI-MAP.md` — mapa modułów, przepływu danych, testów i aktualnych ustaleń. Następnie sprawdź Git i najnowszy plan w `TODO.md`.
+- Po zmianach architektury lub stanu wdrożenia aktualizuj odpowiednie fragmenty `AI-MAP.md`.
+
 # Zasady wersjonowania ustalone z użytkownikiem
 
 - Po zakończeniu wprowadzanych zmian oraz przy każdym poleceniu `v+` wykonuj lokalny commit z opisem zmian. Sprawdź zakres diffu i odpowiednie testy; nie dodawaj przypadkowych plików ani HAR-ów. Push wymaga osobnego polecenia.

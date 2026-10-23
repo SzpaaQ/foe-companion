@@ -4,7 +4,7 @@ const jsPath=path.join(__dirname,'har',fs.readdirSync(path.join(__dirname,'har')
 const js=fs.readFileSync(jsPath,'utf8');
 const match=js.match(/_generateRequestPayloadSignature:function\(a\)\{return Za.substr\(b2.encode\(this._signatureHash\+"([^"]+)"\+a\),1,10\)/);
 if(!match)throw Error('Nie rozpoznano algorytmu w tej wersji klienta.');
-for(const file of process.argv.slice(2).length?process.argv.slice(2):[path.join(__dirname,'pch.har')]){
+for(const file of process.argv.slice(2).length?process.argv.slice(2):[path.join(__dirname,'har','pch.har')]){
  const har=JSON.parse(fs.readFileSync(file,'utf8'));let checked=0,matched=0;const methods={};
  for(const e of har.log.entries){
   if(!new URL(e.request.url).pathname.endsWith('/game/json'))continue;

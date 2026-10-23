@@ -38,8 +38,8 @@ Uzgodniono 2026-10-23. Ten plan zastępuje pomysł automatyzacji wyłącznie now
 - Respektować oznaczenie ignorowania sektora oraz istniejący limit progresu w ustawieniach; sprawdzić jego jednostkę i zachować dotychczasowe znaczenie.
 - Zachować istniejącą rezerwę walk, przerwy między akcjami i inne obowiązujące ograniczenia autoataku.
 - Po osiągnięciu limitu na sektorze przejść do kolejnego pasującego sektora.
-- TWARDY STOP po 3 potwierdzonych porażkach łącznie od uruchomienia tego trybu, na wszystkich sektorach razem. Wygrana ani zmiana sektora nie zerują licznika.
-- Trzecia porażka wyłącza cały tryb autoataku; żadnego przejścia do następnego sektora ani wznowienia przez timer. Wznowienie tylko ręczne, rozpoczynające nową serię z licznikiem 0/3.
+- TWARDY STOP po 3 potwierdzonych porażkach Z RZĘDU, także jeśli seria obejmuje różne sektory. Wygrana zeruje licznik; sama zmiana sektora go nie zeruje. Korekta użytkownika z 2026-10-23.
+- Trzecia porażka z rzędu wyłącza cały tryb autoataku; żadnego przejścia do następnego sektora ani wznowienia przez timer. Wznowienie tylko ręczne, rozpoczynające nową serię z licznikiem 0/3.
 - Liczyć końcowy wynik walki, nie każdą falę; błąd transportu nie jest potwierdzoną porażką, lecz powodem zatrzymania.
 
 4. Kolejka i współpraca z pilnowaniem sektorów
@@ -61,8 +61,8 @@ Uzgodniono 2026-10-23. Ten plan zastępuje pomysł automatyzacji wyłącznie now
 - Ustawienia i przełączniki w istniejącym modalu.
 - Wspólna kwalifikacja, kolejka, blokada akcji i identyfikacja otwarć.
 - Autonegocjacje z trwałym limitem sukcesów na otwarcie.
-- Autoatak z wyborem atak/obrona oraz twardym STOP po 3 porażkach.
-- Testy: granice progresu/oporu, dokładnie 20%, oba typy sektorów, ignorowanie zmienione w trakcie pracy, sukcesy negocjacji, nowe otwarcie i reload, 3 niekolejne porażki na różnych sektorach, walki wielofalowe, brak danych/socketu, STOP i spóźnione odpowiedzi, konflikt z pilnowaniem.
+- Autoatak z wyborem atak/obrona oraz twardym STOP po 3 porażkach z rzędu.
+- Testy: granice progresu/oporu, dokładnie 20%, oba typy sektorów, ignorowanie zmienione w trakcie pracy, sukcesy negocjacji, nowe otwarcie i reload, 3 kolejne porażki na różnych sektorach i zerowanie serii przez wygraną, walki wielofalowe, brak danych/socketu, STOP i spóźnione odpowiedzi, konflikt z pilnowaniem.
 - Testy offline; prawdziwych walk ani negocjacji nie wykonywać jako testów bez osobnego polecenia.
 
 --------------------------------------------------------------------------

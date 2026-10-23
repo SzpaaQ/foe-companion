@@ -981,7 +981,7 @@ Otwórz mapę Pól Chwały w grze.
       #city{padding-bottom:100px;box-sizing:border-box}
       .sector-menu-btn{padding:2px 5px;background:transparent;border-color:transparent;outline:none;font-size:14px;line-height:1;border-radius:0;color:#8a9fa5;flex-shrink:0}
       .sector-menu-btn:hover,.sector-menu-btn.sector-menu-active{color:#f1d69a}
-      .sector-dropdown{position:absolute;right:0;top:100%;z-index:100;background:#152e36;border:1px solid #345058;border-radius:4px;padding:6px 8px;min-width:200px;box-shadow:0 4px 16px #0009;display:flex;flex-direction:column;gap:4px}
+      .sector-dropdown{background:#152e36;border:1px solid #345058;border-radius:4px;padding:6px 8px;min-width:200px;box-shadow:0 4px 16px #0009;display:flex;flex-direction:column;gap:4px}
       .sector-dropdown-row{display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;padding:3px 2px;white-space:nowrap;color:#dce8ec}
       .sector-dropdown-row:hover{color:#fff}
       .sector-dropdown-row input[type=checkbox]{margin:0;cursor:pointer}
@@ -1751,8 +1751,9 @@ Otwórz mapę Pól Chwały w grze.
         if(anyGuard)menuBtn.classList.add('sector-menu-active');
         menuBtn.onclick=e=>{
           e.stopPropagation();
-          root.querySelectorAll('.sector-dropdown').forEach(d=>d.remove());
-          const existing=line.querySelector('.sector-dropdown');if(existing){existing.remove();return;}
+          // Zamknij istniejący dropdown (toggle)
+          const existing=root.querySelector('.sector-dropdown');
+          if(existing){existing.remove();return;}
           const dropdown=document.createElement('div');dropdown.className='sector-dropdown';
           const makeRow=(label,key,checked)=>{
             const lbl=document.createElement('label');lbl.className='sector-dropdown-row';
@@ -1767,9 +1768,17 @@ Otwórz mapę Pól Chwały w grze.
           makeRow('Pilnuj sektora','guard',guard.guard);
           makeRow('Zamknij o pelnej godzinie','closeAtHour',guard.closeAtHour);
           makeRow('Zamknij gdy zagrozony (>80%)','closeWhenThreatened',guard.closeWhenThreatened);
-          line.style.position='relative';line.append(dropdown);
-          const close=ev=>{if(!dropdown.contains(ev.target)&&ev.target!==menuBtn){dropdown.remove();document.removeEventListener('pointerdown',close,true);}};
-          setTimeout(()=>document.addEventListener('pointerdown',close,true),0);
+          // Pozycja fixed — unika przycinania przez overflow:auto na #open-sectors
+          const rect=menuBtn.getBoundingClientRect();
+          dropdown.style.cssText='position:fixed;right:'+(window.innerWidth-rect.right)+'px;top:'+rect.bottom+'px;z-index:2147483647';
+          root.append(dropdown);
+          // Zamknij po kliknięciu poza — z opóźnieniem żeby checkbox zdążył dostać event
+          const close=ev=>{
+            if(dropdown.contains(ev.target)||ev.target===menuBtn)return;
+            dropdown.remove();
+            document.removeEventListener('pointerdown',close,true);
+          };
+          setTimeout(()=>document.addEventListener('pointerdown',close,true),100);
         };
         line.append(name,progress,chance,action,auto,negBtn,autoNegBtn,menuBtn);list.append(line);
       }

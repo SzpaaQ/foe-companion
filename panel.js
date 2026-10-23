@@ -455,7 +455,7 @@ window.addEventListener('message', event => {
         >
           <div id="gbg-title"><h2>Pola Chwały</h2></div>
 
-          <div id="open-sectors-heading" style="display:flex;align-items:center;gap:6px"><h3>Otwarte sektory</h3><button id="copy-open" title="Kopiuj otwarte sektory" aria-label="Kopiuj otwarte sektory" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0;min-width:0;line-height:1;cursor:pointer">📋</button></div>
+          <div id="open-sectors-heading" style="display:flex;align-items:center;gap:6px"><h3>Otwarte sektory</h3><button id="copy-open" title="Kopiuj otwarte sektory" aria-label="Kopiuj otwarte sektory" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0;min-width:0;line-height:1;cursor:pointer">📋</button><button id="sector-guard-open" title="Opcje pilnowania sektorów" aria-label="Opcje pilnowania sektorów" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0 2px;min-width:0;line-height:1;cursor:pointer;color:#8a9fa5;font-size:16px">⋮</button></div>
           <div id="open-sectors"></div>
           <p id="battle-feedback" role="status"></p>
 
@@ -979,12 +979,6 @@ Otwórz mapę Pól Chwały w grze.
       #rich-tooltip[hidden]{display:none!important}
       #rich-tooltip{pointer-events:none!important}
       #city{padding-bottom:100px;box-sizing:border-box}
-      .sector-menu-btn{padding:2px 5px;background:transparent;border-color:transparent;outline:none;font-size:14px;line-height:1;border-radius:0;color:#8a9fa5;flex-shrink:0}
-      .sector-menu-btn:hover,.sector-menu-btn.sector-menu-active{color:#f1d69a}
-      .sector-dropdown{background:#152e36;border:1px solid #345058;border-radius:3px;padding:4px 6px;min-width:160px;box-shadow:0 3px 10px #000a;display:flex;flex-direction:column;gap:1px;font-size:11px}
-      .sector-dropdown-row{display:flex;align-items:center;gap:5px;cursor:pointer;padding:2px 3px;white-space:nowrap;color:#dce8ec}
-      .sector-dropdown-row:hover{color:#fff}
-      .sector-dropdown-row input[type=checkbox]{margin:0;cursor:pointer}
     `;
     root.append(style);
     const tip=document.createElement('div');tip.id='rich-tooltip';tip.setAttribute('role','tooltip');tip.hidden=true;root.append(tip);
@@ -1745,44 +1739,7 @@ Otwórz mapę Pól Chwały w grze.
 
         action.style.display=auto.style.display=actionVisible('attack')?'':'none';
         negBtn.style.display=autoNegBtn.style.display=actionVisible('negotiation')?'':'none';
-        // --- Przycisk menu pilnowania sektora ---
-        const menuBtn=document.createElement('button');menuBtn.textContent='\u22EE';menuBtn.className='sector-menu-btn';
-        menuBtn.setAttribute('aria-label','Opcje pilnowania: '+row.sector);
-        if(anyGuard)menuBtn.classList.add('sector-menu-active');
-        menuBtn.onclick=e=>{
-          e.stopPropagation();
-          // Zamknij istniejący dropdown (toggle)
-          const existing=root.querySelector('.sector-dropdown');
-          if(existing){existing.remove();return;}
-          const dropdown=document.createElement('div');dropdown.className='sector-dropdown';
-          const makeRow=(label,key,checked)=>{
-            const lbl=document.createElement('label');lbl.className='sector-dropdown-row';
-            const cb=document.createElement('input');cb.type='checkbox';cb.checked=checked;
-            cb.onchange=()=>{
-              setGuard(battle.map.id,row.id,{[key]:cb.checked});
-              if(key==='closeAtHour'&&!cb.checked)cancelCloseAtHour(row.id);
-              paintOpenSectors();
-            };
-            lbl.append(cb,' ',label);dropdown.append(lbl);
-          };
-          makeRow('Pilnuj sektora','guard',guard.guard);
-          makeRow('Zamknij o pelnej godzinie','closeAtHour',guard.closeAtHour);
-          makeRow('Zamknij gdy zagrozony (>80%)','closeWhenThreatened',guard.closeWhenThreatened);
-          // Pozycja fixed — unika przycinania przez overflow:auto na #open-sectors
-          const rect=menuBtn.getBoundingClientRect();
-          dropdown.style.cssText='position:fixed;right:'+(window.innerWidth-rect.right)+'px;top:'+rect.bottom+'px;z-index:2147483647';
-          root.append(dropdown);
-          // Zamknij po kliknieciu poza dropdownem
-          // Uzywamy 'click' (odpala po mouseup) — checkbox zdazy zlapac swoj event przed zamknieciem
-          const close=ev=>{
-            const path=ev.composedPath();
-            if(path.some(n=>n===dropdown||n===menuBtn))return;
-            dropdown.remove();
-            document.removeEventListener('click',close,true);
-          };
-          setTimeout(()=>document.addEventListener('click',close,true),0);
-        };
-        line.append(name,progress,chance,action,auto,negBtn,autoNegBtn,menuBtn);list.append(line);
+        line.append(name,progress,chance,action,auto,negBtn,autoNegBtn);list.append(line);
       }
     }
     setInterval(()=>paint(),1000);
@@ -2205,6 +2162,76 @@ Otwórz mapę Pól Chwały w grze.
         setBattleFeedback('Nie udało się skopiować otwartych sektorów.');
       }
     };
+
+    // --- Modal pilnowania sektorow ---
+    function openSectorGuardModal(){
+      if(!battle){setBattleFeedback('Brak danych mapy — otwórz Pola Chwały w grze.');return;}
+      const existing=root.querySelector('#sector-guard-modal');if(existing){existing.remove();return;}
+      const modal=document.createElement('div');modal.id='sector-guard-modal';
+      modal.style.cssText='position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:#0008';
+      const box=document.createElement('div');box.style.cssText='background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;min-width:340px;max-width:95vw;max-height:80vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c';
+      modal.append(box);
+      // Naglowek
+      const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+      const title=document.createElement('strong');title.textContent='Pilnowanie sektorów';title.style.cssText='font-size:13px;color:#f1d69a';
+      const closeBtn=document.createElement('button');closeBtn.textContent='×';closeBtn.setAttribute('aria-label','Zamknij');
+      closeBtn.style.cssText='background:transparent;border:0;color:#e7eeee;font-size:20px;line-height:1;cursor:pointer;padding:0 4px';
+      closeBtn.onclick=()=>modal.remove();
+      hdr.append(title,closeBtn);box.append(hdr);
+      // Tabelka
+      const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;font-size:11px';
+      // Naglówek tabeli
+      const thead=document.createElement('thead');
+      const hrow=document.createElement('tr');
+      for(const [txt,tip] of [['Sektor',''],['Postęp','Postęp przejęcia / max'],['🔔','Pilnuj — powiadomienie gdy wróg atakuje'],['🕐','Zamknij o pełnej godzinie (30s przed)'],['⚡','Zamknij gdy wróg osiągnie >80%']]){
+        const th=document.createElement('th');th.textContent=txt;if(tip)th.title=tip;
+        th.style.cssText='text-align:'+(txt==='Sektor'?'left':'center')+';padding:3px 6px;border-bottom:1px solid #345058;color:#8fcfcf;font-weight:normal';
+        hrow.append(th);
+      }
+      thead.append(hrow);table.append(thead);
+      // Wiersze sektorow
+      const tbody=document.createElement('tbody');
+      const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>(a.progress??0)-(b.progress??0)||a.id-b.id);
+      if(!open.length){const p=document.createElement('p');p.textContent='Brak otwartych sektorów.';p.style.color='#8a9fa5';box.append(p);}
+      for(const row of open){
+        const g=getGuard(battle.map.id,row.id);
+        const anyG=g.guard||g.closeAtHour||g.closeWhenThreatened;
+        const tr=document.createElement('tr');
+        if(anyG)tr.style.background='rgba(30,100,200,0.15)';
+        // Sektor
+        const tdName=document.createElement('td');
+        tdName.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector;
+        tdName.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540';tr.append(tdName);
+        // Postep
+        const tdProg=document.createElement('td');tdProg.textContent=row.progress+'/'+(row.maxProgress??'—');
+        tdProg.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center;color:#a5b8bc';tr.append(tdProg);
+        // 3 checkboxy
+        for(const key of ['guard','closeAtHour','closeWhenThreatened']){
+          const td=document.createElement('td');td.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center';
+          const cb=document.createElement('input');cb.type='checkbox';cb.checked=g[key];cb.style.cursor='pointer';
+          cb.onchange=()=>{
+            setGuard(battle.map.id,row.id,{[key]:cb.checked});
+            if(key==='closeAtHour'&&!cb.checked)cancelCloseAtHour(row.id);
+            tr.style.background=getGuard(battle.map.id,row.id).guard||getGuard(battle.map.id,row.id).closeAtHour||getGuard(battle.map.id,row.id).closeWhenThreatened?'rgba(30,100,200,0.15)':'';
+            paintOpenSectors();
+          };
+          td.append(cb);tr.append(td);
+        }
+        tbody.append(tr);
+      }
+      table.append(tbody);box.append(table);
+      // Legenda
+      const legend=document.createElement('p');legend.style.cssText='margin:8px 0 0;font-size:10px;color:#56727b';
+      legend.textContent='🔔 Powiadomienie gdy wróg atakuje · 🕐 Autowalka 30s przed pełną godziną · ⚡ Autowalka gdy wróg >80%';
+      box.append(legend);
+      // Zamknij na ESC lub klik tła
+      const onKey=e=>{if(e.key==='Escape'){modal.remove();document.removeEventListener('keydown',onKey,true);}};
+      document.addEventListener('keydown',onKey,true);
+      modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();document.removeEventListener('keydown',onKey,true);}});
+      root.append(modal);
+    }
+    $('sector-guard-open').onclick=()=>openSectorGuardModal();
+
 
     $('copy').onclick = async () => {
       paint();

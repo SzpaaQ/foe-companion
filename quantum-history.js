@@ -148,6 +148,15 @@
     const event=doc?.events.find(e=>e.id===id);if(!event)return;
     event.screenshots||={};event.screenshots[label]=dataUrl;
     await save();
+   });},
+   setActionOrder(groupId,firstIds){return enqueue(async()=>{
+    // Zapisuje kolejność wierszy działań dla danej grupy zbiorów.
+    // groupId: id pierwszego zdarzenia grupy (event.id z groupEvents)
+    // firstIds: tablica refs[0].id kolejnych actionRun w nowej kolejności
+    if(!doc||!groupId||!Array.isArray(firstIds))return;
+    doc.actionOrder||(doc.actionOrder={});
+    doc.actionOrder[groupId]=firstIds;
+    await save();
    });}
   };
  }
@@ -240,7 +249,15 @@
   dialog.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();dialog.close();}});
   const css=el('style',dialog);css.textContent='.qh-window[open]{display:flex;flex-direction:column}input[data-history-note],input[data-history-note]:hover,input[data-history-note]:focus{border:0!important;outline:none!important;box-shadow:none!important;background:transparent!important}.qh-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.qh-compare>div{min-width:0;overflow-wrap:anywhere}@media(max-width:600px){.qh-compare{grid-template-columns:1fr}}';
   const content=el('div',dialog);content.style.cssText='overflow:auto;min-height:0;padding:0 14px 14px;scrollbar-gutter:stable';
-  const status=el('p',content),list=el('div',content);let limit=30;
+  const status=el('p',content);
+  // Pasek sortowania nad listą zbiorów
+  let sortDesc=true; // domyślnie: najnowsze na górze
+  const sortBar=el('div',content);sortBar.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:4px 0 2px;font-size:11px;color:#8a9fa5';
+  const sortBtn=el('button',sortBar,'');sortBtn.style.cssText='background:transparent;border:1px solid #345058;color:#a0bfc5;font-size:11px;padding:2px 7px;cursor:pointer;border-radius:3px';
+  function updateSortBtn(){sortBtn.textContent=sortDesc?'Najnowsze ↑':'Najstarsze ↑';}
+  updateSortBtn();
+  sortBtn.onclick=()=>{sortDesc=!sortDesc;updateSortBtn();paint();};
+  const list=el('div',content);let limit=30;
   const num=v=>Number.isFinite(v)?v.toLocaleString('pl-PL'):'—';
   const resources={guild_raids_money:'🪙 Monety',guild_raids_supplies:'🔨 Zaopatrzenie',guild_raids_chrono_alloy:'🔩 Stop',guild_raids_rope:'➰ Liny',guild_raids_happiness:'😊 Zadowolenie',guild_raids_population:'👥 Populacja',guild_raids_action_points_collection:'⚡ Akcje/h',guild_raids_action_points_capacity:'Pojemność akcji',att_def_boost_attacker:'Atak',att_def_boost_defender:'Obrona'};
   function snapshot(parent,snap,{expanded=false,showActions=false,actions=[]}={}){
@@ -281,6 +298,11 @@
       if(summary.groups.length||buildProduction.length){
         const allItems=summary.groups.flatMap(g=>g.items);
         const grouped=[...FoeQuantum.groupedBuildings(allItems),...buildProduction];
+        // Sortuj malejąco wg chronostopów + monet + młotków
+        grouped.sort((a,b)=>{
+          const score=item=>(item.production['guild_raids_chrono_alloy']||0)+(item.production['guild_raids_money']||0)+(item.production['guild_raids_supplies']||0);
+          return score(b)-score(a);
+        });
         const sec=document.createElement('details');sec.open=expanded;sec.style.cssText='';
         const hrZ=document.createElement('hr');hrZ.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrZ);
         $('quantum-groups').append(sec);
@@ -300,6 +322,10 @@
       // Sekcja: Pozostałe budynki (nieprodukcyjne — stałe efekty)
       if(summary.extras?.length||buildExtras.length){
         const grouped=[...FoeQuantum.groupedExtras(summary.extras||[]),...buildExtras];
+        // Sortuj malejąco wg działań kwantowych na godzinę
+        grouped.sort((a,b)=>(b.effects['guild_raids_action_points_collection']||0)-(a.effects['guild_raids_action_points_collection']||0));
+        // Suma zadowolenia — kolumna widoczna tylko gdy <= 5000
+        const totalHappiness=grouped.reduce((s,g)=>s+(g.effects['guild_raids_happiness']||0),0);
         // Ustal dynamicznie które kolumny mają jakiekolwiek wartości != 0
         const extraColDefs=[
           {key:'guild_raids_happiness',    label:'😊', title:'Zadowolenie'},
@@ -309,7 +335,15 @@
           {key:'att_def_boost_attacker',   label:'🗡️', title:'Bonus ataku atakującego %'},
           {key:'att_def_boost_defender',   label:'🛡️', title:'Bonus obrony obrońcy %'},
         ];
-        const activeCols=extraColDefs.filter(col=>grouped.some(g=>g.effects[col.key]!==0));
+        const activeCols=extraColDefs.filter(col=>{
+          // Pojemność działań — zawsze ukryta
+          if(col.key==='guild_raids_action_points_capacity')return false;
+          // Populacja — zawsze ukryta
+          if(col.key==='guild_raids_population')return false;
+          // Zadowolenie — ukryj gdy suma > 5000
+          if(col.key==='guild_raids_happiness'&&totalHappiness>5000)return false;
+          return grouped.some(g=>g.effects[col.key]!==0);
+        });
         if(activeCols.length){
           const sec2=document.createElement('details');sec2.open=expanded;sec2.style.cssText='';
           const hrP=document.createElement('hr');hrP.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';$('quantum-groups').append(hrP);
@@ -348,14 +382,17 @@
           const hrA=document.createElement('hr');hrA.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';wrap.append(hrA);
           const secA=document.createElement('details');secA.open=true;secA.style.cssText='text-align:left';wrap.append(secA);
           const secALabel=document.createElement('summary');secALabel.style.cssText='font-weight:bold;font-size:12px;cursor:pointer;color:#8fcfcf;margin-bottom:4px;text-align:left';secALabel.textContent='Działania ('+runs.length+')';secA.append(secALabel);
-          const kindLabel={added:'Stawiam:',removed:'Sprzedaję:',collection:'Zbieram:',changed:'Zmieniam:',connection:'Połączenie:'};
-          for(const run of [...runs].reverse()){
+          const kindLabel={added:'Stawiam',removed:'Sprzedaję',collection:'Zbieram',changed:'Zmieniam',connection:'Połączenie'};
+          for(const run of runs){
             const row=document.createElement('div');row.style.cssText='display:flex;align-items:baseline;gap:6px;padding:2px 0;font-size:11px;border-bottom:1px solid #1e3540;flex-wrap:wrap';secA.append(row);
-            const time=document.createElement('span');time.textContent=new Date(run.at).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});time.style.cssText='color:#8a9fa5;flex-shrink:0';row.append(time);
+            const time=document.createElement('span');
+            const d=new Date(run.at);const h=d.getHours();const m=Math.floor(d.getMinutes()/10)*10;
+            time.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+            time.style.cssText='color:#8a9fa5;flex-shrink:0';row.append(time);
             const desc=document.createElement('span');desc.style.cssText='flex:1;min-width:0';row.append(desc);
             const lbl=kindLabel[run.kind];if(lbl){const s=document.createElement('span');s.textContent=lbl+' ';s.style.cssText='color:#a99885';desc.append(s);}
             run.buildings.forEach((b,i)=>{if(i)desc.append(document.createTextNode(' · '));const strong=document.createElement('strong');strong.textContent=(b.building?b.count+'× ':'')+b.name;desc.append(strong);});
-            if(run.note){const note=document.createElement('span');note.textContent=' '+run.note;note.style.cssText='color:#6a7a7e;font-style:italic';row.append(note);}
+            if(run.note){const note=document.createElement('div');note.textContent=run.note;note.style.cssText='width:100%;color:#6a7a7e;font-style:italic;padding-left:2px;text-align:right';row.append(note);}
           }
         }
       }
@@ -470,7 +507,8 @@
     cumFights.set(e.id,{base:fights,tail:tailFights,total:fights+tailFights});
     runState.set(e.run,{prevAt:e.at,prevAph:curAph??aph??0,cumFights:fights});
    }
-   for(const event of grouped.slice(-limit).reverse()){
+   const displayGroups=sortDesc?grouped.slice(-limit).reverse():grouped.slice(0,limit);
+   for(const event of displayGroups){
     const details=el('details',list);details.style.cssText='background:#162e35;border:1px solid #345058;padding:5px 7px;margin:4px 0;border-radius:4px';
     views.push({node:details,ids:event.actions.map(e=>e.id)});
     const heading=el('summary',details,groupLabel(event));
@@ -491,10 +529,43 @@
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
     details.historyBuild=()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
-     const rows=actionRuns(event.actions).reverse();
+     const rows=(()=>{
+      const natural=actionRuns(event.actions); // domyślnie: najstarsze na górze
+      const order=history.document?.actionOrder?.[event.id];
+      if(!order?.length)return natural;
+      // Sortuj wg zapisanej kolejności; nieznane runy dołączamy na koniec
+      const byFirst=new Map(natural.map(r=>[r.refs[0]?.id,r]));
+      const sorted=order.map(id=>byFirst.get(id)).filter(Boolean);
+      const rest=natural.filter(r=>!order.includes(r.refs[0]?.id));
+      return [...sorted,...rest];
+     })();
      const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';el('summary',actions,'Działania ('+rows.length+')');
-     for(const action of rows){
+     // Drag state
+     let dragSrc=null,dragIdx=-1;
+     for(const [rowIdx,action] of rows.entries()){
       const row=el('div',actions);row.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:5px 0;border-bottom:1px solid #29434b';
+      row.dataset.rowIdx=rowIdx;
+      // Uchwyt do przeciągania
+      const handle=el('span',row,'⠿');handle.style.cssText='cursor:grab;color:#56727b;font-size:14px;flex-shrink:0;user-select:none;touch-action:none';handle.title='Przeciągnij żeby zmienić kolejność';
+      row.draggable=false;
+      handle.addEventListener('mousedown',()=>{row.draggable=true;});
+      handle.addEventListener('mouseleave',()=>{if(!dragSrc)row.draggable=false;});
+      row.addEventListener('dragstart',e=>{dragSrc=row;dragIdx=rowIdx;e.dataTransfer.effectAllowed='move';row.style.opacity='0.4';});
+      row.addEventListener('dragend',()=>{row.draggable=false;dragSrc=null;dragIdx=-1;row.style.opacity='';actions.querySelectorAll('[data-row-idx]').forEach(r=>{r.style.borderTop='';r.style.borderBottom='1px solid #29434b';});});
+      row.addEventListener('dragover',e=>{if(!dragSrc||dragSrc===row)return;e.preventDefault();e.dataTransfer.dropEffect='move';actions.querySelectorAll('[data-row-idx]').forEach(r=>{r.style.borderTop='';r.style.borderBottom='1px solid #29434b';});const targetIdx=Number(row.dataset.rowIdx);if(targetIdx<dragIdx)row.style.borderTop='2px solid #5bb8d4';else row.style.borderBottom='2px solid #5bb8d4';});
+      row.addEventListener('dragleave',()=>{row.style.borderTop='';row.style.borderBottom='1px solid #29434b';});
+      row.addEventListener('drop',async e=>{
+       e.preventDefault();if(!dragSrc||dragSrc===row)return;
+       actions.querySelectorAll('[data-row-idx]').forEach(r=>{r.style.borderTop='';r.style.borderBottom='1px solid #29434b';});
+       const fromIdx=dragIdx,toIdx=Number(row.dataset.rowIdx);
+       if(fromIdx===toIdx)return;
+       // Buduj nową kolejność firstIds przenosząc fromIdx na toIdx
+       const currentOrder=rows.map(r=>r.refs[0]?.id);
+       const moved=currentOrder.splice(fromIdx,1)[0];
+       currentOrder.splice(toIdx,0,moved);
+       await history.setActionOrder(event.id,currentOrder);
+       delete details.dataset.built;paint();
+      });
       el('span',row,new Date(action.at).toLocaleTimeString('pl-PL'));
       const label={added:'Stawiam:',removed:'Sprzedaję:',collection:'Zbieram:',changed:'Zmieniam:',connection:'Połączenie:'}[action.kind]||'';
       const description=el('span',row);description.style.cssText='min-width:0;overflow-wrap:anywhere';

@@ -2224,7 +2224,7 @@ Otwórz mapę Pól Chwały w grze.
         actBtn.textContent=battlePendingSector===row.id?'⏳':battleLastSector===row.id&&Date.now()<battleLastUntil?(battleLastOK?'✅':'⚠️'):'⚔️';
         actBtn.disabled=!battleReady||!!battlePending||(battleWaveSector!==null&&battleWaveSector!==row.id)||autoSector!==null||autoNegSector!==null||negPending!==null;
         actBtn.setAttribute('data-tooltip',battleWaveSector===row.id?'Kolejna fala':'Walka jednorazowa');
-        actBtn.onclick=()=>{modal.remove();startFight(row.id);};
+        actBtn.onclick=()=>{startFight(row.id);};
         if(!actionVisible('attack'))actBtn.style.display='none';
         td(actBtn);
         // ▶ autoatak
@@ -2232,7 +2232,7 @@ Otwórz mapę Pól Chwały w grze.
         autoBtn.textContent=autoSector===row.id?'⏹':'▶';
         autoBtn.disabled=autoSector!==row.id&&(!battleReady||!!battlePending||autoSector!==null||autoNegSector!==null||negPending!==null);
         autoBtn.setAttribute('data-tooltip',autoSector===row.id?'Zatrzymaj autoatak':'Autoatak');
-        autoBtn.onclick=()=>{modal.remove();if(autoSector===row.id){requestStopAuto();return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id,true);};
+        autoBtn.onclick=()=>{if(autoSector===row.id){requestStopAuto();return;}autoSector=row.id;lossStreak=0;stopButton.hidden=false;startFight(row.id,true);};
         if(!actionVisible('attack'))autoBtn.style.display='none';
         td(autoBtn);
         // 🤝 jednorazowa nego
@@ -2240,7 +2240,7 @@ Otwórz mapę Pól Chwały w grze.
         negBtnM.textContent=negPendingSector===row.id?'⏳':negLastSector===row.id&&Date.now()<negLastUntil?(negLastOK?'✅':'⚠️'):'🤝';
         negBtnM.disabled=!battleReady||negPending!==null||battlePending!==null||autoSector!==null||autoNegSector!==null;
         negBtnM.setAttribute('data-tooltip','Negocjacja jednorazowa');
-        negBtnM.onclick=()=>{modal.remove();startNeg(row.id);};
+        negBtnM.onclick=()=>{startNeg(row.id);};
         if(!actionVisible('negotiation'))negBtnM.style.display='none';
         td(negBtnM);
         // ▶▶ autoneg
@@ -2248,7 +2248,7 @@ Otwórz mapę Pól Chwały w grze.
         autoNegBtnM.textContent=autoNegSector===row.id?'⏹':'▶';
         autoNegBtnM.disabled=autoNegSector!==row.id&&(!battleReady||negPending!==null||battlePending!==null||autoSector!==null||autoNegSector!==null);
         autoNegBtnM.setAttribute('data-tooltip',autoNegSector===row.id?'Zatrzymaj auto-negocjację':'Auto-negocjacja');
-        autoNegBtnM.onclick=()=>{modal.remove();if(autoNegSector===row.id){stopAutoNeg('Auto-negocjacja zatrzymana.');return;}autoNegSector=row.id;stopNegButton.hidden=false;startNeg(row.id);};
+        autoNegBtnM.onclick=()=>{if(autoNegSector===row.id){stopAutoNeg('Auto-negocjacja zatrzymana.');return;}autoNegSector=row.id;stopNegButton.hidden=false;startNeg(row.id);};
         if(!actionVisible('negotiation'))autoNegBtnM.style.display='none';
         td(autoNegBtnM);
         // 3 checkboxy pilnowania

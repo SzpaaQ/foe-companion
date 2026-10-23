@@ -2168,36 +2168,43 @@ Otwórz mapę Pól Chwały w grze.
       if(!battle){setBattleFeedback('Brak danych mapy — otwórz Pola Chwały w grze.');return;}
       const existing=root.querySelector('#sector-guard-modal');if(existing){existing.remove();return;}
       const modal=document.createElement('div');modal.id='sector-guard-modal';
-      modal.style.cssText='position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:#0008';
-      const box=document.createElement('div');box.style.cssText='background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;min-width:340px;max-width:95vw;max-height:80vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c';
+      // pointer-events:all konieczne — host ma pointer-events:none
+      modal.style.cssText='position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:#0008;pointer-events:all';
+      const box=document.createElement('div');box.style.cssText='background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;min-width:360px;max-width:96vw;max-height:80vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c;pointer-events:all';
       modal.append(box);
       // Naglowek
       const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
-      const title=document.createElement('strong');title.textContent='Pilnowanie sektorów';title.style.cssText='font-size:13px;color:#f1d69a';
+      const titleEl=document.createElement('strong');titleEl.textContent='Pilnowanie sektorów';titleEl.style.cssText='font-size:13px;color:#f1d69a';
       const closeBtn=document.createElement('button');closeBtn.textContent='×';closeBtn.setAttribute('aria-label','Zamknij');
       closeBtn.style.cssText='background:transparent;border:0;color:#e7eeee;font-size:20px;line-height:1;cursor:pointer;padding:0 4px';
       closeBtn.onclick=()=>modal.remove();
-      hdr.append(title,closeBtn);box.append(hdr);
+      hdr.append(titleEl,closeBtn);box.append(hdr);
       // Tabelka
       const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;font-size:11px';
-      // Naglówek tabeli
       const thead=document.createElement('thead');
       const hrow=document.createElement('tr');
-      for(const [txt,tip] of [['Sektor',''],['Postęp','Postęp przejęcia / max'],['🔔','Pilnuj — powiadomienie gdy wróg atakuje'],['🕐','Zamknij o pełnej godzinie (30s przed)'],['⚡','Zamknij gdy wróg osiągnie >80%']]){
-        const th=document.createElement('th');th.textContent=txt;if(tip)th.title=tip;
+      for(const [txt,tip] of [
+        ['Sektor',''],
+        ['Postęp','Postęp przejęcia / max'],
+        ['⚔️','Atak / negocjacja'],
+        ['🔔','Pilnuj — powiadomienie gdy wróg atakuje'],
+        ['🕐','Zamknij o pełnej godzinie (30s przed)'],
+        ['⚡','Zamknij gdy wróg osiągnie >80%'],
+      ]){
+        const th=document.createElement('th');th.textContent=txt;
+        if(tip)th.setAttribute('data-tooltip',tip);
         th.style.cssText='text-align:'+(txt==='Sektor'?'left':'center')+';padding:3px 6px;border-bottom:1px solid #345058;color:#8fcfcf;font-weight:normal';
         hrow.append(th);
       }
       thead.append(hrow);table.append(thead);
-      // Wiersze sektorow
       const tbody=document.createElement('tbody');
       const open=FoeModel.rows(battle,true).rows.filter(r=>r.until<=Date.now()/1000).sort((a,b)=>(a.progress??0)-(b.progress??0)||a.id-b.id);
       if(!open.length){const p=document.createElement('p');p.textContent='Brak otwartych sektorów.';p.style.color='#8a9fa5';box.append(p);}
       for(const row of open){
         const g=getGuard(battle.map.id,row.id);
-        const anyG=g.guard||g.closeAtHour||g.closeWhenThreatened;
         const tr=document.createElement('tr');
-        if(anyG)tr.style.background='rgba(30,100,200,0.15)';
+        const refreshTr=()=>{const gNow=getGuard(battle.map.id,row.id);tr.style.background=(gNow.guard||gNow.closeAtHour||gNow.closeWhenThreatened)?'rgba(30,100,200,0.15)':'';};
+        refreshTr();
         // Sektor
         const tdName=document.createElement('td');
         tdName.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector;
@@ -2205,6 +2212,11 @@ Otwórz mapę Pól Chwały w grze.
         // Postep
         const tdProg=document.createElement('td');tdProg.textContent=row.progress+'/'+(row.maxProgress??'—');
         tdProg.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center;color:#a5b8bc';tr.append(tdProg);
+        // Atak / nego
+        const tdType=document.createElement('td');
+        tdType.textContent=row.isAttackBattleType===true?'⚔️':row.isAttackBattleType===false?'🤝':'—';
+        tdType.setAttribute('data-tooltip',row.isAttackBattleType===true?'Walka':'Negocjacja');
+        tdType.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center';tr.append(tdType);
         // 3 checkboxy
         for(const key of ['guard','closeAtHour','closeWhenThreatened']){
           const td=document.createElement('td');td.style.cssText='padding:4px 6px;border-bottom:1px solid #1e3540;text-align:center';
@@ -2212,20 +2224,20 @@ Otwórz mapę Pól Chwały w grze.
           cb.onchange=()=>{
             setGuard(battle.map.id,row.id,{[key]:cb.checked});
             if(key==='closeAtHour'&&!cb.checked)cancelCloseAtHour(row.id);
-            tr.style.background=getGuard(battle.map.id,row.id).guard||getGuard(battle.map.id,row.id).closeAtHour||getGuard(battle.map.id,row.id).closeWhenThreatened?'rgba(30,100,200,0.15)':'';
-            paintOpenSectors();
+            refreshTr();paintOpenSectors();
           };
           td.append(cb);tr.append(td);
         }
         tbody.append(tr);
       }
       table.append(tbody);box.append(table);
-      // Legenda
       const legend=document.createElement('p');legend.style.cssText='margin:8px 0 0;font-size:10px;color:#56727b';
       legend.textContent='🔔 Powiadomienie gdy wróg atakuje · 🕐 Autowalka 30s przed pełną godziną · ⚡ Autowalka gdy wróg >80%';
       box.append(legend);
-      // Zamknij na ESC lub klik tła
-      const onKey=e=>{if(e.key==='Escape'){modal.remove();document.removeEventListener('keydown',onKey,true);}};
+      // Tooltips — convertTitles działa przez MutationObserver ale wolamy recznie dla pewnosci
+      convertTitles(modal);
+      // Zamknij ESC lub klik tla
+      const onKey=e=>{if(e.key==='Escape'){e.stopPropagation();modal.remove();document.removeEventListener('keydown',onKey,true);}};
       document.addEventListener('keydown',onKey,true);
       modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();document.removeEventListener('keydown',onKey,true);}});
       root.append(modal);

@@ -981,8 +981,8 @@ Otwórz mapę Pól Chwały w grze.
       #city{padding-bottom:100px;box-sizing:border-box}
       .sector-menu-btn{padding:2px 5px;background:transparent;border-color:transparent;outline:none;font-size:14px;line-height:1;border-radius:0;color:#8a9fa5;flex-shrink:0}
       .sector-menu-btn:hover,.sector-menu-btn.sector-menu-active{color:#f1d69a}
-      .sector-dropdown{background:#152e36;border:1px solid #345058;border-radius:4px;padding:6px 8px;min-width:200px;box-shadow:0 4px 16px #0009;display:flex;flex-direction:column;gap:4px}
-      .sector-dropdown-row{display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;padding:3px 2px;white-space:nowrap;color:#dce8ec}
+      .sector-dropdown{background:#152e36;border:1px solid #345058;border-radius:3px;padding:4px 6px;min-width:160px;box-shadow:0 3px 10px #000a;display:flex;flex-direction:column;gap:1px;font-size:11px}
+      .sector-dropdown-row{display:flex;align-items:center;gap:5px;cursor:pointer;padding:2px 3px;white-space:nowrap;color:#dce8ec}
       .sector-dropdown-row:hover{color:#fff}
       .sector-dropdown-row input[type=checkbox]{margin:0;cursor:pointer}
     `;
@@ -1772,13 +1772,15 @@ Otwórz mapę Pól Chwały w grze.
           const rect=menuBtn.getBoundingClientRect();
           dropdown.style.cssText='position:fixed;right:'+(window.innerWidth-rect.right)+'px;top:'+rect.bottom+'px;z-index:2147483647';
           root.append(dropdown);
-          // Zamknij po kliknięciu poza — z opóźnieniem żeby checkbox zdążył dostać event
+          // Zamknij po kliknieciu poza dropdownem
+          // Uzywamy 'click' (odpala po mouseup) — checkbox zdazy zlapac swoj event przed zamknieciem
           const close=ev=>{
-            if(dropdown.contains(ev.target)||ev.target===menuBtn)return;
+            const path=ev.composedPath();
+            if(path.some(n=>n===dropdown||n===menuBtn))return;
             dropdown.remove();
-            document.removeEventListener('pointerdown',close,true);
+            document.removeEventListener('click',close,true);
           };
-          setTimeout(()=>document.addEventListener('pointerdown',close,true),100);
+          setTimeout(()=>document.addEventListener('click',close,true),0);
         };
         line.append(name,progress,chance,action,auto,negBtn,autoNegBtn,menuBtn);list.append(line);
       }

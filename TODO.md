@@ -1,3 +1,26 @@
+#### 2026-10-23
+
+##### POLA CHWAŁY — pilnowanie sektora ✅ (zaimplementowane)
+- dropdown ⋮ per sektor: Pilnuj / Zamknij o pełnej / Zamknij gdy zagrożony >80%
+- niebieskie tło wiersza gdy aktywna opcja
+- powiadomienie + dźwięk gdy wróg atakuje pilnowany sektor
+- stan w localStorage foe-companion.sectorGuard
+
+##### POLA CHWAŁY — do dopracowania
+- dropdown chowa się przy kliknięciu zamiast zostawać otwarty (fix: composedPath w shadow DOM)
+- skondensować dropdown (mniejszy, bardziej kompaktowy)
+
+##### kolejna funkcja do rozważenia (nie rób jeszcze)
+autonegocjacje nowootwartych sektorów. z ustawieniem max oporu
+czyli gdy otworzy się nowy sektor powinno wykonać x udanych negocjacji również w ustawieniach opcja
+tutaj musiałby być limit oporu dla którego taka funkcja by działała i jeśli opór zostanie przekroczony przycisk musiałby znikać.
+funkcja działałaby tylko dla sektorów, które:
+- mają postęp poniżej 50%
+- szansa na zwiększenie oporu to 20%
+przycisk z emoji i tooltipem przy przycisku kopiuj (otwarte sektory)
+
+--------------------------------------------------------------------------
+
 #### kolejne modyfikacje w historii zbiorów w najazdach kwantowych
 po kliknięciu połącz z poprzednim zbiorem jest problem - niechcący to kliknąłem i połączyłem źle, muszę mieć możliwość cofnięcia
 podobnie z funkcją usuwania wpisu w działaniach

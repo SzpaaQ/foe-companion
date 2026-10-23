@@ -1508,27 +1508,6 @@ Otwórz mapę Pól Chwały w grze.
     const enemyProgressPrev=new Map();
     const guardAlerted=new Map();
 
-    // --- Pilnowanie sektorów (sectorGuard) ---
-    const GUARD_KEY='foe-companion.sectorGuard';
-    function loadGuards(){try{const v=JSON.parse(localStorage.getItem(GUARD_KEY)||'{}');return(v&&typeof v==='object'&&!Array.isArray(v))?v:{};}catch{return{};}}
-    function saveGuards(guards){try{localStorage.setItem(GUARD_KEY,JSON.stringify(guards));}catch{}}
-    function getGuard(mapId,sectorId){const g=loadGuards();return g[mapId+':'+sectorId]||{guard:false,closeAtHour:false,closeWhenThreatened:false};}
-    function setGuard(mapId,sectorId,patch){const g=loadGuards();const key=mapId+':'+sectorId;g[key]={...getGuard(mapId,sectorId),...patch};if(!g[key].guard&&!g[key].closeAtHour&&!g[key].closeWhenThreatened)delete g[key];saveGuards(g);}
-    const closeAtHourTimers=new Map();
-    function scheduleCloseAtHour(sectorId){
-      if(closeAtHourTimers.has(sectorId))return;
-      const now=Date.now();const ms=now%3600000;let delay=3600000-ms-30000;if(delay<=0)delay+=3600000;
-      const timer=setTimeout(()=>{
-        closeAtHourTimers.delete(sectorId);if(!battle)return;
-        const guard=getGuard(battle.map.id,sectorId);if(!guard.closeAtHour)return;
-        setBattleFeedback('Zamykam sektor o pełnej godzinie: '+sectorId);
-        startFight(sectorId,true);setGuard(battle.map.id,sectorId,{closeAtHour:false});paintOpenSectors();
-      },delay);
-      closeAtHourTimers.set(sectorId,timer);
-    }
-    function cancelCloseAtHour(sectorId){const t=closeAtHourTimers.get(sectorId);if(t!=null){clearTimeout(t);closeAtHourTimers.delete(sectorId);}}
-    const enemyProgressPrev=new Map();
-    const guardAlerted=new Map();
 
     // --- Negocjacje UI --- (negStats/stopNegButton/negPanel zdefiniowane poniżej, montowane tu)
     // Montaż następuje po deklaracji zmiennych negocjacyjnych w kolejnym bloku.

@@ -109,7 +109,7 @@ test('bulk negotiation stays visible above attrition limit; STOP follows activit
  const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(__dirname+'/panel.js','utf8');
  const nodes=new Map(),node=key=>{if(!nodes.has(key))nodes.set(key,{setAttribute(k,v){this[k]=v;}});return nodes.get(key);};
  const state={attack:false,negotiation:false,active:null,status:'off'},controller={state,engaged:false};
- const ctx={bulkAutomation:controller,bulkSettings:A.settings(),playerAttrition:10,actionVisible:()=>true,battleReady:true,autoSector:null,autoNegSector:null,root:{querySelector:node}};
+ const ctx={paintAutomationIndicators(){},bulkAutomation:controller,bulkSettings:A.settings(),playerAttrition:10,actionVisible:()=>true,battleReady:true,autoSector:null,autoNegSector:null,root:{querySelector:node}};
  const code=source.slice(source.indexOf('    function paintBulkControls()'),source.indexOf('    function tickBulk()'));vm.runInNewContext(code+'paintBulkControls()',ctx);
  const neg=node('[data-bulk-mode="negotiation"]'),stop=node('[data-bulk-stop]');assert.equal(neg.hidden,false);assert.equal(neg.disabled,true);assert.match(node('[data-bulk-neg-reason]').textContent,/10.*0/);assert.equal(stop.hidden,true);
  ctx.playerAttrition=0;vm.runInNewContext('paintBulkControls()',ctx);assert.equal(neg.disabled,false);

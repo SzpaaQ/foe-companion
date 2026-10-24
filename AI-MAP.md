@@ -1,6 +1,6 @@
 # FoE Companion — mapa dla AI
 
-Stan rozpoznany: 2026-10-24, baza poprzedniego etapu `d99c9da`, automatyzacja wdrożona lokalnie, manifest 0.6.04.
+Stan rozpoznany: 2026-10-24, baza poprzedniego etapu `7370566`, automatyzacja wdrożona lokalnie, manifest 0.6.05.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 
@@ -131,6 +131,17 @@ Tryby po reloadzie są wyłączone. STOP dokańcza rozpoczętą akcję, także f
 `guardsPaused` blokuje automatyczne zamykanie z pilnowania również po STOP/3 porażkach;
 ponowne zaznaczenie checkboxa zamykania, przy bezczynnej kolejce, przywraca pilnowanie.
 Testy nowej kolejki: `sector-automation.test.cjs`, `battle-flow.test.cjs`.
+
+W 0.6.05: `model.rows` dodaje ownerId, enemyProgress i enemyMaxProgress (największy
+postęp pojedynczego przeciwnika, bez sumowania). `updateSectorPopup` łączy alarm
+pilnowania z otwarciem; zamknięcie, przejęcie lub zniknięcie z listy usuwa wpis.
+`popupCycles` (sessionStorage `.cycles`) resetuje wyciszenie przy nowym właścicielu,
+blokadzie lub edycji; alarmy mają pierwszeństwo i nie wymagają włączonego dźwięku.
+`paintAutomationIndicators` aktualizuje emoji w nagłówku i nad uchwytem oraz
+komórki `[data-modal-counter]` z istniejących liczników. Odczyt bez osobnego liczenia.
+Nagłówki kolumn w modalu używają `paintGuardColumns`, `applyGuard`, `toggleGuardColumn`;
+obsługa pojedyncza i zbiorcza współdzielą zapis i zarządzanie timerem.
+Testy: `sector-popup.test.cjs`, `sector-controls.test.cjs` (także montaż całego modala).
 
 ## Najazdy i historia: niezmienniki
 

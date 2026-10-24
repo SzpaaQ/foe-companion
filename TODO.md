@@ -1,6 +1,8 @@
-Proponuję **👾 jako oznaczenie wroga** — odróżnia się od ⚔️ autoataku i 🏃‍♂️ wyścigu.
+#### 2026-10-24 — powiadomienia i sterowanie sektorami (wdrożone w 0.6.05)
 
-Plan zmian:
+**👾 oznacza postęp wroga**, ⚔️ autoatak, 🏃‍♂️ wyścig.
+
+Zrealizowany zakres (weryfikacja offline; wygląd w grze do sprawdzenia):
 
 1. **Progres w powiadomieniu otwartego sektora**
    - Nasz postęp na końcu wpisu:

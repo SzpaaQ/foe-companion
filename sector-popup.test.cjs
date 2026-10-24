@@ -4,7 +4,7 @@ function setup(session=new Map()){
  const source=fs.readFileSync(__dirname+'/panel.js','utf8'),elements=new Map();
  const $=id=>{if(!elements.has(id))elements.set(id,{textContent:'',style:{},getBoundingClientRect:()=>({width:70})});return elements.get(id);};
  let now=100;const popup={style:{}},status={textContent:''};
- const ctx=vm.createContext({$,sectorPopup:popup,sectorStatus:status,soundSettings:{enabled:true,minutes:2},battle:{map:{id:1}},Date:{now:()=>now*1000},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v)}});
+ const ctx=vm.createContext({getGuard:()=>({guard:false}),$,sectorPopup:popup,sectorStatus:status,soundSettings:{enabled:true,minutes:2},battle:{map:{id:1}},Date:{now:()=>now*1000},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v)}});
  vm.runInContext(source.slice(source.indexOf("    const popupKey="),source.indexOf('    async function unlockAudio()')),ctx);
  return {ctx,$,popup,session,advance:t=>{now=t;vm.runInContext('paintSectorPopup()',ctx);},add:(id,until,extra={})=>{ctx.row={id,until,sector:'A'+id,color:'🟣',isAttackBattleType:true,...extra};vm.runInContext('updateSectorPopup([row],Date.now()/1000)',ctx);}};
 }
@@ -14,11 +14,11 @@ test('countdown ticks and notification remains after opening until explicitly cl
  ui.advance(120);assert.match(ui.$('sector-popup-list').textContent,/Otwarte/);
  ui.advance(5000);assert.equal(ui.popup.hidden,false);ui.$('sector-popup-close').onclick();assert.equal(ui.popup.hidden,true);
 });
-test('dismissal is per sector for exactly one hour, survives reload and ignores changed opening time',()=>{
+test('dismissal survives reload for the same opening; new opening resets it',()=>{
  const ui=setup();ui.add(1,160);ui.$('sector-popup-close').onclick();
  assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed.v2')),{'1:1':3700});
- const reloaded=setup(ui.session);reloaded.add(1,180);assert.equal(reloaded.popup.hidden,true);
- reloaded.advance(3699);reloaded.add(1,3750);assert.equal(reloaded.popup.hidden,true);
+ const reloaded=setup(ui.session);reloaded.add(1,160);assert.equal(reloaded.popup.hidden,true);
+ reloaded.advance(3699);reloaded.add(1,3750);assert.equal(reloaded.popup.hidden,false);
  reloaded.advance(3700);reloaded.add(1,3750);assert.equal(reloaded.popup.hidden,false);
 });
 test('open sectors require strictly less than half progress and 30 percent resistance',()=>{
@@ -59,4 +59,25 @@ test('settings fold state restores both open and closed sections and saves toggl
  assert.equal(sections.find(s=>s.id==='settings-gbg').open,false);
  const diagnostics=sections.find(s=>s.id==='diagnostics');assert.equal(diagnostics.open,true);
  diagnostics.open=false;diagnostics.toggle();assert.equal(JSON.parse(saved).diagnostics,false);
+});
+
+test('closed, conquered and missing sectors disappear; next opening is a new event',()=>{
+ const ui=setup();ui.add(1,0,{progress:7,maxProgress:132,gainAttritionChance:20,ownerId:2});assert.equal(ui.popup.hidden,false);
+ ui.add(1,4000,{ownerId:3});assert.equal(ui.popup.hidden,true);
+ ui.advance(3900);ui.add(1,4000,{ownerId:3});assert.equal(ui.popup.hidden,false);
+ ui.add(1,0,{ownerId:1,color:'⚪'});assert.equal(ui.popup.hidden,true);
+ ui.add(1,0,{progress:7,maxProgress:132,gainAttritionChance:20,ownerId:2});vm.runInContext('updateSectorPopup([],Date.now()/1000)',ui.ctx);assert.equal(ui.popup.hidden,true);
+});
+test('guard alarm shares one popup entry, displays both progress values and updates without sound',()=>{
+ const ui=setup();ui.ctx.getGuard=()=>({guard:true});
+ ui.add(1,0,{progress:7,maxProgress:132,gainAttritionChance:20,enemyProgress:5,enemyMaxProgress:132,race:true});
+ assert.match(ui.$('sector-popup-list').textContent,/🔔 Otwarte.*🏃‍♂️ \(7\/132\) · 👾 5\/132/);assert.equal(ui.$('sector-popup-list').textContent.split('\n').length,1);
+ ui.ctx.soundSettings.enabled=false;ui.add(1,0,{progress:7,maxProgress:132,enemyProgress:9,enemyMaxProgress:132});assert.match(ui.$('sector-popup-list').textContent,/👾 9\/132/);assert.equal(ui.popup.hidden,false);
+ ui.add(1,0,{progress:7,maxProgress:132,enemyProgress:0});assert.equal(ui.popup.hidden,true);
+ ui.add(1,0,{enemyProgress:3});assert.match(ui.$('sector-popup-list').textContent,/👾 3\/—/);
+ ui.add(1,4000,{enemyProgress:3});assert.equal(ui.popup.hidden,true);
+});
+test('model chooses greatest enemy progress without summing guilds',()=>{
+ const Model=require('./model.js');const battle={currentParticipantId:1,battlegroundParticipants:[],map:{id:'waterfall_archipelago',provinces:[{id:1,ownerId:2,conquestProgress:[{participantId:1,progress:7,maxProgress:132},{participantId:2,progress:5,maxProgress:132},{participantId:3,progress:9,maxProgress:132}]}]}};
+ const r=Model.rows(battle,false).rows[0];assert.equal(r.progress,7);assert.equal(r.enemyProgress,9);assert.equal(r.enemyMaxProgress,132);
 });

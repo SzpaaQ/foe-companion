@@ -66,12 +66,13 @@
       const conquest=p.conquestProgress?.find(c=>c.participantId===own);
       const limits=(p.conquestProgress||[]).map(c=>c.maxProgress).filter(n=>Number.isFinite(n)&&n>0);
       const maxProgress=Number.isFinite(conquest?.maxProgress)&&conquest.maxProgress>0?conquest.maxProgress:limits.length?Math.min(...limits):null;
+      const enemy=(p.conquestProgress||[]).filter(c=>c.participantId!==own&&Number.isFinite(c.progress)&&c.progress>0).sort((a,b)=>b.progress-a.progress)[0];
       const race=(topology.sectors[sector(id,battle.map.id)]?.neighbors||[]).some(name=>{
         const neighbor=battle.map.provinces.find(n=>(n.id??0)===topology.sectors[name].id);
         return neighbor?.ownerId!=null&&neighbor.ownerId!==own&&neighbor.ownerId!==p.ownerId&&participants.has(neighbor.ownerId);
       });
       return {id, sector:sector(id,battle.map.id), color:p.ownerId === own ? '⚪' : colors[owner?.colour] || '⚫', owner:owner?.clan?.name || 'Nieznany', until:Number(p.lockedUntil)||0, isAttackBattleType:p.isAttackBattleType===true,
-        race,ignored:ignored.has(id),progress:conquest?.progress??0,maxProgress,gainAttritionChance:Number.isFinite(p.gainAttritionChance)?p.gainAttritionChance:null};
+        race,ownerId:p.ownerId,enemyProgress:enemy?.progress??0,enemyMaxProgress:enemy?.maxProgress??maxProgress,ignored:ignored.has(id),progress:conquest?.progress??0,maxProgress,gainAttritionChance:Number.isFinite(p.gainAttritionChance)?p.gainAttritionChance:null};
     }).sort((a,b)=>a.until-b.until || a.id-b.id);
     return {rows:list, warning:frontierOnly ? 'Sąsiedzi własnych pól według stałej mapy. Własna gildia: ⚪.' : 'Wszystkie sektory; to nie jest lista celów dostępnych do ataku.'};
   }

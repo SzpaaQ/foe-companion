@@ -7,7 +7,7 @@ function setup(storage){let time=1000;const saved=new Map();storage||={getItem:k
 }
 test('strict eligibility respects exact 20%, ignored, types, limits and reserve',()=>{
  const config=A.settings();assert.equal(A.eligible(row(),'attack',config,1,3),true);
- for(const patch of [{ignored:true},{until:2},{color:'⚪'},{maxProgress:null},{progress:50},{isAttackBattleType:false}])assert.equal(A.eligible(row(patch),'attack',config,1,3),false);
+ for(const patch of [{ignored:true},{until:2},{color:'⚪'},{maxProgress:null,progress:1},{progress:50},{isAttackBattleType:false}])assert.equal(A.eligible(row(patch),'attack',config,1,3),false);
  assert.equal(A.eligible(row({progress:49}),'attack',config,1,51),false);
  for(const chance of [null,0,19,21,29])assert.equal(A.eligible(row({gainAttritionChance:chance}),'negotiation',config,1),false);
  assert.equal(A.eligible(row({isAttackBattleType:false}),'negotiation',config,1),true);
@@ -90,4 +90,30 @@ test('omitted default fields clear old attack type and attrition chance',()=>{
  t.consume({currentParticipantId:1,endsAt:1000,map:{id:'m',provinces:[province]}});
  const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};t.checkPolicy(7,policy);
  const {isAttackBattleType,gainAttritionChance,...defaults}=province;t.consume({requestClass:'GuildBattlegroundService',requestMethod:'getProvince',responseData:defaults},'socket');assert.throws(()=>t.checkPolicy(7,policy));assert.equal(t.snapshot(7).value.gainAttritionChance,0);
+});
+
+test('untouched sector permits first attack only, not unknown positive progress',()=>{
+ const config=A.settings();assert.equal(A.eligible(row({maxProgress:null}),'attack',config,1,3),true);
+ for(const [kind,patch] of [['negotiation',{maxProgress:null}],['attack',{maxProgress:null,progress:1}],['attack',{maxProgress:0}],['attack',{maxProgress:null,ignored:true}],['attack',{maxProgress:null,isAttackBattleType:false}]])assert.equal(A.eligible(row(patch),kind,config,1,3),false);
+ const h=setup();h.env.rows=h.env.allRows=[row({maxProgress:null})];h.c.enable('attack',true);h.tick();assert.equal(h.sent.length,1);h.result();h.env.rows=h.env.allRows=[row({maxProgress:null,progress:1})];h.tick();assert.equal(h.sent.length,1);
+});
+test('enemy conquest limit gives our zero progress the same denominator in model and MAIN',()=>{
+ const M=require('./model.js'),t=L.createTracker();t.setConnected(true);
+ const battle={currentParticipantId:1,endsAt:1000,battlegroundParticipants:[],map:{id:'waterfall_archipelago',provinces:[{id:7,ownerId:2,isAttackBattleType:true,conquestProgress:[{participantId:3,progress:42,maxProgress:132}]}]}};
+ t.consume(battle);const row=M.rows(battle,false).rows[0];assert.equal(row.progress,0);assert.equal(row.maxProgress,132);assert.equal(t.snapshot(7).maxProgress,132);
+ const policy={kind:'attack',mapId:battle.map.id,endsAt:1000,reserve:3,progress:50,attack:true,defense:false};t.checkPolicy(7,policy);
+ battle.map.provinces[0].conquestProgress=[];t.consume(battle);t.checkPolicy(7,policy);
+ battle.map.provinces[0].conquestProgress=[{participantId:1,progress:1}];t.consume(battle);assert.throws(()=>t.checkPolicy(7,policy));
+});
+test('bulk negotiation stays visible above attrition limit; STOP follows activity',()=>{
+ const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(__dirname+'/panel.js','utf8');
+ const nodes=new Map(),node=key=>{if(!nodes.has(key))nodes.set(key,{setAttribute(k,v){this[k]=v;}});return nodes.get(key);};
+ const state={attack:false,negotiation:false,active:null,status:'off'},controller={state,engaged:false};
+ const ctx={bulkAutomation:controller,bulkSettings:A.settings(),playerAttrition:10,actionVisible:()=>true,battleReady:true,autoSector:null,autoNegSector:null,root:{querySelector:node}};
+ const code=source.slice(source.indexOf('    function paintBulkControls()'),source.indexOf('    function tickBulk()'));vm.runInNewContext(code+'paintBulkControls()',ctx);
+ const neg=node('[data-bulk-mode="negotiation"]'),stop=node('[data-bulk-stop]');assert.equal(neg.hidden,false);assert.equal(neg.disabled,true);assert.match(node('[data-bulk-neg-reason]').textContent,/10.*0/);assert.equal(stop.hidden,true);
+ ctx.playerAttrition=0;vm.runInNewContext('paintBulkControls()',ctx);assert.equal(neg.disabled,false);
+ controller.engaged=true;state.negotiation=true;vm.runInNewContext('paintBulkControls()',ctx);assert.equal(stop.hidden,false);
+ state.negotiation=false;state.active={kind:'negotiation'};vm.runInNewContext('paintBulkControls()',ctx);assert.equal(stop.hidden,false);
+ state.active=null;controller.engaged=false;vm.runInNewContext('paintBulkControls()',ctx);assert.equal(stop.hidden,true);
 });

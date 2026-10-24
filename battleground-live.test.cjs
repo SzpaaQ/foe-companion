@@ -52,10 +52,12 @@ test('observer uses only the game-created socket, never sends, ignores auth and 
 
 test('zero progress can bootstrap from HTTP, but missing map or a known reserve limit still blocks',async()=>{
  const {tracker}=setup();
- for(const conquestProgress of [[],[{participantId:1}],[{participantId:1,progress:0}],[{participantId:2,progress:10,maxProgress:120}]]){
+ for(const conquestProgress of [[],[{participantId:1}],[{participantId:1,progress:0}]]){
   tracker.consume(response('getProvince',{...province(),conquestProgress}));
   assert.equal(tracker.check(26,3,1).progress,0);assert.equal(tracker.check(26,3,2).maxProgress,undefined);
  }
+ tracker.consume(response('getProvince',{...province(),conquestProgress:[{participantId:2,progress:10,maxProgress:120}]}));
+ assert.equal(tracker.check(26,3).progress,0);assert.equal(tracker.check(26,3).maxProgress,120);assert.throws(()=>tracker.check(26,120),/rezerwę/);
  assert.throws(()=>tracker.check(999,3),/Brak danych/);
  const before=tracker.snapshot(26),waiting=tracker.waitForProgress(26,before);
  tracker.consume(response('getProvinces',[province(1)]),'socket');assert.equal(await waiting,true);

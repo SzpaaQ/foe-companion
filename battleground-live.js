@@ -3,7 +3,10 @@
  function createTracker({now=()=>Date.now(),schedule=setTimeout,cancel=clearTimeout}={}){
   let mapId=null,endsAt=null,attrition=null,ignored=new Set();
   let own=null,connected=false,serial=0,epoch=0;const provinces=new Map(),waiters=new Set();
-  const snapshot=id=>{const p=provinces.get(id),c=p?.value.conquestProgress?.find(c=>c.participantId===own);return p?{...p,progress:c?.progress??0,maxProgress:c?.maxProgress,own}:null;};
+  const snapshot=id=>{const p=provinces.get(id),c=p?.value.conquestProgress?.find(c=>c.participantId===own);
+   const limits=(p?.value.conquestProgress||[]).map(c=>c.maxProgress).filter(n=>Number.isFinite(n)&&n>0);
+   const maxProgress=Number.isFinite(c?.maxProgress)&&c.maxProgress>0?c.maxProgress:limits.length?Math.min(...limits):undefined;
+   return p?{...p,progress:c?.progress??0,maxProgress,own}:null;};
   function flush(){for(const check of [...waiters])check();}
   function consume(data,source='http'){
    // The initial map can be nested in startup/state responses, not only a
@@ -66,7 +69,8 @@
    if(!policy||!['attack','negotiation'].includes(policy.kind)||!Number.isFinite(policy.progress)||policy.progress<=0||policy.progress>100||!Number.isInteger(policy.reserve)||policy.reserve<0)throw Error('Nieprawidłowe warunki automatyzacji.');
    const s=check(id,policy.reserve,policy.kind==='negotiation'?2:1),p=s.value;
    if(mapId!==policy.mapId||endsAt!==policy.endsAt||ignored.has(id))throw Error('Mapa zmieniona lub sektor oznaczony jako ignorowany.');
-   if(!Number.isFinite(s.maxProgress)||s.maxProgress<=0||s.progress/s.maxProgress*100>=policy.progress)throw Error('Osiągnięto limit progresu lub brak potwierdzonego limitu.');
+   const firstAttack=policy.kind==='attack'&&s.progress===0&&s.maxProgress==null;
+   if(!firstAttack&&(!Number.isFinite(s.maxProgress)||s.maxProgress<=0||s.progress/s.maxProgress*100>=policy.progress))throw Error('Osiągnięto limit progresu lub brak potwierdzonego limitu.');
    if(policy.kind==='negotiation'&&(!Number.isSafeInteger(attrition)||attrition<0||!Number.isSafeInteger(policy.maxAttrition)||attrition>policy.maxAttrition))throw Error('Brak aktualnego oporu lub przekroczono limit — otwórz mapę w grze.');
    if(policy.kind==='negotiation'&&p.gainAttritionChance!==20)throw Error('Szansa wzrostu oporu nie wynosi 20%.');
    if(policy.kind==='attack'&&!(p.isAttackBattleType===true?policy.attack:policy.defense))throw Error('Typ sektora nie jest wybrany.');

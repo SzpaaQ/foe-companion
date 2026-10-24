@@ -1,3 +1,16 @@
+#### 2026-10-24 — poprawki otwartych sektorów (wykonane lokalnie)
+- Autonegocjacje: górny przycisk nie znika po przekroczeniu limitu oporu; widoczny powód blokady i wskazanie ustawienia do zmiany.
+- STOP widoczny tylko podczas automatyzacji lub dokańczania jej akcji; obsługuje też aktywny automat per sektor.
+- Nasze 0/x korzysta z maxProgress innej gildii na tym samym sektorze.
+- Autoatak może rozpocząć walkę przy progresie 0 bez znanego limitu. Dodatni progres bez limitu nadal blokuje następną walkę.
+- Użytkownik doprecyzował: zgłoszony błąd negocjacji dotyczył brakującego górnego przycisku.
+
+##### Autoatak otawrych sektorów
+nowe zrzuty ekranu. Sektor pasuje do wytycznych, ale nie ma jeszcze o nim informacji, trzeba zaatakować w takim wypadku
+na kolejnym zrzucie widać sektor i to, że inna gildia już go atakuje, czy gra nie wysyła takich informacji? jeśli wysyła to całkowity rogres możemy wziąć stamtąd wtedy nasz progres 0/x
+brakuje autonegocjacji otwartych sektorów a przycisk stop powinien być widoczny tylko gdy trwa autodziałanie
+
+
 #### 2026-10-23
 
 ##### POLA CHWAŁY — pilnowanie sektora ✅ (zaimplementowane)
@@ -29,7 +42,7 @@ Wdrożono na polecenie użytkownika 2026-10-23. Oba tryby w istniejącym modalu,
 - Liczyć wyłącznie potwierdzone wygrane. Porażki nie zwiększają licznika sukcesów.
 - Limit sukcesów dotyczy jednego otwarcia sektora. Wyłączenie/włączenie i odświeżenie nie zeruje wykonanego limitu; nowe otwarcie daje nowy limit.
 - Identyfikator otwarcia musi uwzględniać świat, gracza, edycję/mapę, sektor i cykl blokady/otwarcia; sam numer sektora nie wystarcza.
-- Po przekroczeniu oporu zatrzymać ten tryb i ukryć możliwość startu do spełnienia warunków. Zachować STOP/status trwającej akcji. Nie wznawiać samoczynnie po spadku oporu.
+- Po przekroczeniu oporu zatrzymać ten tryb; przycisk pozostaje widoczny, nieaktywny z wyjaśnieniem (korekta 2026-10-24). Zachować STOP/status trwającej akcji. Nie wznawiać samoczynnie po spadku oporu.
 - Brak limitu porażek negocjacji — ostateczne ustalenie użytkownika.
 
 3. Autoatak — ustawienia i kwalifikacja

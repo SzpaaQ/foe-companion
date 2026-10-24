@@ -1,6 +1,6 @@
 # FoE Companion — mapa dla AI
 
-Stan rozpoznany: 2026-10-23, baza poprzedniego etapu `a507530`, automatyzacja wdrożona lokalnie, manifest 0.6.03.
+Stan rozpoznany: 2026-10-24, baza poprzedniego etapu `d99c9da`, automatyzacja wdrożona lokalnie, manifest 0.6.03.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 
@@ -110,11 +110,18 @@ Uwaga do planu: bieżące `autoSettings` ma `reserve`, `min`, `max`
 (`foe-companion-gbg-auto`). `reserve` to zapas punktów/walk, **nie procent**.
 Nowe limity procentowe są dodatkowymi warunkami; rezerwa nadal obowiązuje.
 Istniejący tracker dopuszcza start przy zerowym progresie bez znanego maxProgress;
-nowy filtr procentowy nie może przyjmować fikcyjnego mianownika.
+nowy filtr także dopuszcza pierwszy autoatak przy progresie 0 i nieznanym limicie.
 
 Negocjacje nie mają limitu porażek i mają pierwszeństwo w kolejce.
 `bulkPolicy` jest ponownie sprawdzana przez MAIN `checkPolicy` przed akcją.
-Brak potwierdzonego maxProgress blokuje kwalifikację procentową.
+Model i MAIN biorą maxProgress z wpisu własnej gildii, a przy jego braku z innych
+gildii w tym samym sektorze (najmniejsza dodatnia wartość, jeśli są różne).
+Nasz progres pozostaje 0; nie kopiujemy postępu wroga. Gdy limit nadal nieznany,
+tylko atak z progresu 0 jest dopuszczony. Dodatni progres bez limitu blokuje kolejny
+atak; negocjacja wymaga znanego limitu. Rezerwy/procentu nie da się sprawdzić przed
+pierwszym atakiem bez limitu — to świadomy wyjątek na polecenie użytkownika.
+Przycisk autonegocjacji pozostaje widoczny przy za dużym/nieznanym oporze,
+lecz nieaktywny z widocznym wyjaśnieniem. STOP znika w bezczynności.
 Opór pochodzi z mapy/getPlayerParticipant; wygrana bez aktualizacji unieważnia opór.
 Sygnały ignorowania aktualizuje także `model.updateBattle`.
 Ustawienia: `foe-companion.openSectorSettings.v1`. Liczniki sukcesów i rezerwacje:

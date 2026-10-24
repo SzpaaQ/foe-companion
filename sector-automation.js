@@ -10,9 +10,11 @@
   return out;
  }
  function eligible(row,kind,config,now,reserve=0){
-  if(!row||row.ignored||row.color==='⚪'||row.until>now||!Number.isFinite(row.progress)||row.progress<0||!Number.isFinite(row.maxProgress)||row.maxProgress<=0)return false;
+  if(!row||row.ignored||row.color==='⚪'||row.until>now||!Number.isFinite(row.progress)||row.progress<0)return false;
+  const firstAttack=kind==='attack'&&row.progress===0&&row.maxProgress==null;
+  if(!firstAttack&&(!Number.isFinite(row.maxProgress)||row.maxProgress<=0))return false;
   const cost=kind==='negotiation'?2:1,limit=kind==='negotiation'?config.negProgress:config.attackProgress;
-  if(row.progress/row.maxProgress*100>=limit||row.maxProgress-row.progress-cost<reserve)return false;
+  if(!firstAttack&&(row.progress/row.maxProgress*100>=limit||row.maxProgress-row.progress-cost<reserve))return false;
   return kind==='negotiation'?row.gainAttritionChance===20:(row.isAttackBattleType===true?config.attack:row.isAttackBattleType===false?config.defense:false);
  }
  function create({storage,now=()=>Date.now(),onChange=()=>{}}={}){

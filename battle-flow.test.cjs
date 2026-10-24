@@ -133,3 +133,9 @@ test('bulk negotiation rejects excessive attrition before starting and marks it 
  const h=harness({progress:10});await h.negotiate(3,{kind:'negotiation',mapId:'m',endsAt:1000,reserve:3,progress:50,maxAttrition:4});
  assert.deepEqual(h.calls,[]);assert.equal(h.messages.filter(m=>m.channel==='foe-negotiate-result').at(-1).notStarted,true);
 });
+
+test('bulk first attack is sent with unknown untouched limit, but positive unknown progress is blocked',async()=>{
+ const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
+ const h=harness({max:'empty',attackType:true,winner:2});assert.equal((await h.fight(3,true,policy)).ok,true);assert.ok(h.calls.includes('startByBattleType'));
+ const blocked=harness({progress:1,max:null,attackType:true});assert.equal((await blocked.fight(3,true,policy)).ok,false);assert.deepEqual(blocked.calls,[]);
+});

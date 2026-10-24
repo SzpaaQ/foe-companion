@@ -1,6 +1,6 @@
 # FoE Companion — mapa dla AI
 
-Stan rozpoznany: 2026-10-24, baza poprzedniego etapu `d99c9da`, automatyzacja wdrożona lokalnie, manifest 0.6.03.
+Stan rozpoznany: 2026-10-24, baza poprzedniego etapu `d99c9da`, automatyzacja wdrożona lokalnie, manifest 0.6.04.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 

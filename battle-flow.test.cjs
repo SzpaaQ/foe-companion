@@ -3,16 +3,17 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 
-function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false}={}){
+function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
   const live=require('./battleground-live.js').createTracker();live.setConnected(true);
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>messages.push(m)};
-  const map=()=>({currentParticipantId:1,map:{provinces:[{id:provinceId,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
+  const map=()=>({currentParticipantId:1,endsAt:1000,currentPlayerParticipant:{attrition:{__class__:'GuildBattlegroundAttrition',level:5}},map:{id:'m',provinces:[{id:provinceId,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
   live.consume([{requestClass:'GuildBattlegroundService',requestMethod:'getBattleground',responseData:map()}]);
   window.fetch=async(url,options)=>{
     const [r]=JSON.parse(options.body);calls.push(r.requestMethod);
     let data={};
+    if(r.requestMethod==='updatePools'&&ignoreAfterArmy)live.consume({participantId:1,signals:[{signal:'ignore',provinceId}]});
     if(r.requestMethod==='getBattleground'){
       if(refreshFails&&battleCount)throw Error('offline');data=map();
     }
@@ -26,7 +27,7 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
   const ctx={document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},FoeBattlegroundLive:{createTracker:()=>live,observeSockets(){}},window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
-  return {calls,messages,async negotiate(reserve){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve}})));},async fight(reserve,automatic=reserve!==undefined){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId,reserve,automatic}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
+  return {calls,messages,async negotiate(reserve,bulkPolicy){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve,bulkPolicy}})));},async fight(reserve,automatic=reserve!==undefined,bulkPolicy){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId,reserve,automatic,bulkPolicy}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
 }
 test('fresh reserve check: 196/200 fights once; 197/200 stops without army mutation',async()=>{
   const h=harness();const first=await h.fight(3);assert.equal(first.won,true);assert.equal(first.refreshed,true);
@@ -120,4 +121,15 @@ test('omitted provinceId still rejects a wave for a nonzero sector',async()=>{
  assert.equal(r.invalidWave,true);
  const retry=await h.fight();assert.equal(retry.ok,true);
  assert.equal(h.calls.filter(x=>x==='getArmyInfo').length,2);
+});
+
+test('bulk policy blocks before army mutation and rechecks ignoring after army selection',async()=>{
+ const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
+ const high=harness({attackType:true});assert.equal((await high.fight(3,true,policy)).ok,false);assert.deepEqual(high.calls,[]);
+ const h=harness({progress:10,attackType:true,ignoreAfterArmy:true});assert.equal((await h.fight(3,true,policy)).ok,false);assert.deepEqual(h.calls,['getArmyInfo','updatePools']);
+ const allowed=harness({progress:10,attackType:true});assert.equal((await allowed.fight(3,true,policy)).won,true);
+});
+test('bulk negotiation rejects excessive attrition before starting and marks it notStarted',async()=>{
+ const h=harness({progress:10});await h.negotiate(3,{kind:'negotiation',mapId:'m',endsAt:1000,reserve:3,progress:50,maxAttrition:4});
+ assert.deepEqual(h.calls,[]);assert.equal(h.messages.filter(m=>m.channel==='foe-negotiate-result').at(-1).notStarted,true);
 });

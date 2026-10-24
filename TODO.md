@@ -10,9 +10,9 @@
 - dropdown chowa się przy kliknięciu zamiast zostawać otwarty (fix: composedPath w shadow DOM)
 - skondensować dropdown (mniejszy, bardziej kompaktowy)
 
-##### POLA CHWAŁY — automatyzacja otwartych sektorów (plan, NIE WDRAŻAĆ JESZCZE)
+##### POLA CHWAŁY — automatyzacja otwartych sektorów (wdrożona lokalnie)
 
-Uzgodniono 2026-10-23. Ten plan zastępuje pomysł automatyzacji wyłącznie nowo otwartych sektorów. Wdrożenie dopiero na osobne polecenie użytkownika.
+Wdrożono na polecenie użytkownika 2026-10-23. Oba tryby w istniejącym modalu, ze wspólną kolejką i pierwszeństwem negocjacji. Testy offline; pozostaje weryfikacja w grze przez użytkownika.
 
 1. Zakres i sterowanie
 - Oba tryby działają w istniejącym modalu otwartych sektorów, bez nowego okna ani przycisku przy Kopiuj.
@@ -30,12 +30,12 @@ Uzgodniono 2026-10-23. Ten plan zastępuje pomysł automatyzacji wyłącznie now
 - Limit sukcesów dotyczy jednego otwarcia sektora. Wyłączenie/włączenie i odświeżenie nie zeruje wykonanego limitu; nowe otwarcie daje nowy limit.
 - Identyfikator otwarcia musi uwzględniać świat, gracza, edycję/mapę, sektor i cykl blokady/otwarcia; sam numer sektora nie wystarcza.
 - Po przekroczeniu oporu zatrzymać ten tryb i ukryć możliwość startu do spełnienia warunków. Zachować STOP/status trwającej akcji. Nie wznawiać samoczynnie po spadku oporu.
-- Do uzgodnienia przed implementacją: limit porażek negocjacji (limit 3 poniżej jest ustalony dla autoataku, nie negocjacji).
+- Brak limitu porażek negocjacji — ostateczne ustalenie użytkownika.
 
 3. Autoatak — ustawienia i kwalifikacja
 - Checkboxy: sektory z bonusem atakującym oraz sektory z bonusem obronnym. Można wybrać oba; bez wyboru nie uruchamiać.
 - Wybór według typu sektora z danych gry, nie według koloru właściciela.
-- Respektować oznaczenie ignorowania sektora oraz istniejący limit progresu w ustawieniach; sprawdzić jego jednostkę i zachować dotychczasowe znaczenie.
+- Respektuje ignorowanie i nowy próg progresu (%). Dotychczasowa rezerwa punktów obowiązuje dodatkowo w obu trybach.
 - Zachować istniejącą rezerwę walk, przerwy między akcjami i inne obowiązujące ograniczenia autoataku.
 - Po osiągnięciu limitu na sektorze przejść do kolejnego pasującego sektora.
 - TWARDY STOP po 3 potwierdzonych porażkach Z RZĘDU, także jeśli seria obejmuje różne sektory. Wygrana zeruje licznik; sama zmiana sektora go nie zeruje. Korekta użytkownika z 2026-10-23.

@@ -1,6 +1,6 @@
 # FoE Companion — mapa dla AI
 
-Stan rozpoznany: 2026-10-23, baza kodu `03a16e5`, manifest 0.6.03.
+Stan rozpoznany: 2026-10-23, baza poprzedniego etapu `a507530`, automatyzacja wdrożona lokalnie, manifest 0.6.03.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 
@@ -37,7 +37,7 @@ Zrzut / reload -> chrome.runtime.sendMessage
 - MAIN w kolejności manifestu: `request-signature.js`, `battle-army.js`,
   `battleground-live.js`, `pearls-main.js`, `capture.js`.
 - ISOLATED: `pearls.js`, `model.js`, `quantum.js`, `quantum-history.js`,
-  `notes.js`, `panel.js`, `dev-client.js`.
+  `notes.js`, `sector-automation.js`, `panel.js`, `dev-client.js`.
 - Nie zakładaj wspólnej pamięci pomiędzy MAIN, ISOLATED i workerem.
 - Panel jest w **zamkniętym Shadow DOM** (`mount` w panel.js). Zewnętrzne
   `document.querySelector` nie odczyta jego wnętrza.
@@ -53,6 +53,7 @@ Zrzut / reload -> chrome.runtime.sendMessage
 | Podpis żądania | `request-signature.js`; `analyze-signatures.cjs` | Podpisywanie i pomocnicza weryfikacja offline; nie wypisuj danych sesji |
 | Model Pól Chwały | `model.js`: `rows`, topologie | Nazwy, sąsiedztwo, własna gildia, progres, blokada, ignorowanie |
 | Stan socketu | `battleground-live.js`: `createTracker`, `check`, `waitForProgress`, `observeSockets` | Aktualność prowincji, epoch po reconnect, potwierdzanie progresu |
+| Kolejka otwartych sektorów | `sector-automation.js`: `create`, `eligible`, `tick`, `result`; panel: `tickBulk`, `paintBulkControls` | Limity, trwałe sukcesy na otwarcie, seria porażek |
 | Dobór armii do walki | `battle-army.js`: `plan`, `confirmed` | Wybór jednostek i weryfikacja ustawionego składu |
 | Negocjacje | `capture.js`: `negBestGuess`, `negFilter`, `ensureFreeNegotiationTurn`; `panel.js`: `startNeg`, `stopAutoNeg` | Solver, darmowe tury, przebieg i pętla per sektor |
 | Osada kwantowa | `quantum.js`: `createTracker`, `consume`, `summary`, `summarizeArmy` | Mapa osady, zasoby, budowy, prognoza produkcji, wojsko |
@@ -78,7 +79,7 @@ po symbolu lub napisie przycisku, potem czytaj ograniczony fragment.
 - Mapy: `sectors.json` i `sectors-volcano.json`. `create-map.cjs` może nadpisać
   ręczne korekty topologii — nie uruchamiaj go jako rutynowego kroku.
 
-Aktualne automaty są **per sektor**. Panel trzyma `autoSector`, `autoTimer`,
+Dotychczasowe automaty **per sektor** nadal istnieją. Panel trzyma `autoSector`, `autoTimer`,
 `lossStreak`, `autoNegSector`, `autoNegTimer`, `negPending`, `battlePending`,
 `battleWaveSector`. MAIN ma m.in. `battleBusy`, `negBusy`, `paymentBusy`,
 `collectBusy`, `battleUncertain`. Nie dokładaj niezależnej pętli omijającej blokady.
@@ -94,7 +95,7 @@ Pilnowanie: `GUARD_KEY = foe-companion.sectorGuard`, `getGuard`, `setGuard`,
 Modal zastąpił wcześniejsze dropdowny. Opcje obejmują powiadomienie,
 zamykanie 30 s przed pełną godziną i przy postępie wroga >80%.
 
-### Najbliższy plan — NIE WDROŻONY
+### Automatyzacja otwartych sektorów — WDROŻONA
 
 Szczegóły: najnowszy plan w TODO. Dwa tryby zbiorcze w istniejącym modalu:
 autonegocjacje i autoatak wszystkich otwartych, kwalifikujących się sektorów.
@@ -107,9 +108,22 @@ Obecny `lossStreak` już liczy serię porażek; nowy tryb musi zachować tę sem
 
 Uwaga do planu: bieżące `autoSettings` ma `reserve`, `min`, `max`
 (`foe-companion-gbg-auto`). `reserve` to zapas punktów/walk, **nie procent**.
-Przed wdrożeniem sprawdź i uzgodnij relację nowego limitu progresu do tej rezerwy.
+Nowe limity procentowe są dodatkowymi warunkami; rezerwa nadal obowiązuje.
 Istniejący tracker dopuszcza start przy zerowym progresie bez znanego maxProgress;
 nowy filtr procentowy nie może przyjmować fikcyjnego mianownika.
+
+Negocjacje nie mają limitu porażek i mają pierwszeństwo w kolejce.
+`bulkPolicy` jest ponownie sprawdzana przez MAIN `checkPolicy` przed akcją.
+Brak potwierdzonego maxProgress blokuje kwalifikację procentową.
+Opór pochodzi z mapy/getPlayerParticipant; wygrana bez aktualizacji unieważnia opór.
+Sygnały ignorowania aktualizuje także `model.updateBattle`.
+Ustawienia: `foe-companion.openSectorSettings.v1`. Liczniki sukcesów i rezerwacje:
+`foe-companion.openSectorLedger.v1` (świat, konto, edycja/mapa, cykl właściciela/blokady).
+Niepewny wynik blokuje ponowienie negocjacji na tym otwarciu także po reloadzie.
+Tryby po reloadzie są wyłączone. STOP dokańcza rozpoczętą akcję, także fale.
+`guardsPaused` blokuje automatyczne zamykanie z pilnowania również po STOP/3 porażkach;
+ponowne zaznaczenie checkboxa zamykania, przy bezczynnej kolejce, przywraca pilnowanie.
+Testy nowej kolejki: `sector-automation.test.cjs`, `battle-flow.test.cjs`.
 
 ## Najazdy i historia: niezmienniki
 

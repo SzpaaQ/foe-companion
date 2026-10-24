@@ -78,27 +78,29 @@
     const full=findBattle(payload);
     if(full) return {battle:full,changed:true,kind:'Pełna mapa'};
     if(!current) return {battle:null,changed:false};
-    const queue=[payload], patches=[]; let visited=0;
+    const queue=[payload], patches=[],participants=[]; let visited=0;
     while(queue.length && visited++<10000){
       const value=queue.shift();
       if(!value || typeof value!=='object')continue;
       if(value.__class__==='GuildBattlegroundProvince') patches.push(value);
+      else if(Number.isSafeInteger(value.participantId)&&Array.isArray(value.signals))participants.push(value);
       else if(Array.isArray(value))queue.push(...value.slice(0,1000));
       else for(const [key,child] of Object.entries(value)){
         if(key!=='requestData' && child && typeof child==='object') queue.push(child);
       }
     }
-    if(!patches.length)return {battle:current,changed:false};
+    if(!patches.length&&!participants.length)return {battle:current,changed:false};
     let changed=false;
     const provinces=current.map.provinces.map(p=>{
       const matching=patches.filter(v=>(v.id??0)===(p.id??0));
       if(!matching.length)return p;
       changed=true;
       return matching.reduce((previous,patch)=>{
-        return {...previous,...patch};
+        return {...previous,...patch,isAttackBattleType:patch.isAttackBattleType??false,gainAttritionChance:patch.gainAttritionChance??0};
       },p);
     });
-    return {battle:changed?{...current,map:{...current.map,provinces}}:current,changed,kind:'Aktualizacja sektorów'};
+    const battlegroundParticipants=current.battlegroundParticipants.map(p=>{const matching=participants.filter(v=>v.participantId===p.participantId);if(matching.length){changed=true;return Object.assign({},p,...matching);}return p;});
+    return {battle:changed?{...current,battlegroundParticipants,map:{...current.map,provinces}}:current,changed,kind:'Aktualizacja sektorów'};
   }
 
 function line(row) {

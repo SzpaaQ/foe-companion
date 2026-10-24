@@ -155,9 +155,9 @@
   }
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quick-battle')return;
-    const {token,provinceId,reserve,automatic}=event.data;
+    const {token,provinceId,reserve,automatic,bulkPolicy}=event.data;
     const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quick-battle-result',token,ok,message,...extra},location.origin);
-    if(battleBusy||paymentBusy||collectBusy)return answer(false,'Trwa inne żądanie.');
+    if(battleBusy||paymentBusy||collectBusy||negBusy)return answer(false,'Trwa inne żądanie.');
     if(!battleTransport||battleUncertain)return answer(false,'Brak zweryfikowanego połączenia. Odśwież grę i otwórz mapę.');
     if(!Number.isSafeInteger(provinceId)||provinceId<0)return answer(false,'Nieprawidłowy sektor.');
     if(nextWave&&nextWave.provinceId!==provinceId)return answer(false,'Najpierw zakończ rozpoczętą walkę.');
@@ -166,6 +166,7 @@
     const connection=battleTransport;let changed=false,fightSent=false,stage='pobranie armii';
     try{
       if(!nextWave){
+        if(bulkPolicy){if(bulkPolicy.kind!=='attack')throw Error('Nieprawidłowy tryb autoataku.');battlegroundLive.checkPolicy(provinceId,bulkPolicy);}
         if(automatic===true&&Number.isInteger(reserve)&&reserve>=0){
           if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
           battlegroundLive.check(provinceId,reserve,1);
@@ -179,6 +180,7 @@
         stage='potwierdzenie składu';
         if(!FoeBattleArmy.confirmed(updated,pools))throw Error('Skład, liczba lub zdrowie jednostek nie odpowiadają planowi. Walka nie została wysłana.');
       }
+      if(bulkPolicy&&!nextWave)battlegroundLive.checkPolicy(provinceId,bulkPolicy);
       changed=true;
       stage='szybka walka';fightSent=true;
       const progressBefore=battlegroundLive?.snapshot(provinceId);
@@ -609,13 +611,13 @@
   });
   window.addEventListener('message', async event => {
     if (event.source !== window || event.origin !== location.origin || event.data?.channel !== 'foe-negotiate') return;
-    const {token, provinceId, reserve} = event.data;
+    const {token, provinceId, reserve, bulkPolicy} = event.data;
     const answer = (ok, message, extra = {}) =>
       window.postMessage({channel: 'foe-negotiate-result', token, ok, message, ...extra}, location.origin);
 
-    if (negBusy || battleBusy || paymentBusy || collectBusy) return answer(false, 'Trwa inne żądanie.');
-    if (!battleTransport || battleUncertain) return answer(false, 'Brak zweryfikowanego połączenia. Odśwież grę i otwórz mapę.');
-    if (!Number.isSafeInteger(provinceId) || provinceId < 0) return answer(false, 'Nieprawidłowy sektor.');
+    if (negBusy || battleBusy || paymentBusy || collectBusy) return answer(false, 'Trwa inne żądanie.',{notStarted:true});
+    if (!battleTransport || battleUncertain) return answer(false, 'Brak zweryfikowanego połączenia. Odśwież grę i otwórz mapę.',{notStarted:true});
+    if (!Number.isSafeInteger(provinceId) || provinceId < 0) return answer(false, 'Nieprawidłowy sektor.',{notStarted:true});
 
     negBusy = true;
     const connection = battleTransport;let started=false;
@@ -623,6 +625,10 @@
       // Read the game-provided map/socket state; never poll the map here.
       if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
       battlegroundLive.check(provinceId,reserve,2);
+      if(bulkPolicy){
+        if(bulkPolicy.kind!=='negotiation'||!Number.isSafeInteger(bulkPolicy.maxAttrition)||bulkPolicy.maxAttrition<0)throw Error('Nieprawidłowy limit oporu.');
+        battlegroundLive.checkPolicy(provinceId,bulkPolicy);
+      }
       // 2. Rozpocznij negocjację.
       started=true;
       const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId]);
@@ -701,7 +707,7 @@
           }
         }catch{cleanup=' Nie potwierdzono zamknięcia negocjacji — sprawdź ją w grze.';}
       }
-      answer(false, error.message+cleanup+' Auto-negocjacje zatrzymane. Sprawdź dostępność towarów przed ponownym uruchomieniem.',{stopAuto:true});
+      answer(false, error.message+cleanup+' Auto-negocjacje zatrzymane. Sprawdź dostępność towarów przed ponownym uruchomieniem.',{stopAuto:true,notStarted:!started});
     } finally {
       negBusy = false;
     }

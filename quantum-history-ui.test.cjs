@@ -52,8 +52,8 @@ test('history opens a non-modal draggable window, renders frozen tables and expo
  const notes=all(event).filter(e=>e.tag==='input');assert.ok(notes.every(e=>e.placeholder==='Dodaj notatkę…'&&e.style.cssText.includes('outline:none')&&!e.style.cssText.includes('border-bottom')));
  assert.ok(all(dialog).some(e=>e.textContent==='↶ Cofnij'));assert.ok(all(event).some(e=>e.title?.startsWith('Rozdziel od tego działania')));
  const actions=event.children.find(e=>e.tag==='details'&&e.children[0]?.textContent.startsWith('Działania'));actions.open=true;content.scrollTop=123;
- assert.deepEqual(all(actions).filter(e=>['Stawiam: ','Zbieram: '].includes(e.textContent)).map(e=>e.textContent),['Stawiam: ','Zbieram: ']);
- await all(actions).find(e=>e.title==='Usuń działanie').onclick();
+ assert.deepEqual(all(actions).filter(e=>['Stawiam: ','Zbieram: '].includes(e.textContent)).map(e=>e.textContent),['Zbieram: ','Stawiam: ']);
+ await all(actions).filter(e=>e.title==='Usuń działanie').at(-1).onclick();
  const refreshed=all(dialog).find(e=>e.tag==='details');assert.equal(refreshed.open,true);
  assert.equal(refreshed.children.find(e=>e.tag==='details'&&e.children[0]?.textContent.startsWith('Działania')).open,true);
  assert.equal(refreshed.children.find(e=>e.tag==='details'&&e.children[0]?.textContent==='Przed i Po').open,true);

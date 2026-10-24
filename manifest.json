@@ -13,6 +13,6 @@
   ],
   "content_scripts": [
     {"matches":["https://*.forgeofempires.com/*"],"js":["request-signature.js","battle-army.js","battleground-live.js","pearls-main.js","capture.js"],"run_at":"document_start","world":"MAIN"},
-    {"matches":["https://*.forgeofempires.com/*"],"js":["pearls.js","model.js","quantum.js","quantum-history.js","notes.js","panel.js","dev-client.js"],"run_at":"document_start"}
+    {"matches":["https://*.forgeofempires.com/*"],"js":["pearls.js","model.js","quantum.js","quantum-history.js","notes.js","sector-automation.js","panel.js","dev-client.js"],"run_at":"document_start"}
   ]
 }

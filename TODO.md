@@ -1,14 +1,77 @@
+#### 2026-10-24 — aktualny plan (NIE WDRAŻAĆ bez polecenia)
+
+Zastępuje roboczy wpis nad historią 0.6.05. Uwzględnia dopiski o ogniu, oporze i Arce. Na tym etapie zmieniamy tylko TODO; zmiany użytkownika w kodzie pozostają nietknięte.
+
+1. Kontynuacja autonegocjacji po przejęciu sektora
+- Zgłoszony przypadek: submitTurn, HTTP 200, kod Error; sektor zamyka się podczas negocjacji, a automat zatrzymuje całą kolejkę.
+- Rozróżnić potwierdzone przejęcie/zamknięcie sektora od błędu transportu, braku towarów i nieznanego wyniku. Sam HTTP 200 + Error nie wystarcza do rozpoznania przyczyny.
+- Potwierdzić aktualny stan sektora i zakończenie lub brak aktywnej negocjacji; nie uruchamiać drugiej równolegle.
+- Po potwierdzonym zamknięciu zwolnić aktywną pozycję kolejki i przejść do kolejnego kwalifikującego się sektora. Nie liczyć przerwanej negocjacji jako sukcesu ani porażki; nie ponawiać jej na zamkniętym sektorze.
+- Zwykłe błędy i niepotwierdzony stan nadal zatrzymują automat. Zachować ręczny STOP, limit oporu, progresu, sukcesów i brak limitu porażek negocjacji.
+
+2. Powiadomienia do 99%
+- Zmienić próg usuwania wpisu z 90% na 99% naszego progresu. Wpis pozostaje do 99% włącznie, znika po przekroczeniu progu.
+- Faktyczne zamknięcie/przejęcie sektora nadal usuwa jego poprzedni wpis, niezależnie od procentu. Kolejne otwarcie jest nowym zdarzeniem.
+
+3. Jednoliniowy status na dole modala — BEZ TOOLTIPA
+- Nad licznikami pokazać bieżący etap negocjacji/ataku, np. „🤝 B3X — tura 2”, „⚔️ C4G — wymiana armii”, „🤝 B3X — sektor przejęty, szukam następnego”.
+- Używać krótkich komunikatów i jednej linii; nadmiar przycinać wielokropkiem. Długi błąd nie może rozciągać okna.
+- Nie dodawać title ani tooltipa do statusu, również dla pełnej treści błędu. Status zmienia się zbyt szybko, aby czytać go po najechaniu.
+
+4. Pływające okno Pól Chwały
+- Przeciąganie za nagłówek, bez blokującej nakładki; gra pozostaje klikalna jak przy historii zbiorów kwantowych.
+- Kliknięcie obok nie zamyka okna. Zamykanie tylko Esc lub ×; przycisk otwierania już otwartego okna przywołuje je na wierzch.
+- Zamknięcie okna nie zatrzymuje automatów. Zachować widoczne wskaźniki i możliwość STOP w głównym panelu.
+
+5. Przyciski i tooltipy kolumn
+- Górne przyciski automatów: tylko symbole start/stop oraz ⚔️ / 🤝. Pełne nazwy i ewentualny powód blokady w tooltipach przycisków.
+- Tooltip 🔔: „Powiadom, gdy wróg atakuje sektor”.
+- Tooltip 🕐: „Rozpocznij zamykanie 30 sekund przed pełną godziną”.
+- Tooltip ⚡: „Rozpocznij zamykanie, gdy postęp wroga przekroczy 80%”.
+- Usunąć z tych tooltipów instrukcję zaznaczania całej kolumny; samo zbiorcze przełączanie i oznaczenie stanu pełny/częściowy/pusty zostają.
+
+6. Progres, wyścig i przeciwnik
+- W tabelach otwartych sektorów zerowy progres zapisywać jako „0”, bez „/—” ani „/limit”. Dodatni progres jako „58/132”; przy nieznanym limicie „58/—”.
+- W powiadomieniach nie pokazywać zerowego progresu. Dodatni progres bez nawiasów.
+- Aktualny symbol wyścigu: 🔥. Zastępuje wcześniejsze 🏃‍♂️ / 🏎️. Uwzględnić i zweryfikować istniejące zmiany użytkownika w model.js i panel.js oraz zapisać je w commicie przy wdrożeniu, bez cofania ich przy okazji.
+- Gdy wróg ma postęp, pokazywać 👾34 zamiast 🔥: bez mianownika, bez jednoczesnego symbolu wyścigu. Przy kilku przeciwnikach brać największy postęp, bez sumowania.
+- W panelu i modalu symbol wyścigu lub wroga umieścić w tej samej komórce co nazwa sektora.
+- Przykłady powiadomień:
+  Otwarte 🟥 🟡 B4D
+  Otwarte 🟥 🟡 B3X 58/132 🔥
+  Otwarte 🟥 🟡 B3X 58/132 👾34
+- Przykłady wierszy otwartych sektorów:
+  🟥 🟢 C4G 🔥 | 33/154 | 100% | ⚔️ ▶ 🤝 ▶
+  🟥 🟢 C4G 👾10 | 33/154 | 100% | ⚔️ ▶ 🤝 ▶
+- Z listy otwartych sektorów usunąć emoji oporu, pozostawiając wartość procentową. W innych miejscach opór oznaczać 🔻 (wybrany prostszy wariant z dopisku użytkownika), żeby 🔥 jednoznacznie oznaczał wyścig. Dotyczy też liczników panelu i modala oraz opisów ustawień.
+
+7. Kopiowanie pojedynczego wiersza
+- Przycisk 📋 obok sektora kopiuje tylko tekst tego wiersza, bez przycisków akcji i ikony kopiowania.
+- „Kopiuj wszystkie” nadal kopiuje wyłącznie tekst, bez nowych przycisków. Zachować obecne zachowanie zaznaczenia, bez jego naprawiania w tym zadaniu.
+
+8. Perły architektury — automatyczny bonus Arki
+- Sprawdzić dane przy otwarciu własnej Arki i odczytać rzeczywisty bonus nagrody. Nie przepisywać poziomu jako bonusu ani nie zgadywać wartości.
+- Po potwierdzonym odczycie uzupełnić pole „Bonus Arki (%)”, zapisać ustawienie i przeliczyć zależne wartości.
+- Cudza Arka nie może nadpisywać bonusu gracza. Przy braku pewnego odczytu pozostawić dotychczasową wartość i możliwość ręcznej edycji.
+
+9. Kolejność i weryfikacja
+- Kolejność: obsługa przejęcia podczas nego → status i pływające okno → tooltipy, formatowanie i kopiowanie → odczyt Arki.
+- Testy offline: przejęcie podczas submitTurn, brak aktywnej negocjacji vs niepewny wynik, brak towarów, STOP w trakcie przejścia, próg 99%, brak limitu, pierwszeństwo 👾, najwyższy progres wroga, kopiowanie jednej/całej listy.
+- Sprawdzić przeciąganie, klikanie gry, Esc/×, brak zamykania po kliknięciu obok, długie statusy bez tooltipa, zgodność obu liczników i ikon oporu.
+- Arka: własna/cudza, bonus 0, liczba dziesiętna, brak danych, zachowanie ręcznego ustawienia przy nieudanym odczycie.
+- Po osobnym poleceniu wdrożenia: aktualizacja mapy AI, changelogu i lokalny commit; wydanie tylko na v+. Teraz nie zmieniać kodu ani numeru wersji.
+
 #### 2026-10-24 — powiadomienia i sterowanie sektorami (wdrożone w 0.6.05)
 
-**👾 oznacza postęp wroga**, ⚔️ autoatak, 🏃‍♂️ wyścig.
+**👾 oznacza postęp wroga**, ⚔️ autoatak, 🏎️ wyścig.
 
 Zrealizowany zakres (weryfikacja offline; wygląd w grze do sprawdzenia):
 
 1. **Progres w powiadomieniu otwartego sektora**
    - Nasz postęp na końcu wpisu:
-     `Otwarte 🟥 🔵 D3X 🏃‍♂️ (7/132)`
+     `Otwarte 🟥 🔵 D3X 🏎️ (7/132)`
    - Jeśli inna gildia atakuje, dopisujemy jej postęp:
-     `Otwarte 🟥 🔵 D3X 🏃‍♂️ (7/132) · 👾 5/132`
+     `Otwarte 🟥 🔵 D3X 🏎️ (7/132) · 👾 5/132`
    - Przy kilku przeciwnikach pokazujemy najwyższy postęp, bez sumowania.
    - Przy nieznanym limicie pokazujemy `7/—`.
 

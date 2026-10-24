@@ -1,3 +1,47 @@
+Proponuję **👾 jako oznaczenie wroga** — odróżnia się od ⚔️ autoataku i 🏃‍♂️ wyścigu.
+
+Plan zmian:
+
+1. **Progres w powiadomieniu otwartego sektora**
+   - Nasz postęp na końcu wpisu:
+     `Otwarte 🟥 🔵 D3X 🏃‍♂️ (7/132)`
+   - Jeśli inna gildia atakuje, dopisujemy jej postęp:
+     `Otwarte 🟥 🔵 D3X 🏃‍♂️ (7/132) · 👾 5/132`
+   - Przy kilku przeciwnikach pokazujemy najwyższy postęp, bez sumowania.
+   - Przy nieznanym limicie pokazujemy `7/—`.
+
+2. **Alarm pilnowanego sektora w tym samym powiadomieniu**
+   - Przykład: `🔔 🟥 🔵 A2S · 👾 5/132`.
+   - Sektor występuje tylko raz — jeśli jest również na liście otwartych, dodajemy oznaczenie alarmu do istniejącego wpisu.
+   - Postęp aktualizuje się wraz z danymi gry.
+
+3. **Usuwanie nieaktualnych powiadomień**
+   - Po zamknięciu lub przejęciu sektora usuwamy wpis dotyczący jego dotychczasowego otwarcia i alarmu.
+   - Kolejne otwarcie traktujemy jako nowe zdarzenie.
+
+4. **Zbiorcze zaznaczanie kolumn**
+   - Kliknięcie nagłówka **🔔, 🕐 lub ⚡** przełącza wszystkie checkboxy danej kolumny w aktualnie widocznych wierszach.
+   - Jeśli choć jeden jest odznaczony — zaznaczamy wszystkie. Jeśli wszystkie są zaznaczone — odznaczamy wszystkie.
+   - Zmiany zapisują się tak samo jak pojedyncze kliknięcia, włącznie z uruchamianiem i anulowaniem harmonogramów.
+   - Tooltip wyjaśnia działanie; nagłówek pokazuje stan pełny, częściowy lub pusty.
+
+5. **Wskaźniki aktywnej automatyzacji otwartych sektorów**
+   - Uruchomienie autonegocjacji lub autoataku w modalu musi być widoczne także po jego zamknięciu, w głównym panelu i przy zwiniętym panelu.
+   - Przy tytule „Otwarte sektory” w głównym panelu Pól Chwały: emoji aktywnych trybów, wyrównane do prawej krawędzi nagłówka — ⚔️ autoatak i 🤝 autonegocjacje. Gdy działają oba tryby, pokazać oba.
+   - Kliknięcie emoji w nagłówku zatrzymuje odpowiadający mu tryb. Tooltip: „Autoatak włączony — kliknij, aby zatrzymać” / „Autonegocjacje włączone — kliknij, aby zatrzymać”.
+   - Dodatkowy kompaktowy wskaźnik: te same emoji nad przyciskiem wysuwania panelu (FoE), widoczne również przy zwiniętym panelu; bez osobnego dużego okna powiadomienia.
+   - Wskaźniki odzwierciedlają wspólny stan automatów, także oczekiwanie na sektor. Po STOP, błędzie lub zatrzymaniu po 3 porażkach aktualizują się od razu. Dokańczanie rozpoczętej akcji odróżnić tooltipem od nadal włączonego trybu; nie sugerować, że kolejka będzie kontynuowana.
+
+6. **Liczniki na dole modala otwartych sektorów**
+   - Ten sam zestaw i te same wartości co w głównym panelu Pól Chwały, aktualizowane na bieżąco: 🏆 0/0 | 🤝 2/2 | 🔥 0.
+   - 🏆 wygrane / zakończone walki, 🤝 wygrane / zakończone negocjacje, 🔥 aktualny opór. Zachować dotychczasowy zakres liczników; nie tworzyć osobnych liczników tylko dla modala ani zerować przy jego otwieraniu.
+
+7. **Sprawdzenie**
+   - Aktualizacja progresu, kilku przeciwników, brak limitu, zamknięcie i ponowne otwarcie sektora.
+   - Zbiorcze przełączanie każdej kolumny oraz zachowanie blokad STOP i trzech porażek.
+   - Synchronizacja wskaźników po starcie, STOP, błędzie, trzeciej porażce, zamknięciu modala i zwinięciu panelu; zatrzymywanie każdego trybu osobno; zgodność liczników w obu widokach.
+
+
 #### 2026-10-24 — poprawki otwartych sektorów (wykonane lokalnie)
 - Autonegocjacje: górny przycisk nie znika po przekroczeniu limitu oporu; widoczny powód blokady i wskazanie ustawienia do zmiany.
 - STOP widoczny tylko podczas automatyzacji lub dokańczania jej akcji; obsługuje też aktywny automat per sektor.

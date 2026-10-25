@@ -1,4 +1,4 @@
-## Aktualizacja otwartych sektorów — lokalnie 2026-10-25
+## Aktualizacja otwartych sektorów — wydanie 0.6.07 (2026-10-25)
 
 - `model.updateBattle` zeruje pominięte pola domyślne odpowiedzi `GuildBattlegroundProvince`, tak jak tracker MAIN: właściciel, blokada, spawn, progres, typ i szansa oporu. Dotyczy zmian wszystkich gildii; stara blokada/progres nie mogą przetrwać pełnej odpowiedzi sektora.
 - `openSectorGuardModal`: `modal.refresh()` odświeża tylko tabelę po zmianie snapshotu danych, stanu akcji lub checkboxów. Wywołuje je `paintOpenSectors` także przed jego wczesnym powrotem; odświeżanie sekundowe obsługuje upływ blokady. Okno i nagłówek pozostają na miejscu. Zmiana mapy zamyka modal przez `modal.close()` ze sprzątaniem listenerów.
@@ -21,7 +21,7 @@
 - Powiadomienie pozostaje do 99% włącznie; przejęcie/zamknięcie usuwa je niezależnie od procentu. Kopiowanie pojedyncze i zbiorcze używa tekstu modelu, bez ikon przycisków.
 - 157 testów offline przechodzi. Wygląd w grze pozostaje do weryfikacji przez użytkownika; bez rzeczywistych walk/negocjacji w testach.
 
-Stan rozpoznany: 2026-10-25, baza kodu `c7dea73`, manifest 0.6.06.
+Stan rozpoznany: 2026-10-25, baza kodu `a00dca9`, manifest 0.6.07.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 

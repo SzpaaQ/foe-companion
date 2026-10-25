@@ -1,3 +1,7 @@
+#### 2026-10-25 — wydanie 0.6.07
+
+Wydano poprawki z a00dca9: wykluczenie własnych sektorów ⚪ z list i alarmów, bieżące odświeżanie tabeli modala oraz aktualizacje blokady i progresu wszystkich gildii. Ostatnia pełna weryfikacja: 163/163 testy offline. Arka nadal odłożona.
+
 #### 2026-10-25 — aktualizacja sektorów (wdrożone lokalnie)
 
 - Wykluczyć własne sektory ⚪ z powiadomień (również alarmów 🔔), listy panelu i modala otwartych sektorów.

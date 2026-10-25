@@ -1,3 +1,10 @@
+## Zmiany lokalne po 0.6.09 — autozamykanie i pomijanie celu
+
+- `sector-automation.settings.closeEnemyProgress`: próg ⚡ 1–100%, domyślnie 50; `checkSectorAlerts` porównuje postęp wroga ściśle powyżej progu. Zapis i formularz współdzielone z ustawieniami automatyzacji.
+- Modal ukrywa komórki i nagłówki kolumn na podstawie `actionVisible`, a przy obu rodzajach akcji wyłączonych także kolumny checkboxów. Kolumny automatów mają puste nagłówki.
+- `battleground-live.unavailable` oznacza znane ograniczenia sektora kodem `SECTOR_INELIGIBLE`; `canSkipAttack` wymaga tego kodu, połączenia, aktualnej epoch i zgodnej mapy/edycji. `capture` zwraca `sectorSkipped + notStarted` tylko przed wysłaniem walki i bez kontynuowanej fali. `sector-automation.result` zwalnia kolejkę bez zmiany serii porażek. Nie klasyfikuj błędów po treści komunikatu i nie pomijaj niepewnych wyników.
+- Testy: 176/176 offline, w tym zmiana sektora podczas ustawiania armii, utrata połączenia, STOP, próg i widoczność kolumn. Negocjacyjne zamykanie i lokalny checkbox Ignoruj nadal odłożone.
+
 ## Nadchodzące sektory — etapy 2 i 3, 0.6.09
 
 `openSectorGuardModal.modal.refresh` łączy wszystkie otwarte cele z maksymalnie 5 najbliższymi zamkniętymi sąsiadami. Własne ⚪ wykluczone. Wiersze zamknięte mają `dataset.locked`, opacity .55 oraz disabled na wszystkich przyciskach i checkboxach; operacje kolumn pomijają disabled. `timeCells` aktualizuje kolumnę Otwarcie co sekundę przed porównaniem snapshotu; `open.length` zapewnia przebudowę przy otwarciu także bez nowych danych gry. Kolejka automatów nadal korzysta z własnej kwalifikacji, nie z listy podglądu. Etap 4 nie jest wdrożony.

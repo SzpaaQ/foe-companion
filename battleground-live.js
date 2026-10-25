@@ -49,10 +49,12 @@
    }
    flush();
   }
+  function unavailable(message){const error=Error(message);error.code='SECTOR_INELIGIBLE';return error;}
+  function canSkipAttack(id,policy,error){const s=snapshot(id);return !!(error?.code==='SECTOR_INELIGIBLE'&&policy?.kind==='attack'&&connected&&s?.epoch===epoch&&mapId===policy.mapId&&endsAt===policy.endsAt);}
   function check(id,reserve,cost=1){
    const s=snapshot(id),p=s?.value;
    if(!p||own==null)throw Error('Brak danych sektora — otwórz mapę w grze.');
-   if(p.isSpawnSpot||p.ownerId===own||p.lockedUntil>now()/1000)throw Error('Sektor nie jest już otwarty.');
+   if(p.isSpawnSpot||p.ownerId===own||p.lockedUntil>now()/1000)throw unavailable('Sektor nie jest już otwarty.');
    if(Number.isInteger(reserve)&&reserve>=0){
     if(!connected)throw Error('Brak połączenia z aktualizacjami socketu — automat zatrzymany.');
     if(s.epoch!==epoch)throw Error('Po przerwaniu socketu otwórz mapę w grze, aby uzupełnić brakujące aktualizacje.');
@@ -61,14 +63,16 @@
     // Never invent a limit: once progress is positive the real limit is required.
     const hasLimit=Number.isFinite(s.maxProgress)&&s.maxProgress>0;
     if(!hasLimit&&s.progress!==0)throw Error('Brak potwierdzonego limitu sektora — otwórz sektor w grze.');
-    if(hasLimit&&s.maxProgress-s.progress-cost<reserve)throw Error('Osiągnięto ustawioną rezerwę walk.');
+    if(hasLimit&&s.maxProgress-s.progress-cost<reserve)throw unavailable('Osiągnięto ustawioną rezerwę walk.');
    }
    return s;
   }
   function checkPolicy(id,policy){
    if(!policy||!['attack','negotiation'].includes(policy.kind)||!Number.isFinite(policy.progress)||policy.progress<=0||policy.progress>100||!Number.isInteger(policy.reserve)||policy.reserve<0)throw Error('Nieprawidłowe warunki automatyzacji.');
    const s=check(id,policy.reserve,policy.kind==='negotiation'?2:1),p=s.value;
-   if(mapId!==policy.mapId||endsAt!==policy.endsAt||ignored.has(id))throw Error('Mapa zmieniona lub sektor oznaczony jako ignorowany.');
+   if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
+   if(ignored.has(id))throw unavailable('Sektor oznaczony jako ignorowany.');
+   if(Number.isFinite(s.maxProgress)&&s.maxProgress>0&&s.progress/s.maxProgress*100>=policy.progress)throw unavailable('Osiągnięto limit progresu.');
    const firstAttack=policy.kind==='attack'&&s.progress===0&&s.maxProgress==null;
    if(!firstAttack&&(!Number.isFinite(s.maxProgress)||s.maxProgress<=0||s.progress/s.maxProgress*100>=policy.progress))throw Error('Osiągnięto limit progresu lub brak potwierdzonego limitu.');
    if(policy.kind==='negotiation'&&(!Number.isSafeInteger(attrition)||attrition<0||!Number.isSafeInteger(policy.maxAttrition)||attrition>policy.maxAttrition))throw Error('Brak aktualnego oporu lub przekroczono limit — otwórz mapę w grze.');
@@ -94,7 +98,7 @@
     waiters.add(checkUpdate);timer=schedule(()=>finish(false),timeout);checkUpdate();
    });
   }
-  return {consume,snapshot,closedSince,check,checkPolicy,waitForProgress,setConnected(value){if(connected&&!value)epoch++;connected=value;flush();}};
+  return {consume,snapshot,closedSince,check,checkPolicy,canSkipAttack,waitForProgress,setConnected(value){if(connected&&!value)epoch++;connected=value;flush();}};
  }
  const readers=new WeakMap();
  function createSocketReader(win){

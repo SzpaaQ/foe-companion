@@ -202,6 +202,7 @@
       if(!more&&won===true)refreshed=await (battlegroundLive?.waitForProgress(provinceId,progressBefore,1)??Promise.resolve(false));
       answer(true,more?'Fala zakończona — pozostała kolejna.':(won===true?'Wygrana.':won===false?'Przegrana.':'Nie rozpoznano wyniku walki.')+(!more&&won===true?(refreshed?' Progres potwierdzony przez socket.':' Brak aktualizacji socketu — autoatak zatrzymany.'):''),{provinceId,nextWave:more,won,refreshed,battleId:realm.battleId});
     }catch(error){
+      if(!fightSent&&!nextWave&&bulkPolicy&&battlegroundLive?.canSkipAttack(provinceId,bulkPolicy,error)){answer(false,'Pomijam sektor: '+error.message+' Szukam następnego.',{provinceId,sectorSkipped:true,notStarted:true});return;}
       const invalidWave=error.invalidWave===true;
       if(invalidWave)nextWave=null;
       battleUncertain=fightSent&&!invalidWave;

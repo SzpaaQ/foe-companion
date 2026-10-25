@@ -1,10 +1,10 @@
 (function(root){
  'use strict';
- const defaults={attackProgress:50,attackChance:20,negProgress:50,negWins:3,maxAttrition:0,attack:true,defense:false};
+ const defaults={attackProgress:50,attackChance:20,closeEnemyProgress:50,negProgress:50,negWins:3,maxAttrition:0,attack:true,defense:false};
  function settings(value={}){
   if(!value||typeof value!=='object')value={};
   const out={...defaults};
-  for(const key of ['attackProgress','negProgress'])if(Number.isFinite(value[key])&&value[key]>0&&value[key]<=100)out[key]=value[key];
+  for(const key of ['attackProgress','negProgress','closeEnemyProgress'])if(Number.isFinite(value[key])&&value[key]>0&&value[key]<=100)out[key]=value[key];
   for(const key of ['negWins','maxAttrition'])if(Number.isSafeInteger(value[key])&&value[key]>=(key==='negWins'?1:0))out[key]=value[key];
   if(Number.isFinite(value.attackChance)&&value.attackChance>=0&&value.attackChance<=100)out.attackChance=value.attackChance;
   for(const key of ['attack','defense'])if(typeof value[key]==='boolean')out[key]=value[key];
@@ -74,7 +74,7 @@
    if(active.scope!==scope){active=null;stop(null,'Zmieniła się mapa lub gracz — sprawdź stan gry przed wznowieniem.');return true;}
    if(active.kind==='attack'&&data.ok&&data.nextWave)return 'wave';
    const previous=active;active=null;nextAt=now()+previous.delay;
-   const skipped=previous.kind==='negotiation'&&data.sectorClosed===true&&data.negotiationEnded===true;
+   const skipped=previous.kind==='negotiation'?data.sectorClosed===true&&data.negotiationEnded===true:data.sectorSkipped===true&&data.notStarted===true;
    const confirmed=skipped|| (previous.kind==='attack'?data.ok&&typeof data.won==='boolean'&&(data.won===false||data.refreshed):data.won===true&&data.ok&&data.refreshed||data.won===false&&data.continueAuto&&data.surrendered);
    if(previous.kind==='negotiation'){
     const count=ledger[previous.scope]?.counts[previous.identity];
@@ -82,7 +82,7 @@
     else if(count&&data.notStarted){count.pending=false;save();}
    }
    if(!confirmed){stop(null,data.message||'Niepotwierdzony wynik — automaty zatrzymane.');return true;}
-   if(previous.kind==='attack'){losses=data.won?0:losses+1;if(losses>=3)stop('attack','Autoatak zatrzymany po 3 porażkach z rzędu.');}
+   if(previous.kind==='attack'&&!skipped){losses=data.won?0:losses+1;if(losses>=3)stop('attack','Autoatak zatrzymany po 3 porażkach z rzędu.');}
    changed();return true;
   }
   return {enable,stop,tick,result,resumeGuards(){if(!active&&!attack&&!negotiation)guardsPaused=false;},get guardsPaused(){return guardsPaused;},get active(){return active;},get state(){return {attack,negotiation,losses,status,active:active?{...active}:null};},get engaged(){return attack||negotiation||!!active;}};

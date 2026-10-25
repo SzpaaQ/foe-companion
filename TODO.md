@@ -1,3 +1,12 @@
+#### 2026-10-25 — punkty 1, 3 i 4 wdrożone lokalnie (bez zmiany wersji)
+
+1. Autozamykanie ⚡: próg postępu wroga ustawiany w automatyzacji, domyślnie 50%; uruchomienie po przekroczeniu progu, nie przy równości. Ustawienie zapisane; opis modala pokazuje bieżący próg.
+3. Puste nagłówki kolumn automatów; ukrywane całe kolumny walk/negocjacji według opcji wyświetlania. Przy obu wyłączonych również ukrywane kolumny checkboxów.
+4. Autoatak otwartych sektorów pomija cel po potwierdzonym zamknięciu, osiągnięciu rezerwy/progresu lub nowym ignorowaniu, jeśli walka nie została wysłana. Warunek: aktualna mapa i połączenie, brak trwającej kolejnej fali. Pominięcie nie zwiększa ani nie zeruje serii porażek i respektuje STOP. Błędy transportu, składu, brak danych i niepewny wynik nadal zatrzymują automat.
+
+176/176 testów offline przechodzi. Wygląd i zachowanie w grze do sprawdzenia po przeładowaniu. Nadal odłożone: zamykanie negocjacjami (punkt 2), lokalne Ignoruj dla obu automatów (wcześniejszy etap 4) i Arka.
+
+Pierwotne zgłoszenie:
 dodatkowo zmieniamy autoazamykanie sektora z 80% na 50% a najlepiej jak będziemy mieli tą opcję w ustawieniach i tutaj kolejna opcja - zamykaj negocjacjami - czyli zamiast przeprowadzenia walki mają zostać przeprowadzone negocjacje jako zamknięcie
 z headera tabelki ywalamy oznaczenie dla autoataku i autonegocjacji w tych kolumnach bez oznaczenia headera.
 Wyświetlaj przyciski ataku przy oznaczeniu tej opcji (podobnie z negocjacjami) w modalu otwartych sektorówcała kolumna powinna zniknąć nie tylko przyciski, a przy odznaczeniu obu opcji również kolumny z checkboxami

@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 
-function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false,chance=20}={}){
+function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false,afterArmy=null,chance=20}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
   const live=require('./battleground-live.js').createTracker();live.setConnected(true);
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
@@ -13,6 +13,7 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
   window.fetch=async(url,options)=>{
     const [r]=JSON.parse(options.body);calls.push(r.requestMethod);
     let data={};
+    if(r.requestMethod==='updatePools'&&afterArmy)afterArmy(live,map());
     if(r.requestMethod==='updatePools'&&ignoreAfterArmy)live.consume({participantId:1,signals:[{signal:'ignore',provinceId}]});
     if(r.requestMethod==='getBattleground'){
       if(refreshFails&&battleCount)throw Error('offline');data=map();
@@ -143,4 +144,13 @@ test('bulk first attack is sent with unknown untouched limit, but positive unkno
 test('bulk attack on 60 percent sector sends no requests at default chance limit',async()=>{
  const h=harness({progress:0,attackType:true,chance:60});const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false,attackChance:20};
  assert.equal((await h.fight(3,true,policy)).ok,false);assert.deepEqual(h.calls,[]);
+});
+
+for(const reason of ['reserve','closed','progress'])test('bulk skips '+reason+' during army setup without sending a fight',async()=>{
+ const h=harness({progress:10,attackType:true,afterArmy:(live,map)=>{const p=map.map.provinces[0];if(reason==='reserve')p.conquestProgress[0].progress=198;else if(reason==='progress')p.conquestProgress[0].progress=120;else p.lockedUntil=Date.now()/1000+100;live.consume(map,'socket');}});
+ const r=await h.fight(3,true,{kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false,attackChance:20});assert.equal(r.sectorSkipped,true);assert.equal(r.notStarted,true);assert.equal(r.won,undefined);assert.deepEqual(h.calls,['getArmyInfo','updatePools']);
+});
+test('disconnected state never authorizes skipping even if sector is closed',async()=>{
+ const h=harness({progress:10,attackType:true,afterArmy:(live,map)=>{map.map.provinces[0].lockedUntil=Date.now()/1000+100;live.consume(map);live.setConnected(false);}});
+ const r=await h.fight(3,true,{kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false,attackChance:20});assert.equal(r.sectorSkipped,undefined);assert.ok(!h.calls.includes('startByBattleType'));
 });

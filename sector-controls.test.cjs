@@ -3,7 +3,7 @@ const source=fs.readFileSync(__dirname+'/panel.js','utf8');
 const element=()=>({style:{},dataset:{},setAttribute(k,v){this[k]=v;}});
 test('guard column toggles visible rows only, mixed state, schedules and cancels each timer',()=>{
  const calls=[],columns=new Map(['guard','closeAtHour','closeWhenThreatened'].map(key=>[key,{toggle:element(),items:[1,2,3].map(id=>({id,cb:{checked:id===1},tr:{hidden:id===3}}))}]));
- const context=vm.createContext({guardColumns:columns,battle:{map:{id:'m'}},modalMapId:'m',setGuard:(map,id,patch)=>calls.push(['save',id,patch]),scheduleCloseAtHour:id=>calls.push(['schedule',id]),cancelCloseAtHour:id=>calls.push(['cancel',id]),bulkAutomation:{resumeGuards:()=>calls.push(['resume'])},paintRow(){},paintOpenSectors(){},checkSectorAlerts(){}});
+ const context=vm.createContext({bulkSettings:{closeEnemyProgress:50},guardColumns:columns,battle:{map:{id:'m'}},modalMapId:'m',setGuard:(map,id,patch)=>calls.push(['save',id,patch]),scheduleCloseAtHour:id=>calls.push(['schedule',id]),cancelCloseAtHour:id=>calls.push(['cancel',id]),bulkAutomation:{resumeGuards:()=>calls.push(['resume'])},paintRow(){},paintOpenSectors(){},checkSectorAlerts(){}});
  const start=source.indexOf('      function paintGuardColumns()'),end=source.indexOf('      modal.refresh=()=>{',start);vm.runInContext(source.slice(start,end),context);
  vm.runInContext('paintGuardColumns()',context);assert.equal(columns.get('guard').toggle['aria-checked'],'mixed');
  for(const key of columns.keys()){
@@ -29,7 +29,7 @@ test('indicators and modal counters follow shared state, including STOP while ac
 test('complete modal mounts its column controls and counters and applies header clicks',()=>{
  class E{constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.textContent='';this.title='';}replaceChildren(){this.children=[];}append(...xs){this.children.push(...xs);}setAttribute(k,v){this[k]=v;}getAttribute(k){return this[k]??null;}addEventListener(){}remove(){this.removed=true;}}
  const root=new E('root');root.querySelector=()=>null;const guards=new Map();
- const context=vm.createContext({mountSectorWindow(){},root,battle:{map:{id:'m'}},document:{createElement:tag=>new E(tag),addEventListener(){},removeEventListener(){}},FoeModel:{...require('./model.js'),rows:()=>({rows:[{id:1,until:0,progress:7,maxProgress:132,gainAttritionChance:20,sector:'A',color:'🔴'}]})},getGuard:(map,id)=>guards.get(Number(id))||{},setGuard:(map,id,patch)=>guards.set(id,{...guards.get(id),...patch}),bulkAutomation:{resumeGuards(){}},scheduleCloseAtHour(){},cancelCloseAtHour(){},paintOpenSectors(){},checkSectorAlerts(){},paintBulkControls(){},convertTitles(){},actionVisible:()=>true,battleReady:true,battlePending:null,battlePendingSector:null,battleWaveSector:null,battleLastSector:null,battleLastUntil:0,battleLastOK:false,negLastUntil:0,negLastOK:false,autoSector:null,autoNegSector:null,negPending:null,negPendingSector:null,negLastSector:null,stats:{textContent:'🏆 0/0',title:'walki'},negStats:{textContent:'🤝 2/2',title:'nego'},attritionStats:{textContent:'🔥 0',title:'opór'}});
+ const context=vm.createContext({bulkSettings:{closeEnemyProgress:50},mountSectorWindow(){},root,battle:{map:{id:'m'}},document:{createElement:tag=>new E(tag),addEventListener(){},removeEventListener(){}},FoeModel:{...require('./model.js'),rows:()=>({rows:[{id:1,until:0,progress:7,maxProgress:132,gainAttritionChance:20,sector:'A',color:'🔴'}]})},getGuard:(map,id)=>guards.get(Number(id))||{},setGuard:(map,id,patch)=>guards.set(id,{...guards.get(id),...patch}),bulkAutomation:{resumeGuards(){}},scheduleCloseAtHour(){},cancelCloseAtHour(){},paintOpenSectors(){},checkSectorAlerts(){},paintBulkControls(){},convertTitles(){},actionVisible:()=>true,battleReady:true,battlePending:null,battlePendingSector:null,battleWaveSector:null,battleLastSector:null,battleLastUntil:0,battleLastOK:false,negLastUntil:0,negLastOK:false,autoSector:null,autoNegSector:null,negPending:null,negPendingSector:null,negLastSector:null,stats:{textContent:'🏆 0/0',title:'walki'},negStats:{textContent:'🤝 2/2',title:'nego'},attritionStats:{textContent:'🔥 0',title:'opór'}});
  const a=source.indexOf('    function openSectorGuardModal()'),b=source.indexOf("    $('sector-guard-open').onclick",a);vm.runInContext(source.slice(a,b)+'openSectorGuardModal()',context);
  const all=e=>[e,...e.children.flatMap(all)],nodes=all(root),toggles=nodes.filter(n=>n.role==='checkbox');assert.equal(toggles.length,3);assert.deepEqual(nodes.filter(n=>n.dataset.modalCounter!==undefined).map(n=>n.textContent),['🏆 0/0','🤝 2/2','🔥 0']);
  const status=nodes.find(n=>n.dataset.bulkStatus);assert.equal(status.title,'');assert.equal(status['data-tooltip'],undefined);assert.match(status.style.cssText,/text-overflow:ellipsis/);assert.match(root.children[0].style.cssText,/pointer-events:none/);
@@ -43,6 +43,10 @@ test('complete modal mounts its column controls and counters and applies header 
  for(const toggle of toggles){toggle.onclick();}assert.equal(guards.has(9),false);
  now=101000;modal.refresh();assert.equal(tbody.children.filter(n=>n.dataset.locked==='false').length,2);assert.equal(tbody.children.length,7);assert.equal(tbody.children.find(n=>n.dataset.sid===9).children[0].textContent,'Otwarte');
  rows=rows.filter(r=>r.id!==1&&r.id!==9);modal.refresh();assert.ok(toggles.every(t=>t.disabled));assert.equal(tbody.children.length,5);
+ context.actionVisible=k=>k==='negotiation';modal.refresh();let header=all(modal).find(n=>n.tag==='thead').children[0];assert.equal(header.children[5].textContent,'');assert.equal(header.children[7].textContent,'');
+ for(const tr of [header,...tbody.children]){assert.ok(tr.children[4].hidden&&tr.children[5].hidden);assert.equal(tr.children[6].hidden,false);assert.equal(tr.children[8].hidden,false);}
+ context.actionVisible=()=>false;modal.refresh();for(const tr of [header,...tbody.children])assert.ok(tr.children.slice(4).every(c=>c.hidden));
+ context.actionVisible=()=>true;modal.refresh();for(const tr of [header,...tbody.children])assert.ok(tr.children.every(c=>!c.hidden));
  context.battle.map.id='new-map';modal.close=()=>{modal.removed=true;};modal.refresh();assert.equal(modal.removed,true);
 });
 
@@ -64,4 +68,13 @@ test('progress and copied rows omit controls, enemy replaces race, unknown limit
  const M=require('./model.js'),row={sector:'B3X',color:'🟡',isAttackBattleType:true,progress:58,maxProgress:132,gainAttritionChance:20,race:true,enemyProgress:34};
  assert.equal(M.openSectorText(row),'🟥 🟡 B3X 👾34 | 58/132 | 20%');
  assert.equal(M.progressText({...row,progress:0}),'0');assert.equal(M.progressText({...row,maxProgress:null}),'58/—');assert.equal(M.sectorMarker({...row,enemyProgress:0}),' 🔥');
+});
+
+test('threatened sector uses configured enemy threshold and respects paused guards',()=>{
+ const row={id:1,sector:'A',color:'🔴',until:0,maxProgress:100},entry={participantId:2,progress:50};const calls=[];
+ const ctx={paintSectorPopup(){},battle:{currentParticipantId:1,map:{id:'m',provinces:[{id:1,conquestProgress:[entry]}]}},$:()=>({checked:true}),FoeModel:{rows:()=>({rows:[row]})},getGuard:()=>({}),updateSectorPopup(){},loadGuards:()=>({'m:1':{closeWhenThreatened:true}}),cancelCloseAtHour(){},scheduleCloseAtHour(){},closeAtHourTimers:new Map(),enemyProgressPrev:new Map(),guardAlerted:new Map(),setBattleFeedback(){},soundSettings:{enabled:false},bulkSettings:{closeEnemyProgress:50},bulkAutomation:{engaged:false,guardsPaused:false},autoSector:null,battlePending:null,startFight:id=>calls.push(id)};
+ const a=source.indexOf('    function checkSectorAlerts()'),b=source.indexOf("    $('gbg-sound-enabled').onchange",a);vm.createContext(ctx);vm.runInContext(source.slice(a,b),ctx);
+ const run=()=>vm.runInContext('checkSectorAlerts()',ctx);run();assert.equal(calls.length,0);entry.progress=51;run();assert.equal(calls.length,1);
+ ctx.bulkSettings.closeEnemyProgress=75;run();assert.equal(calls.length,1);entry.progress=76;run();assert.equal(calls.length,2);
+ ctx.bulkAutomation.guardsPaused=true;entry.progress=90;run();assert.equal(calls.length,2);
 });

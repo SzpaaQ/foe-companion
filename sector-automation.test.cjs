@@ -145,3 +145,13 @@ for(const kind of ['attack','negotiation'])test(kind+' waits for opening and qua
  const h=setup();h.env.rows=h.env.allRows=[row({until:1.3})];h.c.enable(kind,true);h.tick();assert.equal(h.sent.length,0);h.tick();assert.equal(h.sent.length,1);assert.equal(h.sent[0].kind,kind);
  const stopped=setup();stopped.env.rows=stopped.env.allRows=[row({until:1.3})];stopped.c.enable(kind,true);stopped.tick();stopped.c.stop();stopped.tick();assert.equal(stopped.sent.length,0);
 });
+
+test('skipped unsent attack moves to next sector without recording a loss and respects STOP',()=>{
+ const h=setup();h.c.enable('attack',true);h.tick();h.result({ok:true,won:false});assert.equal(h.c.state.losses,1);
+ h.tick();h.result({ok:false,won:undefined,sectorSkipped:true,notStarted:true});assert.equal(h.c.state.attack,true);assert.equal(h.c.state.losses,1);
+ h.env.rows=h.env.allRows=[row({id:8})];h.tick();assert.equal(h.sent.at(-1).id,8);h.c.stop();h.result({ok:false,won:undefined,sectorSkipped:true,notStarted:true});h.tick();assert.equal(h.c.state.attack,false);assert.equal(h.sent.length,3);
+});
+test('auto close threshold defaults to 50 and validates saved percentage',()=>{
+ assert.equal(A.settings().closeEnemyProgress,50);assert.equal(A.settings({closeEnemyProgress:75}).closeEnemyProgress,75);
+ for(const v of [0,-1,101,'50',null])assert.equal(A.settings({closeEnemyProgress:v}).closeEnemyProgress,50);
+});

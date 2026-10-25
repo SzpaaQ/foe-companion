@@ -4,9 +4,9 @@
 
 # FoE Companion — mapa dla AI
 
-## Zmiany lokalne Pól Chwały — 2026-10-24
+## Pola Chwały — wydane w 0.6.06 (2026-10-25)
 
-- Wersja nadal 0.6.05. Zakres ograniczony do Pól Chwały; odczyt bonusu Arki odłożony.
+- Wersja 0.6.06. Zakres ograniczony do Pól Chwały; odczyt bonusu Arki odłożony.
 - `battleground-live.closedSince(id,before)` potwierdza zmianę właściciela lub blokadę w tej samej mapie, sezonie i epoce połączenia. `capture.js` rozpoznaje wyłącznie skorelowane `getRunning: null` jako brak negocjacji; brak odpowiedzi nadal jest błędem.
 - Po błędzie negocjacji potwierdzone zamknięcie sektora i zakończenie negocjacji daje `sectorClosed` oraz `negotiationEnded`. Kolejka zwalnia rezerwację bez sukcesu/porażki, kontynuuje inne cele i respektuje STOP. Test: `negotiation-closure.test.cjs`.
 - `model.js`: `sectorMarker`, `progressText`, `openSectorText` współdzielą format tabel i kopiowania. Zerowy progres to `0`; wróg to `👾34` zamiast symbolu wyścigu `🔥`. Opór oznacza `🔻`.
@@ -14,7 +14,7 @@
 - Powiadomienie pozostaje do 99% włącznie; przejęcie/zamknięcie usuwa je niezależnie od procentu. Kopiowanie pojedyncze i zbiorcze używa tekstu modelu, bez ikon przycisków.
 - 157 testów offline przechodzi. Wygląd w grze pozostaje do weryfikacji przez użytkownika; bez rzeczywistych walk/negocjacji w testach.
 
-Stan rozpoznany: 2026-10-24, baza poprzedniego etapu `7370566`, automatyzacja wdrożona lokalnie, manifest 0.6.05.
+Stan rozpoznany: 2026-10-25, baza kodu `c7dea73`, manifest 0.6.06.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 

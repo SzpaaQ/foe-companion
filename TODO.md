@@ -1,3 +1,7 @@
+#### 2026-10-25 — wydanie 0.6.06
+
+Wydano zmiany Pól Chwały z commitów f551b3e i c7dea73: pływające okno, status, powiadomienia, kopiowanie, kontynuacja negocjacji oraz limit szansy oporu autoataku (domyślnie 20%). Arka nadal odłożona. Ostatnia pełna weryfikacja: 160/160 testów offline; sprawdzenie w grze pozostaje otwarte.
+
 #### 2026-10-25 — limit szansy wzrostu oporu autoataku
 
 Wdrożono ustawienie 0–100%, domyślnie 20% (włącznie). Dotyczy autoataku otwartych sektorów; osobne od progresu i oporu gracza. Kontrola przy wyborze oraz w MAIN przed walką. Zmiana ustawienia zatrzymuje automaty jak pozostałe ustawienia. Negocjacje nadal wymagają dokładnie 20%.

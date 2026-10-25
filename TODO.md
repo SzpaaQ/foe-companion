@@ -1,6 +1,12 @@
-#### 2026-10-24 — aktualny plan (NIE WDRAŻAĆ bez polecenia)
+#### 2026-10-24 — Pola Chwały: wdrożone lokalnie
 
-Zastępuje roboczy wpis nad historią 0.6.05. Uwzględnia dopiski o ogniu, oporze i Arce. Na tym etapie zmieniamy tylko TODO; zmiany użytkownika w kodzie pozostają nietknięte.
+Na polecenie użytkownika wykonano poniższy zakres Pól Chwały (punkty 1–7). Punkt 8, automatyczny bonus Arki, odłożony: użytkownik polecił pominąć wszystko niezwiązane z Polami Chwały. Bez zmiany wersji 0.6.05.
+
+Weryfikacja: 157 testów offline przechodzi, w tym przejęcie sektora podczas negocjacji, niepewna odpowiedź, STOP, próg 99%, przeciąganie i zamykanie okna, formatowanie i kopiowanie. Wygląd oraz zachowanie w grze wymagają sprawdzenia po przeładowaniu rozszerzenia; testy nie wykonywały rzeczywistych akcji gry.
+
+Poniżej zachowano zatwierdzony plan jako opis zakresu. Dawne zakazy wdrażania dotyczą etapu planowania, nie aktualnego polecenia wykonania.
+
+Plan uwzględnia dopiski o ogniu, oporze i Arce. Wdrożono wyłącznie Pola Chwały; istniejące zmiany użytkownika dotyczące emoji wyścigu zachowano.
 
 1. Kontynuacja autonegocjacji po przejęciu sektora
 - Zgłoszony przypadek: submitTurn, HTTP 200, kod Error; sektor zamyka się podczas negocjacji, a automat zatrzymuje całą kolejkę.
@@ -49,17 +55,17 @@ Zastępuje roboczy wpis nad historią 0.6.05. Uwzględnia dopiski o ogniu, oporz
 - Przycisk 📋 obok sektora kopiuje tylko tekst tego wiersza, bez przycisków akcji i ikony kopiowania.
 - „Kopiuj wszystkie” nadal kopiuje wyłącznie tekst, bez nowych przycisków. Zachować obecne zachowanie zaznaczenia, bez jego naprawiania w tym zadaniu.
 
-8. Perły architektury — automatyczny bonus Arki
+8. ODŁOŻONE — Perły architektury: automatyczny bonus Arki
 - Sprawdzić dane przy otwarciu własnej Arki i odczytać rzeczywisty bonus nagrody. Nie przepisywać poziomu jako bonusu ani nie zgadywać wartości.
 - Po potwierdzonym odczycie uzupełnić pole „Bonus Arki (%)”, zapisać ustawienie i przeliczyć zależne wartości.
 - Cudza Arka nie może nadpisywać bonusu gracza. Przy braku pewnego odczytu pozostawić dotychczasową wartość i możliwość ręcznej edycji.
 
 9. Kolejność i weryfikacja
-- Kolejność: obsługa przejęcia podczas nego → status i pływające okno → tooltipy, formatowanie i kopiowanie → odczyt Arki.
+- Kolejność: obsługa przejęcia podczas nego → status i pływające okno → tooltipy, formatowanie i kopiowanie. Odczyt Arki odłożony.
 - Testy offline: przejęcie podczas submitTurn, brak aktywnej negocjacji vs niepewny wynik, brak towarów, STOP w trakcie przejścia, próg 99%, brak limitu, pierwszeństwo 👾, najwyższy progres wroga, kopiowanie jednej/całej listy.
 - Sprawdzić przeciąganie, klikanie gry, Esc/×, brak zamykania po kliknięciu obok, długie statusy bez tooltipa, zgodność obu liczników i ikon oporu.
 - Arka: własna/cudza, bonus 0, liczba dziesiętna, brak danych, zachowanie ręcznego ustawienia przy nieudanym odczycie.
-- Po osobnym poleceniu wdrożenia: aktualizacja mapy AI, changelogu i lokalny commit; wydanie tylko na v+. Teraz nie zmieniać kodu ani numeru wersji.
+- Po osobnym poleceniu wdrożenia: aktualizacja mapy AI, changelogu i lokalny commit; wydanie tylko na v+. Wdrożenie zatwierdzono późniejszym poleceniem; numer wersji pozostaje bez zmian.
 
 #### 2026-10-24 — powiadomienia i sterowanie sektorami (wdrożone w 0.6.05)
 

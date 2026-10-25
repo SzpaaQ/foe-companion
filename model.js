@@ -106,11 +106,14 @@
     return {battle:changed?{...current,battlegroundParticipants,map:{...current.map,provinces}}:current,changed,kind:'Aktualizacja sektorów'};
   }
 
+function sectorMarker(row){return row.enemyProgress>0?' 👾'+row.enemyProgress:row.race?' 🔥':'';}
+  function progressText(row){return row.progress>0?row.progress+'/'+(row.maxProgress??'—'):'0';}
+  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';return type+row.color+' '+row.sector+sectorMarker(row)+' | '+progressText(row)+' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%')+(row.ignored?' ✋':'');}
 function line(row) {
     const time = row.until ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',hour12:false}).format(row.until*1000) : '';
     const battleType = row.isAttackBattleType === true ? '🟥 ' : row.isAttackBattleType === false ? '🟦 ' : '';
     const remaining=row.until-Date.now()/1000;
-    return `${time ? time + ' ' : ''}${battleType}${row.color} ${row.sector}${row.race&&remaining>0&&remaining<=1800?' 🏃‍♂️':''}`;
+    return `${time ? time + ' ' : ''}${battleType}${row.color} ${row.sector}${row.race&&remaining>0&&remaining<=1800?' 🔥':''}`;
   }
 
   // --- Zbiory ---
@@ -219,7 +222,7 @@ function line(row) {
   function updateCity(payload){let changed=false;const q=[payload];for(let i=0;i<q.length&&i<200000;i++){const v=q[i];if(!v||typeof v!=='object')continue;if(v.__class__==='CityMapEntity'&&(cityBuildings.has(v.id)?(v.player_id==null||v.player_id===cityOwner):(cityOwner!=null&&v.player_id===cityOwner&&typeof v.cityentity_id==='string'&&typeof v.type==='string'))&&!(/GuildRaids/.test(v.cityentity_id||''))){const previous=cityBuildings.get(v.id),old=previous?.raw;const next=cityBuilding({...old,...v});if(old?.cityentity_id===next.ceid&&!v.state?.productionOption&&!v.state?.current_product){next.producesFP ||= previous.producesFP;next.producesUnits ||= previous.producesUnits;}cityBuildings.set(v.id,next);changed=true;}for(const child of Object.values(v))if(child&&typeof child==='object')q.push(child);}return {changed,buildings:cityBuildings};}
   function cityRows(){return [...cityBuildings.values()].filter(b=>!['street','decoration'].includes(b.type)).sort((a,b)=>Number(a.type==='greatbuilding')-Number(b.type==='greatbuilding')||b.productionFP-a.productionFP||(a.until??Infinity)-(b.until??Infinity)||a.id-b.id).map(b=>({...b,producesFP:b.producesFP||fpBuildingTypes.has(b.ceid),name:buildingLabel(b.ceid),ready:b.collectible&&(b.finished||(b.until!==null&&b.until<=Date.now()/1000))}));}
   const {findConstruction,pearlAmounts}=typeof module!=='undefined'?require('./pearls.js'):root.FoePearls;
-  const api = {sector,findBattle,rows,line,setTopology,updateBattle,findConstruction,pearlAmounts,
+  const api = {sector,sectorMarker,progressText,openSectorText,findBattle,rows,line,setTopology,updateBattle,findConstruction,pearlAmounts,
     learnNames,seedName,seedProductionType,buildingLabel,parseCity,updateCity,cityRows,loadOwnPearls,ceidLabel,updateCollectionBonuses,getCollectionBonuses};
   root.FoeModel = api;
   if (typeof module !== 'undefined') module.exports = api;

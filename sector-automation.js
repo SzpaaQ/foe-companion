@@ -72,10 +72,11 @@
    if(active.scope!==scope){active=null;stop(null,'Zmieniła się mapa lub gracz — sprawdź stan gry przed wznowieniem.');return true;}
    if(active.kind==='attack'&&data.ok&&data.nextWave)return 'wave';
    const previous=active;active=null;nextAt=now()+previous.delay;
-   const confirmed=previous.kind==='attack'?data.ok&&typeof data.won==='boolean'&&(data.won===false||data.refreshed):data.won===true&&data.ok&&data.refreshed||data.won===false&&data.continueAuto&&data.surrendered;
+   const skipped=previous.kind==='negotiation'&&data.sectorClosed===true&&data.negotiationEnded===true;
+   const confirmed=skipped|| (previous.kind==='attack'?data.ok&&typeof data.won==='boolean'&&(data.won===false||data.refreshed):data.won===true&&data.ok&&data.refreshed||data.won===false&&data.continueAuto&&data.surrendered);
    if(previous.kind==='negotiation'){
     const count=ledger[previous.scope]?.counts[previous.identity];
-    if(count&&confirmed){count.pending=false;if(data.won)count.wins++;save();}
+    if(count&&confirmed){count.pending=false;if(!skipped&&data.won)count.wins++;save();}
     else if(count&&data.notStarted){count.pending=false;save();}
    }
    if(!confirmed){stop(null,data.message||'Niepotwierdzony wynik — automaty zatrzymane.');return true;}

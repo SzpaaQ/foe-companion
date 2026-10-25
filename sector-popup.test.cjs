@@ -33,20 +33,20 @@ test('disable/map change clears visibility without marking dismissal',()=>{
  ui.ctx.battle.map.id=2;ui.advance(102);assert.equal(ui.popup.hidden,true);
  ui.ctx.battle.map.id=1;ui.add(1,160);assert.equal(ui.popup.hidden,false);
 });
-test('socket province updates remove a notification strictly above 90 percent without dismissal cooldown',()=>{
+test('socket province updates remove a notification strictly above 99 percent without dismissal cooldown',()=>{
  const Model=require('./model.js'),ui=setup();
  let battle={currentParticipantId:1,battlegroundParticipants:[{participantId:2,colour:'purple'}],map:{id:'waterfall_archipelago',provinces:[]}};
  ui.ctx.battle=battle;
  const update=progress=>{
-  const province={__class__:'GuildBattlegroundProvince',id:1,ownerId:2,lockedUntil:0,gainAttritionChance:10,conquestProgress:[{participantId:1,progress,maxProgress:120}]};
+  const province={__class__:'GuildBattlegroundProvince',id:1,ownerId:2,lockedUntil:0,gainAttritionChance:10,conquestProgress:[{participantId:1,progress,maxProgress:100}]};
   if(!battle.map.provinces.length)battle.map.provinces=[province];
   battle=Model.updateBattle(battle,[{requestClass:'GuildBattlegroundService',requestMethod:'getProvinces',responseData:[province]}]).battle;
   ui.ctx.battle=battle;ui.ctx.rows=Model.rows(battle,false).rows;
   vm.runInContext('updateSectorPopup(rows,Date.now()/1000)',ui.ctx);
  };
  update(20);assert.equal(ui.popup.hidden,false);
- update(108);assert.equal(ui.popup.hidden,false);
- update(109);assert.equal(ui.popup.hidden,true);
+ update(99);assert.equal(ui.popup.hidden,false);
+ update(100);assert.equal(ui.popup.hidden,true);
  assert.deepEqual(JSON.parse(ui.session.get('foe-companion.sectorPopup.dismissed.v2')),{});
  update(0);assert.equal(ui.popup.hidden,false);
 });
@@ -71,10 +71,10 @@ test('closed, conquered and missing sectors disappear; next opening is a new eve
 test('guard alarm shares one popup entry, displays both progress values and updates without sound',()=>{
  const ui=setup();ui.ctx.getGuard=()=>({guard:true});
  ui.add(1,0,{progress:7,maxProgress:132,gainAttritionChance:20,enemyProgress:5,enemyMaxProgress:132,race:true});
- assert.match(ui.$('sector-popup-list').textContent,/🔔 Otwarte.*🏃‍♂️ \(7\/132\) · 👾 5\/132/);assert.equal(ui.$('sector-popup-list').textContent.split('\n').length,1);
- ui.ctx.soundSettings.enabled=false;ui.add(1,0,{progress:7,maxProgress:132,enemyProgress:9,enemyMaxProgress:132});assert.match(ui.$('sector-popup-list').textContent,/👾 9\/132/);assert.equal(ui.popup.hidden,false);
+ assert.match(ui.$('sector-popup-list').textContent,/🔔 Otwarte.*7\/132 👾5/);assert.equal(ui.$('sector-popup-list').textContent.split('\n').length,1);
+ ui.ctx.soundSettings.enabled=false;ui.add(1,0,{progress:7,maxProgress:132,enemyProgress:9,enemyMaxProgress:132});assert.match(ui.$('sector-popup-list').textContent,/👾9/);assert.equal(ui.popup.hidden,false);
  ui.add(1,0,{progress:7,maxProgress:132,enemyProgress:0});assert.equal(ui.popup.hidden,true);
- ui.add(1,0,{enemyProgress:3});assert.match(ui.$('sector-popup-list').textContent,/👾 3\/—/);
+ ui.add(1,0,{enemyProgress:3});assert.match(ui.$('sector-popup-list').textContent,/👾3/);
  ui.add(1,4000,{enemyProgress:3});assert.equal(ui.popup.hidden,true);
 });
 test('model chooses greatest enemy progress without summing guilds',()=>{

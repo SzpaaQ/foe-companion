@@ -149,7 +149,9 @@
       const code=serverError?.code??serverError?.errorCode??serverError?.__class__??'brak kodu';
       throw Error('Żądanie '+requestMethod+' (ID '+item.requestId+'), HTTP '+response.status+', kod '+String(code).slice(0,100)+'.');
     }
-    const result=list.find(r=>r.requestId===item.requestId&&r.requestClass===requestClass&&r.requestMethod===responseMethod)?.responseData;
+    const matched=list.find(r=>r.requestId===item.requestId&&r.requestClass===requestClass&&r.requestMethod===responseMethod);
+    if(requestClass==='NegotiationGameService'&&requestMethod==='getRunning'&&matched&&Object.hasOwn(matched,'responseData')&&matched.responseData===null)return null;
+    const result=matched?.responseData;
     if(!result)throw Error('Brak potwierdzenia '+requestMethod+'.');
     return result;
   }
@@ -620,7 +622,7 @@
     if (!Number.isSafeInteger(provinceId) || provinceId < 0) return answer(false, 'Nieprawidłowy sektor.',{notStarted:true});
 
     negBusy = true;
-    const connection = battleTransport;let started=false;
+    const connection = battleTransport;let started=false,sectorBefore=null;
     try {
       // Read the game-provided map/socket state; never poll the map here.
       if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
@@ -629,6 +631,7 @@
         if(bulkPolicy.kind!=='negotiation'||!Number.isSafeInteger(bulkPolicy.maxAttrition)||bulkPolicy.maxAttrition<0)throw Error('Nieprawidłowy limit oporu.');
         battlegroundLive.checkPolicy(provinceId,bulkPolicy);
       }
+      sectorBefore=battlegroundLive.snapshot(provinceId);
       // 2. Rozpocznij negocjację.
       started=true;
       const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId]);
@@ -696,16 +699,20 @@
       }
       answer(false, 'Osiągnięto wewnętrzny limit bezpieczeństwa tur.', {won: false});
     } catch (error) {
-      let cleanup='';
+      let cleanup='',negotiationEnded=false;
       if(started){
         try{
           const running=await battleCall(connection,'NegotiationGameService','getRunning',[]);
+          negotiationEnded=running===null;
           if(running?.game?.context==='guildBattleground'&&['ongoing','out_of_turns'].includes(running.state)){
             const result=await battleCall(connection,'NegotiationGameService','giveUp',[]);
             if(result?.__class__!=='Success')throw Error('brak potwierdzenia');
-            cleanup=' Aktywna negocjacja została poddana.';
+            negotiationEnded=true;cleanup=' Aktywna negocjacja została poddana.';
           }
         }catch{cleanup=' Nie potwierdzono zamknięcia negocjacji — sprawdź ją w grze.';}
+      }
+      if(started&&negotiationEnded&&battlegroundLive?.closedSince(provinceId,sectorBefore)){
+        answer(false,'Sektor przejęty — negocjacja zakończona, szukam następnego.',{sectorClosed:true,negotiationEnded:true,continueAuto:true});return;
       }
       answer(false, error.message+cleanup+' Auto-negocjacje zatrzymane. Sprawdź dostępność towarów przed ponownym uruchomieniem.',{stopAuto:true,notStarted:!started});
     } finally {

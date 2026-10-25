@@ -29,8 +29,29 @@ test('indicators and modal counters follow shared state, including STOP while ac
 test('complete modal mounts its column controls and counters and applies header clicks',()=>{
  class E{constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.textContent='';this.title='';}append(...xs){this.children.push(...xs);}setAttribute(k,v){this[k]=v;}getAttribute(k){return this[k]??null;}addEventListener(){}remove(){this.removed=true;}}
  const root=new E('root');root.querySelector=()=>null;const guards=new Map();
- const context=vm.createContext({root,battle:{map:{id:'m'}},document:{createElement:tag=>new E(tag),addEventListener(){},removeEventListener(){}},FoeModel:{rows:()=>({rows:[{id:1,until:0,progress:7,maxProgress:132,gainAttritionChance:20,sector:'A',color:'🔴'}]})},getGuard:(map,id)=>guards.get(Number(id))||{},setGuard:(map,id,patch)=>guards.set(id,{...guards.get(id),...patch}),bulkAutomation:{resumeGuards(){}},scheduleCloseAtHour(){},cancelCloseAtHour(){},paintOpenSectors(){},checkSectorAlerts(){},paintBulkControls(){},convertTitles(){},actionVisible:()=>true,battleReady:true,battlePending:null,battlePendingSector:null,battleWaveSector:null,battleLastSector:null,autoSector:null,autoNegSector:null,negPending:null,negPendingSector:null,negLastSector:null,stats:{textContent:'🏆 0/0',title:'walki'},negStats:{textContent:'🤝 2/2',title:'nego'},attritionStats:{textContent:'🔥 0',title:'opór'}});
+ const context=vm.createContext({mountSectorWindow(){},root,battle:{map:{id:'m'}},document:{createElement:tag=>new E(tag),addEventListener(){},removeEventListener(){}},FoeModel:{...require('./model.js'),rows:()=>({rows:[{id:1,until:0,progress:7,maxProgress:132,gainAttritionChance:20,sector:'A',color:'🔴'}]})},getGuard:(map,id)=>guards.get(Number(id))||{},setGuard:(map,id,patch)=>guards.set(id,{...guards.get(id),...patch}),bulkAutomation:{resumeGuards(){}},scheduleCloseAtHour(){},cancelCloseAtHour(){},paintOpenSectors(){},checkSectorAlerts(){},paintBulkControls(){},convertTitles(){},actionVisible:()=>true,battleReady:true,battlePending:null,battlePendingSector:null,battleWaveSector:null,battleLastSector:null,autoSector:null,autoNegSector:null,negPending:null,negPendingSector:null,negLastSector:null,stats:{textContent:'🏆 0/0',title:'walki'},negStats:{textContent:'🤝 2/2',title:'nego'},attritionStats:{textContent:'🔥 0',title:'opór'}});
  const a=source.indexOf('    function openSectorGuardModal()'),b=source.indexOf("    $('sector-guard-open').onclick",a);vm.runInContext(source.slice(a,b)+'openSectorGuardModal()',context);
  const all=e=>[e,...e.children.flatMap(all)],nodes=all(root),toggles=nodes.filter(n=>n.role==='checkbox');assert.equal(toggles.length,3);assert.deepEqual(nodes.filter(n=>n.dataset.modalCounter!==undefined).map(n=>n.textContent),['🏆 0/0','🤝 2/2','🔥 0']);
+ const status=nodes.find(n=>n.dataset.bulkStatus);assert.equal(status.title,'');assert.equal(status['data-tooltip'],undefined);assert.match(status.style.cssText,/text-overflow:ellipsis/);assert.match(root.children[0].style.cssText,/pointer-events:none/);
  toggles[0].onclick();assert.equal(guards.get(1).guard,true);toggles[0].onclick();assert.equal(guards.get(1).guard,false);
+});
+
+test('floating window drags beyond right edge, ignores controls and cleans up on Escape or close',()=>{
+ const events=()=>({listeners:{},addEventListener(k,f){this.listeners[k]=f;},removeEventListener(k){delete this.listeners[k];}});
+ const window={...events(),innerWidth:1000,innerHeight:800},document=events(),header={...events(),style:{},setPointerCapture(){},hasPointerCapture:()=>true,releasePointerCapture(){}};
+ const box={style:{},getBoundingClientRect:()=>({width:500,left:100,top:50})},modal={remove(){this.removed=true;}},close={};
+ const ctx={window,document,header,box,modal,close};const a=source.indexOf('    function mountSectorWindow('),b=source.indexOf('    function openSectorGuardModal()',a);
+ vm.runInNewContext(source.slice(a,b)+'mountSectorWindow(modal,box,header,close)',ctx);
+ const event={button:0,pointerId:1,clientX:110,clientY:60,target:{closest:()=>null},preventDefault(){}};
+ header.listeners.pointerdown(event);header.listeners.pointermove({...event,clientX:2000,clientY:2000});assert.equal(box.style.left,'900px');assert.equal(box.style.top,'752px');
+ header.listeners.pointerup(event);header.listeners.pointerdown({...event,target:{closest:()=>true}});header.listeners.pointermove(event);assert.equal(box.style.left,'900px');
+ assert.equal(modal.onclick,undefined);assert.equal(document.listeners.click,undefined);
+ document.listeners.keydown({key:'Escape',preventDefault(){},stopPropagation(){}});assert.equal(modal.removed,true);assert.equal(document.listeners.keydown,undefined);assert.equal(window.listeners.resize,undefined);
+ modal.removed=false;vm.runInNewContext(source.slice(a,b)+'mountSectorWindow(modal,box,header,close)',ctx);close.onclick();assert.equal(modal.removed,true);
+});
+
+test('progress and copied rows omit controls, enemy replaces race, unknown limit stays explicit',()=>{
+ const M=require('./model.js'),row={sector:'B3X',color:'🟡',isAttackBattleType:true,progress:58,maxProgress:132,gainAttritionChance:20,race:true,enemyProgress:34};
+ assert.equal(M.openSectorText(row),'🟥 🟡 B3X 👾34 | 58/132 | 20%');
+ assert.equal(M.progressText({...row,progress:0}),'0');assert.equal(M.progressText({...row,maxProgress:null}),'58/—');assert.equal(M.sectorMarker({...row,enemyProgress:0}),' 🔥');
 });

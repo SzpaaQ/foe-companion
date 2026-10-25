@@ -6,7 +6,7 @@
   const snapshot=id=>{const p=provinces.get(id),c=p?.value.conquestProgress?.find(c=>c.participantId===own);
    const limits=(p?.value.conquestProgress||[]).map(c=>c.maxProgress).filter(n=>Number.isFinite(n)&&n>0);
    const maxProgress=Number.isFinite(c?.maxProgress)&&c.maxProgress>0?c.maxProgress:limits.length?Math.min(...limits):undefined;
-   return p?{...p,progress:c?.progress??0,maxProgress,own}:null;};
+   return p?{...p,progress:c?.progress??0,maxProgress,own,mapId,endsAt}:null;};
   function flush(){for(const check of [...waiters])check();}
   function consume(data,source='http'){
    // The initial map can be nested in startup/state responses, not only a
@@ -76,6 +76,10 @@
    if(policy.kind==='attack'&&!(p.isAttackBattleType===true?policy.attack:policy.defense))throw Error('Typ sektora nie jest wybrany.');
    return s;
   }
+  function closedSince(id,before){
+   const current=snapshot(id);
+   return !!(connected&&before&&current&&before.epoch===epoch&&current.epoch===epoch&&before.mapId===mapId&&before.endsAt===endsAt&&current.version>before.version&&(current.value.ownerId!==before.value.ownerId||current.value.lockedUntil>now()/1000));
+  }
   function waitForProgress(id,before,cost=1,timeout=8000){
    if(!before||!connected)return Promise.resolve(false);
    return new Promise(resolve=>{
@@ -89,7 +93,7 @@
     waiters.add(checkUpdate);timer=schedule(()=>finish(false),timeout);checkUpdate();
    });
   }
-  return {consume,snapshot,check,checkPolicy,waitForProgress,setConnected(value){if(connected&&!value)epoch++;connected=value;flush();}};
+  return {consume,snapshot,closedSince,check,checkPolicy,waitForProgress,setConnected(value){if(connected&&!value)epoch++;connected=value;flush();}};
  }
  const readers=new WeakMap();
  function createSocketReader(win){

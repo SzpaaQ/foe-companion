@@ -3,7 +3,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const captureEnv={document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},FoeBattlegroundLive:{observeSockets(){},createTracker:()=>({consume(){},check(){},snapshot(){return {};},waitForProgress:async()=>true})}};
+const captureEnv={document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},FoeBattlegroundLive:{observeSockets(){},createTracker:()=>({consume(){},check(){},snapshot(){return {};},closedSince:()=>false,waitForProgress:async()=>true})}};
 
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

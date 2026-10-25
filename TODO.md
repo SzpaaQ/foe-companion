@@ -1,3 +1,11 @@
+#### 2026-10-25 — aktualizacja sektorów (wdrożone lokalnie)
+
+- Wykluczyć własne sektory ⚪ z powiadomień (również alarmów 🔔), listy panelu i modala otwartych sektorów.
+- Odświeżać tabelę otwartego modala po danych gry oraz upływie blokady; zachować położenie okna i checkboxy.
+- Uwzględniać zmiany właściciela, blokady i progresu wszystkich gildii. Brak pola domyślnego w odpowiedzi sektora nie może zachowywać starej blokady.
+- Automat ma ponownie kwalifikować nowo otwarte cele, zachowując limity, ignorowanie i ręczny STOP. Powiadomienie samo w sobie nie oznacza kwalifikacji do negocjacji.
+- Weryfikacja: 163/163 testy offline, w tym własny sektor z alarmem, przejęcie przez dowolną gildię, odblokowanie, progres wroga, aktualizacja tabeli i podjęcie negocjacji. Sprawdzenie w grze pozostaje otwarte. Bez zmiany wersji 0.6.06.
+
 #### 2026-10-25 — wydanie 0.6.06
 
 Wydano zmiany Pól Chwały z commitów f551b3e i c7dea73: pływające okno, status, powiadomienia, kopiowanie, kontynuacja negocjacji oraz limit szansy oporu autoataku (domyślnie 20%). Arka nadal odłożona. Ostatnia pełna weryfikacja: 160/160 testów offline; sprawdzenie w grze pozostaje otwarte.

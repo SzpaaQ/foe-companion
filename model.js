@@ -99,7 +99,7 @@
       if(!matching.length)return p;
       changed=true;
       return matching.reduce((previous,patch)=>{
-        return {...previous,...patch,isAttackBattleType:patch.isAttackBattleType??false,gainAttritionChance:patch.gainAttritionChance??0};
+        return {...previous,...patch,ownerId:patch.ownerId??0,lockedUntil:patch.lockedUntil??0,isSpawnSpot:patch.isSpawnSpot??false,conquestProgress:patch.conquestProgress??[],isAttackBattleType:patch.isAttackBattleType??false,gainAttritionChance:patch.gainAttritionChance??0};
       },p);
     });
     const battlegroundParticipants=current.battlegroundParticipants.map(p=>{const matching=participants.filter(v=>v.participantId===p.participantId);if(matching.length){changed=true;return Object.assign({},p,...matching);}return p;});

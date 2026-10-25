@@ -81,3 +81,9 @@ test('model chooses greatest enemy progress without summing guilds',()=>{
  const Model=require('./model.js');const battle={currentParticipantId:1,battlegroundParticipants:[],map:{id:'waterfall_archipelago',provinces:[{id:1,ownerId:2,conquestProgress:[{participantId:1,progress:7,maxProgress:132},{participantId:2,progress:5,maxProgress:132},{participantId:3,progress:9,maxProgress:132}]}]}};
  const r=Model.rows(battle,false).rows[0];assert.equal(r.progress,7);assert.equal(r.enemyProgress,9);assert.equal(r.enemyMaxProgress,132);
 });
+
+test('own white sector is removed even with guard alarm and enemy progress',()=>{
+ const ui=setup();ui.ctx.getGuard=()=>({guard:true});ui.add(1,0,{ownerId:2,color:'🔴',enemyProgress:80});assert.equal(ui.popup.hidden,false);
+ ui.add(1,0,{ownerId:1,color:'⚪',enemyProgress:80});assert.equal(ui.popup.hidden,true);
+ ui.advance(101);assert.equal(ui.popup.hidden,true);
+});

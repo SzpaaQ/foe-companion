@@ -1,3 +1,10 @@
+## Aktualizacja otwartych sektorów — lokalnie 2026-10-25
+
+- `model.updateBattle` zeruje pominięte pola domyślne odpowiedzi `GuildBattlegroundProvince`, tak jak tracker MAIN: właściciel, blokada, spawn, progres, typ i szansa oporu. Dotyczy zmian wszystkich gildii; stara blokada/progres nie mogą przetrwać pełnej odpowiedzi sektora.
+- `openSectorGuardModal`: `modal.refresh()` odświeża tylko tabelę po zmianie snapshotu danych, stanu akcji lub checkboxów. Wywołuje je `paintOpenSectors` także przed jego wczesnym powrotem; odświeżanie sekundowe obsługuje upływ blokady. Okno i nagłówek pozostają na miejscu. Zmiana mapy zamyka modal przez `modal.close()` ze sprzątaniem listenerów.
+- Powiadomienia alarmowe i zwykłe oraz obie listy otwartych sektorów wykluczają ⚪. Automat nadal respektuje odrębne warunki kwalifikacji; powiadomienie nie gwarantuje startu negocjacji.
+- Testy: `sector-refresh.test.cjs`, `sector-controls.test.cjs`, `sector-popup.test.cjs`. 163/163 offline; bez rzeczywistych akcji gry.
+
 ## Autoatak: limit szansy wzrostu oporu (2026-10-25)
 
 `sector-automation.settings.attackChance`: 0–100, domyślnie 20. `eligible` odrzuca wyższą lub nieznaną szansę; kolejka przekazuje limit w `bulkPolicy`. `battleground-live.checkPolicy` ponawia kontrolę przed walką. Panel zapisuje limit wraz z pozostałymi ustawieniami, zmiana zatrzymuje automaty. Nie mylić z progresowym `attackProgress` ani oporem gracza `maxAttrition` dla negocjacji.

@@ -1,3 +1,21 @@
+#### 2026-10-25 — etap 1, wydanie 0.6.08
+
+Wdrożono aktualizację gildyjnej łapki ✋: pełny GuildBattlegroundParticipant bez signals oznacza brak oznaczeń, zarówno w panelu, jak i MAIN. Socket przekazuje też taką odpowiedź. Po zdjęciu łapki włączone automaty ponownie kwalifikują sektor, bez zmiany pozostałych ograniczeń i bez cofania STOP. Sam progres lub otwarcie nie kasują ignorowania. Weryfikacja: 167/167 testów offline. Zachowanie w grze do sprawdzenia po przeładowaniu.
+
+Pozostałe etapy, do osobnego wdrożenia:
+2. Maksymalnie 5 zamkniętych sektorów pod otwartymi, od najbliższego otwarcia; przygaszone wiersze, wyłączone przyciski i checkboxy.
+3. Pierwsza kolumna: Otwarte / odliczanie HH:MM:SS, aktualizacja co sekundę i automatyczne przejście wiersza do otwartych.
+4. Lokalny checkbox Ignoruj przy sektorze: wyklucza go z autoataku i autonegocjacji otwartych sektorów, niezależnie od gildyjnej łapki. Rozpoczęta akcja jest dokańczana; ustawienie zapisywane dla świata, edycji i sektora.
+
+Pierwotny wpis użytkownika (rozwinięty powyżej):
+tutaj chcę aby tabelka widniała z jeszcze nieotwartymi sektorami max 5 nieotwartych lekko wyblakłe, ale wszystkie przyciski wyłączone. informacje te samo co powiadomieniu przy nazwie sektora czyli progres progres wroga itd plus przyciski i checkboxy, o otwarciu sektora. oczywiście pod aktywnymi sektorami posortowane wg otwarcia późniejsze na dole. w tej tabelce dodajmy z przodu kolumnę z odliczaniem, aktywne sektory oznaczamy otwarty a zamknięte odliczanie.
+
+teraz tak:
+przy autoataku jak była łapka na sektorze to nie atakuje poomimo zdjęcia łapki (ignorowana) przy otwarciu lub odświeżeniu progresu musi zmienić
+do tego checkbox ignoruj w autoataku
+
+
+
 #### 2026-10-25 — wydanie 0.6.07
 
 Wydano poprawki z a00dca9: wykluczenie własnych sektorów ⚪ z list i alarmów, bieżące odświeżanie tabeli modala oraz aktualizacje blokady i progresu wszystkich gildii. Ostatnia pełna weryfikacja: 163/163 testy offline. Arka nadal odłożona.

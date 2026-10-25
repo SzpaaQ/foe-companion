@@ -86,7 +86,7 @@
       const value=queue.shift();
       if(!value || typeof value!=='object')continue;
       if(value.__class__==='GuildBattlegroundProvince') patches.push(value);
-      else if(Number.isSafeInteger(value.participantId)&&Array.isArray(value.signals))participants.push(value);
+      else if(Number.isSafeInteger(value.participantId)&&(Array.isArray(value.signals)||(value.__class__==='GuildBattlegroundParticipant'&&!Object.hasOwn(value,'signals'))))participants.push({...value,signals:value.signals??[]});
       else if(Array.isArray(value))queue.push(...value.slice(0,1000));
       else for(const [key,child] of Object.entries(value)){
         if(key!=='requestData' && child && typeof child==='object') queue.push(child);

@@ -1,3 +1,7 @@
+## Gildyjne ignorowanie — etap 1, 0.6.08
+
+Pełny `GuildBattlegroundParticipant` bez pola `signals` oznacza pustą listę oznaczeń (potwierdzone formatem zapisów HAR). `model.updateBattle` oraz `battleground-live.consume` zastępują wtedy stare sygnały pustą listą. Częściowy obiekt bez klasy ani aktualizacja prowincji nie kasują oznaczeń. `observeSockets` przepuszcza pełnego uczestnika również bez signals. Dotyczy obu automatów; lokalny checkbox Ignoruj to dopiero etap 4. Testy regresji: `sector-ignore.test.cjs`.
+
 ## Aktualizacja otwartych sektorów — wydanie 0.6.07 (2026-10-25)
 
 - `model.updateBattle` zeruje pominięte pola domyślne odpowiedzi `GuildBattlegroundProvince`, tak jak tracker MAIN: właściciel, blokada, spawn, progres, typ i szansa oporu. Dotyczy zmian wszystkich gildii; stara blokada/progres nie mogą przetrwać pełnej odpowiedzi sektora.
@@ -21,7 +25,7 @@
 - Powiadomienie pozostaje do 99% włącznie; przejęcie/zamknięcie usuwa je niezależnie od procentu. Kopiowanie pojedyncze i zbiorcze używa tekstu modelu, bez ikon przycisków.
 - 157 testów offline przechodzi. Wygląd w grze pozostaje do weryfikacji przez użytkownika; bez rzeczywistych walk/negocjacji w testach.
 
-Stan rozpoznany: 2026-10-25, baza kodu `a00dca9`, manifest 0.6.07.
+Stan rozpoznany: 2026-10-25, manifest 0.6.08, etap 1 aktualizacji łapki wdrożony.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 

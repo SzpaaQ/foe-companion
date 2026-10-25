@@ -1,3 +1,7 @@
+## Nadchodzące sektory — etapy 2 i 3, 0.6.09
+
+`openSectorGuardModal.modal.refresh` łączy wszystkie otwarte cele z maksymalnie 5 najbliższymi zamkniętymi sąsiadami. Własne ⚪ wykluczone. Wiersze zamknięte mają `dataset.locked`, opacity .55 oraz disabled na wszystkich przyciskach i checkboxach; operacje kolumn pomijają disabled. `timeCells` aktualizuje kolumnę Otwarcie co sekundę przed porównaniem snapshotu; `open.length` zapewnia przebudowę przy otwarciu także bez nowych danych gry. Kolejka automatów nadal korzysta z własnej kwalifikacji, nie z listy podglądu. Etap 4 nie jest wdrożony.
+
 ## Gildyjne ignorowanie — etap 1, 0.6.08
 
 Pełny `GuildBattlegroundParticipant` bez pola `signals` oznacza pustą listę oznaczeń (potwierdzone formatem zapisów HAR). `model.updateBattle` oraz `battleground-live.consume` zastępują wtedy stare sygnały pustą listą. Częściowy obiekt bez klasy ani aktualizacja prowincji nie kasują oznaczeń. `observeSockets` przepuszcza pełnego uczestnika również bez signals. Dotyczy obu automatów; lokalny checkbox Ignoruj to dopiero etap 4. Testy regresji: `sector-ignore.test.cjs`.
@@ -25,7 +29,7 @@ Pełny `GuildBattlegroundParticipant` bez pola `signals` oznacza pustą listę o
 - Powiadomienie pozostaje do 99% włącznie; przejęcie/zamknięcie usuwa je niezależnie od procentu. Kopiowanie pojedyncze i zbiorcze używa tekstu modelu, bez ikon przycisków.
 - 157 testów offline przechodzi. Wygląd w grze pozostaje do weryfikacji przez użytkownika; bez rzeczywistych walk/negocjacji w testach.
 
-Stan rozpoznany: 2026-10-25, manifest 0.6.08, etap 1 aktualizacji łapki wdrożony.
+Stan rozpoznany: 2026-10-25, manifest 0.6.09, etapy 1–3 wdrożone.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 

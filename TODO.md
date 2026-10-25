@@ -1,8 +1,22 @@
+dodatkowo zmieniamy autoazamykanie sektora z 80% na 50% a najlepiej jak będziemy mieli tą opcję w ustawieniach i tutaj kolejna opcja - zamykaj negocjacjami - czyli zamiast przeprowadzenia walki mają zostać przeprowadzone negocjacje jako zamknięcie
+z headera tabelki ywalamy oznaczenie dla autoataku i autonegocjacji w tych kolumnach bez oznaczenia headera.
+Wyświetlaj przyciski ataku przy oznaczeniu tej opcji (podobnie z negocjacjami) w modalu otwartych sektorówcała kolumna powinna zniknąć nie tylko przyciski, a przy odznaczeniu obu opcji również kolumny z checkboxami
+
+Etap: potwierdzenie składu. Osiągnięto ustawioną rezerwę walk. Walka nie została wysłana; można spróbować ponownie.
+
+ten błąd zatrzymuje autoatakowanie otwartych sektorów - błąd pojawia się gdy sektor zostanie zamknięty nie wiem na którym etapie. takie błędy mają kończyć od razu walkę i przechodzić do nasępnego sektora chyba
+
+
+
+#### 2026-10-25 — etapy 2 i 3, wydanie 0.6.09
+
+Wdrożono do 5 najbliższych otwarć pod otwartymi sektorami, sortowanie według czasu, przygaszenie i blokadę wszystkich przycisków/checkboxów zamkniętych wierszy. Nagłówki zbiorczego zaznaczania pomijają zamknięte sektory. Kolumna Otwarcie pokazuje Otwarte lub HH:MM:SS; zegar aktualizuje tekst bez przebudowy tabeli. Po otwarciu wiersz przechodzi do aktywnych, a lista nadchodzących uzupełnia się. Limity automatów i STOP pozostają obowiązujące. Etap 4 (lokalne Ignoruj dla obu automatów) pozostaje do wdrożenia. Weryfikacja: 169/169 testów offline. Wygląd w grze do sprawdzenia po przeładowaniu.
+
 #### 2026-10-25 — etap 1, wydanie 0.6.08
 
 Wdrożono aktualizację gildyjnej łapki ✋: pełny GuildBattlegroundParticipant bez signals oznacza brak oznaczeń, zarówno w panelu, jak i MAIN. Socket przekazuje też taką odpowiedź. Po zdjęciu łapki włączone automaty ponownie kwalifikują sektor, bez zmiany pozostałych ograniczeń i bez cofania STOP. Sam progres lub otwarcie nie kasują ignorowania. Weryfikacja: 167/167 testów offline. Zachowanie w grze do sprawdzenia po przeładowaniu.
 
-Pozostałe etapy, do osobnego wdrożenia:
+Plan etapów (2 i 3 wykonane w 0.6.09; pozostaje 4):
 2. Maksymalnie 5 zamkniętych sektorów pod otwartymi, od najbliższego otwarcia; przygaszone wiersze, wyłączone przyciski i checkboxy.
 3. Pierwsza kolumna: Otwarte / odliczanie HH:MM:SS, aktualizacja co sekundę i automatyczne przejście wiersza do otwartych.
 4. Lokalny checkbox Ignoruj przy sektorze: wyklucza go z autoataku i autonegocjacji otwartych sektorów, niezależnie od gildyjnej łapki. Rozpoczęta akcja jest dokańczana; ustawienie zapisywane dla świata, edycji i sektora.

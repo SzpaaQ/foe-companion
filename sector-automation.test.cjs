@@ -140,3 +140,8 @@ test('bulk attack skips 60 percent sector and sends chance limit; MAIN rejects c
  t.consume({requestClass:'GuildBattlegroundService',requestMethod:'getProvince',responseData:{...province,gainAttritionChance:60}},'socket');assert.throws(()=>t.checkPolicy(2,h.sent[0].policy),/Szansa wzrostu oporu/);
  t.checkPolicy(2,{...h.sent[0].policy,attackChance:60});assert.throws(()=>t.checkPolicy(2,{...h.sent[0].policy,attackChance:undefined}));
 });
+
+for(const kind of ['attack','negotiation'])test(kind+' waits for opening and qualifies on time without new map response',()=>{
+ const h=setup();h.env.rows=h.env.allRows=[row({until:1.3})];h.c.enable(kind,true);h.tick();assert.equal(h.sent.length,0);h.tick();assert.equal(h.sent.length,1);assert.equal(h.sent[0].kind,kind);
+ const stopped=setup();stopped.env.rows=stopped.env.allRows=[row({until:1.3})];stopped.c.enable(kind,true);stopped.tick();stopped.c.stop();stopped.tick();assert.equal(stopped.sent.length,0);
+});

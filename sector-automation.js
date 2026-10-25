@@ -1,11 +1,12 @@
 (function(root){
  'use strict';
- const defaults={attackProgress:50,negProgress:50,negWins:3,maxAttrition:0,attack:true,defense:false};
+ const defaults={attackProgress:50,attackChance:20,negProgress:50,negWins:3,maxAttrition:0,attack:true,defense:false};
  function settings(value={}){
   if(!value||typeof value!=='object')value={};
   const out={...defaults};
   for(const key of ['attackProgress','negProgress'])if(Number.isFinite(value[key])&&value[key]>0&&value[key]<=100)out[key]=value[key];
   for(const key of ['negWins','maxAttrition'])if(Number.isSafeInteger(value[key])&&value[key]>=(key==='negWins'?1:0))out[key]=value[key];
+  if(Number.isFinite(value.attackChance)&&value.attackChance>=0&&value.attackChance<=100)out.attackChance=value.attackChance;
   for(const key of ['attack','defense'])if(typeof value[key]==='boolean')out[key]=value[key];
   return out;
  }
@@ -15,6 +16,7 @@
   if(!firstAttack&&(!Number.isFinite(row.maxProgress)||row.maxProgress<=0))return false;
   const cost=kind==='negotiation'?2:1,limit=kind==='negotiation'?config.negProgress:config.attackProgress;
   if(!firstAttack&&(row.progress/row.maxProgress*100>=limit||row.maxProgress-row.progress-cost<reserve))return false;
+  if(kind==='attack'&&(!Number.isFinite(row.gainAttritionChance)||row.gainAttritionChance<0||row.gainAttritionChance>config.attackChance))return false;
   return kind==='negotiation'?row.gainAttritionChance===20:(row.isAttackBattleType===true?config.attack:row.isAttackBattleType===false?config.defense:false);
  }
  function create({storage,now=()=>Date.now(),onChange=()=>{}}={}){
@@ -59,7 +61,7 @@
     });
     if(!row)continue;
     const identity=opening(row.id);if(!identity)continue;
-    active={kind,id:row.id,scope,identity,delay,policy:{mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attack:config.attack,defense:config.defense,reserve}};
+    active={kind,id:row.id,scope,identity,delay,policy:{mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,reserve}};
     if(kind==='negotiation'){const count=ledger[scope].counts[identity]||={wins:0};count.pending=true;if(!save()){active=null;changed();return;}}
     status=(kind==='attack'?'⚔️ ':'🤝 ')+row.sector+' · '+(kind==='attack'?'porażki z rzędu: '+losses+'/3':'sukcesy: '+(ledger[scope].counts[identity]?.wins||0)+'/'+config.negWins);
     changed();if(send(kind,row.id,active.policy)===false)result({ok:false,notStarted:true,message:'Nie udało się rozpocząć akcji.'});return;

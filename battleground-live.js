@@ -73,6 +73,7 @@
    if(!firstAttack&&(!Number.isFinite(s.maxProgress)||s.maxProgress<=0||s.progress/s.maxProgress*100>=policy.progress))throw Error('Osiągnięto limit progresu lub brak potwierdzonego limitu.');
    if(policy.kind==='negotiation'&&(!Number.isSafeInteger(attrition)||attrition<0||!Number.isSafeInteger(policy.maxAttrition)||attrition>policy.maxAttrition))throw Error('Brak aktualnego oporu lub przekroczono limit — otwórz mapę w grze.');
    if(policy.kind==='negotiation'&&p.gainAttritionChance!==20)throw Error('Szansa wzrostu oporu nie wynosi 20%.');
+   if(policy.kind==='attack'&&(!Number.isFinite(policy.attackChance)||policy.attackChance<0||policy.attackChance>100||!Number.isFinite(p.gainAttritionChance)||p.gainAttritionChance<0||p.gainAttritionChance>policy.attackChance))throw Error('Szansa wzrostu oporu przekracza limit autoataku lub brak poprawnych danych.');
    if(policy.kind==='attack'&&!(p.isAttackBattleType===true?policy.attack:policy.defense))throw Error('Typ sektora nie jest wybrany.');
    return s;
   }

@@ -1,3 +1,7 @@
+#### 2026-10-25 — limit szansy wzrostu oporu autoataku
+
+Wdrożono ustawienie 0–100%, domyślnie 20% (włącznie). Dotyczy autoataku otwartych sektorów; osobne od progresu i oporu gracza. Kontrola przy wyborze oraz w MAIN przed walką. Zmiana ustawienia zatrzymuje automaty jak pozostałe ustawienia. Negocjacje nadal wymagają dokładnie 20%.
+
 #### 2026-10-24 — Pola Chwały: wdrożone lokalnie
 
 Na polecenie użytkownika wykonano poniższy zakres Pól Chwały (punkty 1–7). Punkt 8, automatyczny bonus Arki, odłożony: użytkownik polecił pominąć wszystko niezwiązane z Polami Chwały. Bez zmiany wersji 0.6.05.

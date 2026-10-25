@@ -1,3 +1,7 @@
+## Autoatak: limit szansy wzrostu oporu (2026-10-25)
+
+`sector-automation.settings.attackChance`: 0–100, domyślnie 20. `eligible` odrzuca wyższą lub nieznaną szansę; kolejka przekazuje limit w `bulkPolicy`. `battleground-live.checkPolicy` ponawia kontrolę przed walką. Panel zapisuje limit wraz z pozostałymi ustawieniami, zmiana zatrzymuje automaty. Nie mylić z progresowym `attackProgress` ani oporem gracza `maxAttrition` dla negocjacji.
+
 # FoE Companion — mapa dla AI
 
 ## Zmiany lokalne Pól Chwały — 2026-10-24

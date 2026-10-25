@@ -3,12 +3,12 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 
-function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false}={}){
+function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false,chance=20}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
   const live=require('./battleground-live.js').createTracker();live.setConnected(true);
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
   const window={addEventListener:(type,fn)=>listeners.push(fn),postMessage:m=>messages.push(m)};
-  const map=()=>({currentParticipantId:1,endsAt:1000,currentPlayerParticipant:{attrition:{__class__:'GuildBattlegroundAttrition',level:5}},map:{id:'m',provinces:[{id:provinceId,ownerId:2,isAttackBattleType:attackType,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
+  const map=()=>({currentParticipantId:1,endsAt:1000,currentPlayerParticipant:{attrition:{__class__:'GuildBattlegroundAttrition',level:5}},map:{id:'m',provinces:[{id:provinceId,ownerId:2,isAttackBattleType:attackType,gainAttritionChance:chance,lockedUntil,conquestProgress:max==='empty'?[]:[{participantId:1,progress,maxProgress:max}]}]}});
   live.consume([{requestClass:'GuildBattlegroundService',requestMethod:'getBattleground',responseData:map()}]);
   window.fetch=async(url,options)=>{
     const [r]=JSON.parse(options.body);calls.push(r.requestMethod);
@@ -124,7 +124,7 @@ test('omitted provinceId still rejects a wave for a nonzero sector',async()=>{
 });
 
 test('bulk policy blocks before army mutation and rechecks ignoring after army selection',async()=>{
- const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
+ const policy={kind:'attack',attackChance:20,mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
  const high=harness({attackType:true});assert.equal((await high.fight(3,true,policy)).ok,false);assert.deepEqual(high.calls,[]);
  const h=harness({progress:10,attackType:true,ignoreAfterArmy:true});assert.equal((await h.fight(3,true,policy)).ok,false);assert.deepEqual(h.calls,['getArmyInfo','updatePools']);
  const allowed=harness({progress:10,attackType:true});assert.equal((await allowed.fight(3,true,policy)).won,true);
@@ -135,7 +135,12 @@ test('bulk negotiation rejects excessive attrition before starting and marks it 
 });
 
 test('bulk first attack is sent with unknown untouched limit, but positive unknown progress is blocked',async()=>{
- const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
+ const policy={kind:'attack',attackChance:20,mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
  const h=harness({max:'empty',attackType:true,winner:2});assert.equal((await h.fight(3,true,policy)).ok,true);assert.ok(h.calls.includes('startByBattleType'));
  const blocked=harness({progress:1,max:null,attackType:true});assert.equal((await blocked.fight(3,true,policy)).ok,false);assert.deepEqual(blocked.calls,[]);
+});
+
+test('bulk attack on 60 percent sector sends no requests at default chance limit',async()=>{
+ const h=harness({progress:0,attackType:true,chance:60});const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false,attackChance:20};
+ assert.equal((await h.fight(3,true,policy)).ok,false);assert.deepEqual(h.calls,[]);
 });

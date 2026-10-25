@@ -55,7 +55,7 @@ test('MAIN policy rechecks live progress, ignore signals, type, chance and seaso
  const t=L.createTracker();t.setConnected(true);
  const province={id:7,ownerId:2,isAttackBattleType:true,gainAttritionChance:20,conquestProgress:[{participantId:1,progress:10,maxProgress:100}]};
  t.consume({currentParticipantId:1,endsAt:1000,map:{id:'m',provinces:[province]},battlegroundParticipants:[{participantId:1,signals:[]}]});
- const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
+ const policy={kind:'attack',attackChance:20,mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};
  assert.equal(t.checkPolicy(7,policy).progress,10);assert.throws(()=>t.checkPolicy(7,{...policy,endsAt:1001}));
  t.consume({participantId:1,signals:[{signal:'ignore',provinceId:7}]});assert.throws(()=>t.checkPolicy(7,policy));
  t.consume({participantId:1,signals:[]});
@@ -88,7 +88,7 @@ test('guard cannot bypass STOP or three losses without explicit rearming',()=>{
 test('omitted default fields clear old attack type and attrition chance',()=>{
  const t=L.createTracker();t.setConnected(true);const province={__class__:'GuildBattlegroundProvince',id:7,ownerId:2,isAttackBattleType:true,gainAttritionChance:20,conquestProgress:[{participantId:1,progress:10,maxProgress:100}]};
  t.consume({currentParticipantId:1,endsAt:1000,map:{id:'m',provinces:[province]}});
- const policy={kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};t.checkPolicy(7,policy);
+ const policy={kind:'attack',attackChance:20,mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false};t.checkPolicy(7,policy);
  const {isAttackBattleType,gainAttritionChance,...defaults}=province;t.consume({requestClass:'GuildBattlegroundService',requestMethod:'getProvince',responseData:defaults},'socket');assert.throws(()=>t.checkPolicy(7,policy));assert.equal(t.snapshot(7).value.gainAttritionChance,0);
 });
 
@@ -99,9 +99,9 @@ test('untouched sector permits first attack only, not unknown positive progress'
 });
 test('enemy conquest limit gives our zero progress the same denominator in model and MAIN',()=>{
  const M=require('./model.js'),t=L.createTracker();t.setConnected(true);
- const battle={currentParticipantId:1,endsAt:1000,battlegroundParticipants:[],map:{id:'waterfall_archipelago',provinces:[{id:7,ownerId:2,isAttackBattleType:true,conquestProgress:[{participantId:3,progress:42,maxProgress:132}]}]}};
+ const battle={currentParticipantId:1,endsAt:1000,battlegroundParticipants:[],map:{id:'waterfall_archipelago',provinces:[{id:7,ownerId:2,isAttackBattleType:true,gainAttritionChance:20,conquestProgress:[{participantId:3,progress:42,maxProgress:132}]}]}};
  t.consume(battle);const row=M.rows(battle,false).rows[0];assert.equal(row.progress,0);assert.equal(row.maxProgress,132);assert.equal(t.snapshot(7).maxProgress,132);
- const policy={kind:'attack',mapId:battle.map.id,endsAt:1000,reserve:3,progress:50,attack:true,defense:false};t.checkPolicy(7,policy);
+ const policy={kind:'attack',attackChance:20,mapId:battle.map.id,endsAt:1000,reserve:3,progress:50,attack:true,defense:false};t.checkPolicy(7,policy);
  battle.map.provinces[0].conquestProgress=[];t.consume(battle);t.checkPolicy(7,policy);
  battle.map.provinces[0].conquestProgress=[{participantId:1,progress:1}];t.consume(battle);assert.throws(()=>t.checkPolicy(7,policy));
 });
@@ -122,4 +122,21 @@ test('confirmed sector closure skips without increasing wins and respects manual
  const h=setup();h.c.enable('negotiation',true);h.tick();h.result({ok:false,won:undefined,sectorClosed:true,negotiationEnded:true,continueAuto:true});assert.equal(h.c.state.negotiation,true);
  h.env.rows=h.env.allRows=[row({id:8})];h.tick();assert.equal(h.sent.at(-1).id,8);h.c.stop();h.result({ok:false,won:undefined,sectorClosed:true,negotiationEnded:true,continueAuto:true});h.tick();assert.equal(h.sent.length,2);assert.equal(h.c.engaged,false);
  const saved=JSON.parse(h.storage.getItem('foe-companion.openSectorLedger.v1'));assert.ok(Object.values(saved[h.env.scope].counts).every(c=>c.wins===0&&!c.pending));
+});
+
+test('attack chance limit defaults to 20, persists zero and rejects invalid settings',()=>{
+ assert.equal(A.settings().attackChance,20);assert.equal(A.settings({attackChance:0}).attackChance,0);assert.equal(A.settings({attackChance:60}).attackChance,60);
+ for(const v of [-1,101,null,'60',NaN])assert.equal(A.settings({attackChance:v}).attackChance,20);
+ for(const chance of [0,20])assert.equal(A.eligible(row({gainAttritionChance:chance}),'attack',A.settings(),1),true);
+ for(const chance of [21,60,100,null,NaN,-1])assert.equal(A.eligible(row({gainAttritionChance:chance}),'attack',A.settings(),1),false);
+ assert.equal(A.eligible(row({gainAttritionChance:60}),'attack',A.settings({attackChance:60}),1),true);
+ assert.equal(A.eligible(row({gainAttritionChance:60}),'negotiation',A.settings({attackChance:100}),1),false);
+});
+
+test('bulk attack skips 60 percent sector and sends chance limit; MAIN rejects changed chance',()=>{
+ const h=setup();h.env.rows=[row({id:1,gainAttritionChance:60}),row({id:2,gainAttritionChance:20})];h.env.allRows=h.env.rows;h.c.enable('attack',true);h.tick();assert.equal(h.sent[0].id,2);assert.equal(h.sent[0].policy.attackChance,20);
+ const t=L.createTracker();t.setConnected(true);const province={id:2,ownerId:2,isAttackBattleType:true,gainAttritionChance:20,conquestProgress:[{participantId:1,progress:0,maxProgress:100}]};
+ t.consume({currentParticipantId:1,endsAt:10000,map:{id:'m',provinces:[province]}});t.checkPolicy(2,h.sent[0].policy);
+ t.consume({requestClass:'GuildBattlegroundService',requestMethod:'getProvince',responseData:{...province,gainAttritionChance:60}},'socket');assert.throws(()=>t.checkPolicy(2,h.sent[0].policy),/Szansa wzrostu oporu/);
+ t.checkPolicy(2,{...h.sent[0].policy,attackChance:60});assert.throws(()=>t.checkPolicy(2,{...h.sent[0].policy,attackChance:undefined}));
 });

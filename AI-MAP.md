@@ -1,3 +1,11 @@
+## Aktualny stan — 0.6.10, 2026-10-26
+
+- Wydano poprzednie zmiany lokalne oraz lokalne Ignoruj i zamykanie negocjacjami. Starsze wpisy poniżej są historią.
+- `panel.localIgnoreKey/localSectorIgnored/setLocalSectorIgnored`: localStorage `foe-companion.localSectorIgnore.v1:<host>:<endsAt>:<mapId>`, tablica ID. Modal ma ostatnią kolumnę Ignoruj. `tickBulk` dodaje `localIgnored` do wierszy i przekazuje klucz do polityki MAIN. Dotyczy obu globalnych automatów, nie ręcznych akcji ani osobnego pilnowania 🕐/⚡. Nie zmienia gildyjnych signals. Uszkodzony zapis blokuje kwalifikację.
+- `capture.checkLocalIgnore` sprawdza stan przed akcją oraz po ustawieniu armii; nie przerywa wysłanej akcji ani dalszych fal. Negocjacyjne pominięcie przed startem daje `sectorSkipped + notStarted`; kolejka zwalnia rezerwację bez naliczania wyniku.
+- `settings.closeWithNegotiations` (domyślnie false), `panel.startGuardClosing`, `guardNegClosing`: oba wyzwalacze pilnowania mogą uruchamiać serię negocjacji przez istniejący autoNegSector. Każda akcja kontroluje 20% szansy, opór gracza, gildyjne ignorowanie i rezerwę (również MAIN). Polityka progresu 100%, bez globalnego limitu sukcesów ani limitu porażek; zamykanie kończy się przy rezerwie/zamknięciu/błędzie/STOP. `stopAutoNeg` wstrzymuje pilnowanie przez `pauseGuards`, aby ⚡ nie uruchamiała go od razu ponownie. Ponowne zaznaczenie checkboxa uzbraja pilnowanie.
+- Testy nowych ścieżek: `guard-closing.test.cjs`, `battle-flow.test.cjs`, `sector-automation.test.cjs`; pełny zestaw 182/182 offline. Gra/wygląd wymagają ręcznej weryfikacji; Arka odłożona.
+
 ## Zmiany lokalne po 0.6.09 — autozamykanie i pomijanie celu
 
 - `sector-automation.settings.closeEnemyProgress`: próg ⚡ 1–100%, domyślnie 50; `checkSectorAlerts` porównuje postęp wroga ściśle powyżej progu. Zapis i formularz współdzielone z ustawieniami automatyzacji.
@@ -36,7 +44,7 @@ Pełny `GuildBattlegroundParticipant` bez pola `signals` oznacza pustą listę o
 - Powiadomienie pozostaje do 99% włącznie; przejęcie/zamknięcie usuwa je niezależnie od procentu. Kopiowanie pojedyncze i zbiorcze używa tekstu modelu, bez ikon przycisków.
 - 157 testów offline przechodzi. Wygląd w grze pozostaje do weryfikacji przez użytkownika; bez rzeczywistych walk/negocjacji w testach.
 
-Stan rozpoznany: 2026-10-25, manifest 0.6.09, etapy 1–3 wdrożone.
+Stan rozpoznany: 2026-10-26, manifest 0.6.10, etapy 1–4 wdrożone.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 

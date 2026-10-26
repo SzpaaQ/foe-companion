@@ -155,6 +155,11 @@
     if(!result)throw Error('Brak potwierdzenia '+requestMethod+'.');
     return result;
   }
+  function checkLocalIgnore(policy,id){
+    if(!policy?.localIgnoreKey)return;
+    const ids=JSON.parse(localStorage.getItem(policy.localIgnoreKey)||'[]');if(!Array.isArray(ids))throw Error('Nieprawidłowy zapis lokalnego ignorowania.');
+    if(ids.includes(id)){const error=Error('Sektor lokalnie ignorowany.');error.code='SECTOR_INELIGIBLE';error.localIgnored=true;throw error;}
+  }
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quick-battle')return;
     const {token,provinceId,reserve,automatic,bulkPolicy}=event.data;
@@ -168,7 +173,7 @@
     const connection=battleTransport;let changed=false,fightSent=false,stage='pobranie armii';
     try{
       if(!nextWave){
-        if(bulkPolicy){if(bulkPolicy.kind!=='attack')throw Error('Nieprawidłowy tryb autoataku.');battlegroundLive.checkPolicy(provinceId,bulkPolicy);}
+        if(bulkPolicy){checkLocalIgnore(bulkPolicy,provinceId);if(bulkPolicy.kind!=='attack')throw Error('Nieprawidłowy tryb autoataku.');battlegroundLive.checkPolicy(provinceId,bulkPolicy);}
         if(automatic===true&&Number.isInteger(reserve)&&reserve>=0){
           if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
           battlegroundLive.check(provinceId,reserve,1);
@@ -182,7 +187,7 @@
         stage='potwierdzenie składu';
         if(!FoeBattleArmy.confirmed(updated,pools))throw Error('Skład, liczba lub zdrowie jednostek nie odpowiadają planowi. Walka nie została wysłana.');
       }
-      if(bulkPolicy&&!nextWave)battlegroundLive.checkPolicy(provinceId,bulkPolicy);
+      if(bulkPolicy&&!nextWave){checkLocalIgnore(bulkPolicy,provinceId);battlegroundLive.checkPolicy(provinceId,bulkPolicy);}
       changed=true;
       stage='szybka walka';fightSent=true;
       const progressBefore=battlegroundLive?.snapshot(provinceId);
@@ -629,6 +634,7 @@
       if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
       battlegroundLive.check(provinceId,reserve,2);
       if(bulkPolicy){
+        checkLocalIgnore(bulkPolicy,provinceId);
         if(bulkPolicy.kind!=='negotiation'||!Number.isSafeInteger(bulkPolicy.maxAttrition)||bulkPolicy.maxAttrition<0)throw Error('Nieprawidłowy limit oporu.');
         battlegroundLive.checkPolicy(provinceId,bulkPolicy);
       }
@@ -700,6 +706,7 @@
       }
       answer(false, 'Osiągnięto wewnętrzny limit bezpieczeństwa tur.', {won: false});
     } catch (error) {
+      if(!started&&error.localIgnored){answer(false,'Sektor lokalnie ignorowany — szukam następnego.',{sectorSkipped:true,notStarted:true});return;}
       let cleanup='',negotiationEnded=false;
       if(started){
         try{

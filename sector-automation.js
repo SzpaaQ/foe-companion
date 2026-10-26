@@ -1,17 +1,17 @@
 (function(root){
  'use strict';
- const defaults={attackProgress:50,attackChance:20,closeEnemyProgress:50,negProgress:50,negWins:3,maxAttrition:0,attack:true,defense:false};
+ const defaults={attackProgress:50,attackChance:20,closeEnemyProgress:50,closeWithNegotiations:false,negProgress:50,negWins:3,maxAttrition:0,attack:true,defense:false};
  function settings(value={}){
   if(!value||typeof value!=='object')value={};
   const out={...defaults};
   for(const key of ['attackProgress','negProgress','closeEnemyProgress'])if(Number.isFinite(value[key])&&value[key]>0&&value[key]<=100)out[key]=value[key];
   for(const key of ['negWins','maxAttrition'])if(Number.isSafeInteger(value[key])&&value[key]>=(key==='negWins'?1:0))out[key]=value[key];
   if(Number.isFinite(value.attackChance)&&value.attackChance>=0&&value.attackChance<=100)out.attackChance=value.attackChance;
-  for(const key of ['attack','defense'])if(typeof value[key]==='boolean')out[key]=value[key];
+  for(const key of ['attack','defense','closeWithNegotiations'])if(typeof value[key]==='boolean')out[key]=value[key];
   return out;
  }
  function eligible(row,kind,config,now,reserve=0){
-  if(!row||row.ignored||row.color==='⚪'||row.until>now||!Number.isFinite(row.progress)||row.progress<0)return false;
+  if(!row||row.ignored||row.localIgnored||row.color==='⚪'||row.until>now||!Number.isFinite(row.progress)||row.progress<0)return false;
   const firstAttack=kind==='attack'&&row.progress===0&&row.maxProgress==null;
   if(!firstAttack&&(!Number.isFinite(row.maxProgress)||row.maxProgress<=0))return false;
   const cost=kind==='negotiation'?2:1,limit=kind==='negotiation'?config.negProgress:config.attackProgress;
@@ -45,7 +45,7 @@
    if(dirty&&!save())return false;return true;
   }
   function opening(id){const o=ledger[scope]?.openings[id];return o?scope+':'+id+':'+o.serial:null;}
-  function tick({scope:currentScope,allRows,rows,config,attrition,ready,busy,reserve,delay,send}){
+  function tick({scope:currentScope,allRows,rows,config,attrition,ready,busy,reserve,delay,send,localIgnoreKey}){
    if(!sync(currentScope,allRows)||fatal)return;
    if(active||(!attack&&!negotiation))return;
    if(!ready){stop(null,'Brak gotowego połączenia — uruchom ponownie po odświeżeniu danych.');return;}
@@ -61,7 +61,7 @@
     });
     if(!row)continue;
     const identity=opening(row.id);if(!identity)continue;
-    active={kind,id:row.id,scope,identity,delay,policy:{mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,reserve}};
+    active={kind,id:row.id,scope,identity,delay,policy:{localIgnoreKey,mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,reserve}};
     if(kind==='negotiation'){const count=ledger[scope].counts[identity]||={wins:0};count.pending=true;if(!save()){active=null;changed();return;}}
     status=(kind==='attack'?'⚔️ ':'🤝 ')+row.sector+' · '+(kind==='attack'?'porażki z rzędu: '+losses+'/3':'sukcesy: '+(ledger[scope].counts[identity]?.wins||0)+'/'+config.negWins);
     changed();if(send(kind,row.id,active.policy)===false)result({ok:false,notStarted:true,message:'Nie udało się rozpocząć akcji.'});return;
@@ -74,7 +74,7 @@
    if(active.scope!==scope){active=null;stop(null,'Zmieniła się mapa lub gracz — sprawdź stan gry przed wznowieniem.');return true;}
    if(active.kind==='attack'&&data.ok&&data.nextWave)return 'wave';
    const previous=active;active=null;nextAt=now()+previous.delay;
-   const skipped=previous.kind==='negotiation'?data.sectorClosed===true&&data.negotiationEnded===true:data.sectorSkipped===true&&data.notStarted===true;
+   const skipped=data.sectorSkipped===true&&data.notStarted===true||previous.kind==='negotiation'&&data.sectorClosed===true&&data.negotiationEnded===true;
    const confirmed=skipped|| (previous.kind==='attack'?data.ok&&typeof data.won==='boolean'&&(data.won===false||data.refreshed):data.won===true&&data.ok&&data.refreshed||data.won===false&&data.continueAuto&&data.surrendered);
    if(previous.kind==='negotiation'){
     const count=ledger[previous.scope]?.counts[previous.identity];
@@ -85,7 +85,7 @@
    if(previous.kind==='attack'&&!skipped){losses=data.won?0:losses+1;if(losses>=3)stop('attack','Autoatak zatrzymany po 3 porażkach z rzędu.');}
    changed();return true;
   }
-  return {enable,stop,tick,result,resumeGuards(){if(!active&&!attack&&!negotiation)guardsPaused=false;},get guardsPaused(){return guardsPaused;},get active(){return active;},get state(){return {attack,negotiation,losses,status,active:active?{...active}:null};},get engaged(){return attack||negotiation||!!active;}};
+  return {enable,stop,tick,result,pauseGuards(){guardsPaused=true;},resumeGuards(){if(!active&&!attack&&!negotiation)guardsPaused=false;},get guardsPaused(){return guardsPaused;},get active(){return active;},get state(){return {attack,negotiation,losses,status,active:active?{...active}:null};},get engaged(){return attack||negotiation||!!active;}};
  }
  const api={defaults,settings,eligible,create};root.FoeSectorAutomation=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

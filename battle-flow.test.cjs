@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 
-function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false,afterArmy=null,chance=20}={}){
+function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,attackType,lockedUntil=0,provinceId=7,omitProvince=false,ignoreAfterArmy=false,afterArmy=null,chance=20,localStorage={getItem:()=>null}}={}){
   const listeners=[],messages=[],calls=[];let battleCount=0;
   const live=require('./battleground-live.js').createTracker();live.setConnected(true);
   class XHR{open(){}setRequestHeader(){}send(){}addEventListener(){}}
@@ -25,7 +25,7 @@ function harness({progress=196,max=200,winner=1,waves=false,refreshFails=false,a
     }
     return {ok:true,json:async()=>[{...r,requestMethod:r.requestMethod==='updatePools'?'getArmyInfo':r.requestMethod,responseData:data}]};
   };
-  const ctx={document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},FoeBattlegroundLive:{createTracker:()=>live,observeSockets(){}},window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
+  const ctx={localStorage,document:{querySelectorAll:()=>[]},MutationObserver:class{observe(){}},FoeBattlegroundLive:{createTracker:()=>live,observeSockets(){}},window,location:{origin:'https://example.test',href:'https://example.test/game'},XMLHttpRequest:XHR,URL,ArrayBuffer,TextDecoder,Blob,AbortSignal,setTimeout,clearTimeout,FoeRequestSignature:{sign:()=> 'valid'},FoeBattleArmy:{plan:()=>[],confirmed:()=>true}};
   vm.runInNewContext(fs.readFileSync(__dirname+'/capture.js','utf8'),ctx);
   const xhr=new XHR();xhr.open('POST','https://example.test/game/json?h=test');xhr.setRequestHeader('Signature','valid');xhr.send('[]');
   return {calls,messages,async negotiate(reserve,bulkPolicy){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-negotiate',token:'n',provinceId:7,reserve,bulkPolicy}})));},async fight(reserve,automatic=reserve!==undefined,bulkPolicy){await Promise.all(listeners.map(fn=>fn({source:window,origin:ctx.location.origin,data:{channel:'foe-quick-battle',token:'t',provinceId,reserve,automatic,bulkPolicy}})));return messages.filter(m=>m.channel==='foe-quick-battle-result').at(-1);}};
@@ -153,4 +153,16 @@ for(const reason of ['reserve','closed','progress'])test('bulk skips '+reason+' 
 test('disconnected state never authorizes skipping even if sector is closed',async()=>{
  const h=harness({progress:10,attackType:true,afterArmy:(live,map)=>{map.map.provinces[0].lockedUntil=Date.now()/1000+100;live.consume(map);live.setConnected(false);}});
  const r=await h.fight(3,true,{kind:'attack',mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false,attackChance:20});assert.equal(r.sectorSkipped,undefined);assert.ok(!h.calls.includes('startByBattleType'));
+});
+
+
+test('local ignore blocks both global modes before requests and is rechecked after army selection',async()=>{
+ const policy={kind:'attack',attackChance:20,mapId:'m',endsAt:1000,reserve:3,progress:50,attack:true,defense:false,localIgnoreKey:'ignore'};
+ let ids=[7];const localStorage={getItem:()=>JSON.stringify(ids)};
+ const blocked=harness({progress:10,attackType:true,localStorage});
+ const r=await blocked.fight(3,true,policy);assert.equal(r.sectorSkipped,true);assert.deepEqual(blocked.calls,[]);
+ await blocked.negotiate(3,{...policy,kind:'negotiation',maxAttrition:5});
+ const n=blocked.messages.filter(m=>m.channel==='foe-negotiate-result').at(-1);assert.equal(n.sectorSkipped,true);assert.equal(n.notStarted,true);assert.deepEqual(blocked.calls,[]);
+ ids=[];const changed=harness({progress:10,attackType:true,localStorage,afterArmy(){ids=[7];}});
+ assert.equal((await changed.fight(3,true,policy)).sectorSkipped,true);assert.deepEqual(changed.calls,['getArmyInfo','updatePools']);
 });

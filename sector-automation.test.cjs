@@ -155,3 +155,12 @@ test('auto close threshold defaults to 50 and validates saved percentage',()=>{
  assert.equal(A.settings().closeEnemyProgress,50);assert.equal(A.settings({closeEnemyProgress:75}).closeEnemyProgress,75);
  for(const v of [0,-1,101,'50',null])assert.equal(A.settings({closeEnemyProgress:v}).closeEnemyProgress,50);
 });
+
+
+test('local ignore excludes both modes, removal restores eligibility, and skipped negotiation does not consume success',()=>{
+ for(const kind of ['attack','negotiation']){
+ const h=setup();h.env.localIgnoreKey='world-season-map';h.env.rows=[row({localIgnored:true})];h.c.enable(kind,true);h.tick();assert.equal(h.sent.length,0);
+ h.env.rows=[row()];h.tick();assert.equal(h.sent.length,1);assert.equal(h.sent[0].policy.localIgnoreKey,'world-season-map');
+ h.result({ok:false,won:undefined,sectorSkipped:true,notStarted:true});assert.equal(h.c.engaged,true);h.tick();assert.equal(h.sent.length,2);
+ }
+});

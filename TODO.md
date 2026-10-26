@@ -1,3 +1,13 @@
+#### 2026-10-26 — pozostałe zadania Pól Chwały, wydanie 0.6.10
+
+Wdrożono i wydano:
+- Lokalny checkbox Ignoruj: wyklucza sektor z autoataku i autonegocjacji otwartych sektorów niezależnie od gildyjnej łapki. Zapis dla świata, edycji i mapy; rozpoczęta akcja jest dokańczana. Ponowna kontrola przed wysłaniem walki.
+- Opcja „Zamykaj sektory negocjacjami” dla 🕐 oraz ⚡. Seria bez limitu porażek, z rezerwą, limitem oporu i warunkiem 20% szansy oporu. STOP i zmiana ustawień blokują kolejne negocjacje. Zamykanie nie korzysta z limitu sukcesów/progresu globalnej kolejki: kończy się przy rezerwie, zamknięciu sektora lub utracie warunków.
+- Wydano również poprzednie lokalne zmiany: próg ⚡ domyślnie 50%, widoczność kolumn i pomijanie niekwalifikujących się sektorów przed wysłaniem walki.
+- Weryfikacja: 182/182 testy offline. TODO, mapa AI, changelog i numer wersji zaktualizowane.
+
+Pozostaje sprawdzenie wyglądu oraz rzeczywistego działania w grze po przeładowaniu rozszerzenia i strony. Nie wykonywano rzeczywistych walk ani negocjacji podczas testów. Arka nadal odłożona. Poniższe wpisy zachowano jako historię; wcześniejsze statusy „odłożone” dla Ignoruj i zamykania negocjacjami są nieaktualne.
+
 #### 2026-10-25 — punkty 1, 3 i 4 wdrożone lokalnie (bez zmiany wersji)
 
 1. Autozamykanie ⚡: próg postępu wroga ustawiany w automatyzacji, domyślnie 50%; uruchomienie po przekroczeniu progu, nie przy równości. Ustawienie zapisane; opis modala pokazuje bieżący próg.

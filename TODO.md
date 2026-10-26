@@ -3,7 +3,7 @@
 
 #### Lokalne po 0.6.12
 - Modal sektorów (⋮): kopiowanie zamkniętego sektora z wiersza i przez „Kopiuj wszystkie” używa czasu `HH:mm`; przy postępie wroga kopiuje `🔥 👾N`. Format otwartych sektorów bez zmian.
-- Nagłówek „Otwarte sektory”: przyciski po prawej, ikona własnych sektorów `🏠🏠`.
+- Nagłówek „Otwarte sektory”: przyciski po prawej, ikona własnych sektorów `🏠`.
 
 #### 2026-10-26 — wydanie 0.6.12
 - Nasze sektory: widok pól gildii z postępem ataku przeciwnika, zajętymi slotami, oporem sąsiadów i oznaczeniami ✋/🎯. Nagłówki emoji z tooltipami, sloty w stałym układzie trzech kwadratów (zajęty 1, wolny 0.5, brakujący 0).

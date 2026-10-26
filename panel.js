@@ -2481,10 +2481,13 @@ Otwórz mapę Pól Chwały w grze.
           td((row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector,'left');
           td(row.enemyProgress>0?'👾 '+row.enemyProgress+'/'+row.enemyMaxProgress:'—');
           const slots=td('');
-          if(Number.isSafeInteger(row.usedBuildingSlots)&&Number.isSafeInteger(row.totalBuildingSlots)&&row.totalBuildingSlots>0){
-            const used=Math.max(0,Math.min(row.usedBuildingSlots,row.totalBuildingSlots));slots.setAttribute('aria-label','Zajęte sloty budynków: '+used+' z '+row.totalBuildingSlots);slots.setAttribute('data-tooltip',used+' z '+row.totalBuildingSlots+' zajętych slotów budynków');
-            for(let i=0;i<row.totalBuildingSlots;i++){const square=document.createElement('span');square.textContent=i<used?'■':'□';square.style.cssText='display:inline-block;padding:0 1px;color:'+(i<used?'#f1d69a':'#809096')+';opacity:'+(i<used?'1':'.38')+';font-size:13px;line-height:1';slots.append(square);}
-          }else slots.textContent='—';
+          const validSlots=Number.isSafeInteger(row.usedBuildingSlots)&&Number.isSafeInteger(row.totalBuildingSlots)&&row.totalBuildingSlots>0;
+          const total=validSlots?Math.min(3,row.totalBuildingSlots):0,used=validSlots?Math.max(0,Math.min(row.usedBuildingSlots,total)):0;
+          slots.setAttribute('aria-label',validSlots?'Zajęte sloty budynków: '+used+' z '+total:'Brak danych o slotach budynków');
+          slots.setAttribute('data-tooltip',validSlots?used+' z '+total+' zajętych slotów budynków':'Brak danych o slotach budynków');
+          const slotSquares=document.createElement('span');slotSquares.style.cssText='display:inline-flex;align-items:center;justify-content:center;gap:2px;width:28px;height:10px;vertical-align:middle';
+          for(let i=0;i<3;i++){const exists=i<total,occupied=exists&&i<used,square=document.createElement('span');square.style.cssText='box-sizing:border-box;display:block;flex:0 0 8px;width:8px;height:8px;border:1px solid #f1d69a;background:'+(occupied?'#f1d69a':'transparent')+';opacity:'+(exists?(occupied?'1':'.5'):'0');slotSquares.append(square);}
+          slots.append(slotSquares);
           td(neighbors.length?neighbors.map(n=>n.sector+' '+(n.chance===null?'—':n.chance+'%')).join(' · '):'—','left');
           const marks=[...(row.ignored?['✋']:[]),...(row.focused?['🎯']:[])];const marker=td(marks.join(' ')||'');if(row.ignored)marker.title='Prowincja ignorowana przez gildię';if(row.focused)marker.title+=(marker.title?' · ':'')+'Prowincja oznaczona przez gildię do ataku';if(marks.length)marker.setAttribute('data-tooltip',marker.title);
           tbody.append(tr);

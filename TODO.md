@@ -3,7 +3,7 @@
 
 #### Lokalna zmiana po 0.6.11 — dostęp do dziennika bez osady
 - 📜 w nagłówku panelu otwiera historię zbiorów niezależnie od aktywnej zakładki i otwartej osady. Historia wczytuje profil gracza z IndexedDB; bez bieżącego `player_id` wybiera ostatnio aktualizowany profil danego świata.
-- W modalu Nasze sektory nagłówki to emoji z tooltipami; sloty budynków to pełne kwadraty dla zajętych i przygaszone puste dla wolnych.
+- W modalu Nasze sektory nagłówki to emoji z tooltipami; kolumna budynków ma zawsze trzy równe kwadraty: pełne zajęte (opacity 1), puste wolne (0.5), nieistniejący slot (0).
 
 #### 2026-10-26 — wydanie 0.6.11
 - Dodano modal Nasze sektory z listą własnych pól, postępem wroga, liczbą zajętych slotów, oporem sąsiadów oraz oznaczeniami gildii.

@@ -107,6 +107,7 @@ Zrzut / reload -> chrome.runtime.sendMessage
 | Negocjacje | `capture.js`: `negBestGuess`, `negFilter`, `ensureFreeNegotiationTurn`; `panel.js`: `startNeg`, `stopAutoNeg` | Solver, darmowe tury, przebieg i pętla per sektor |
 | Osada kwantowa | `quantum.js`: `createTracker`, `consume`, `summary`, `summarizeArmy` | Mapa osady, zasoby, budowy, prognoza produkcji, wojsko |
 | Historia osady | `quantum-history.js`: `create`, `observe`, `loadLatest`, `groupEvents`, `actionRows`, `actionRuns`, `mount` | Trwałe zdarzenia, odczyt profilu IndexedDB bez mapy, grupowanie, notatki, undo/split i UI historii |
+| Discord | `discord.js`: ustawienia, formatter, porównanie treści i harmonogram 5 s; `discord-background.js`: ograniczony klient HTTP Discord API w service workerze. Panel podpina moduł opcjonalnie jedną linią. |
 | Zrzuty osady | `quantum-history.js`: `captureScreenshot`, `startFraming`; `background.js`: `captureTab` | Kadrowanie, zapis zdjęcia, miniatura, powiększenie i eksport |
 | Perły | `pearls.js`, `pearls-main.js`: `createTracker`, `lockStages`, `liveLocks`, `arcProfit` | Obliczenia i śledzenie; sprawdź oba konteksty przy zmianie |
 | Zbiory miasta | `model.js`: `parseCity`, `updateCity`, `cityRows`; `panel.js`: `startCollection`; `capture.js`: `foe-collect` | Klasyfikacja budynków, gotowość produkcji, potwierdzenie zbioru |
@@ -117,6 +118,13 @@ Zrzut / reload -> chrome.runtime.sendMessage
 po symbolu lub napisie przycisku, potem czytaj ograniczony fragment.
 
 ## Pola Chwały: pojęcia i aktualny stan
+
+### Discord — lokalnie, wymaga konfiguracji
+
+- Checkbox „Wysyłaj rozpiskę” w zakładce Pól Chwały. Ustawienia Discorda przyjmują token bota, ID kanału, limit liczby nadchodzących sektorów i limit minut (0 = bez limitu).
+- `discord.js` co 5 s pobiera najnowsze wiersze `FoeModel.rows(battle,false)`, tworzy sekcję otwartych i zamkniętych, porównuje pełny tekst oraz hash i nie edytuje wiadomości bez zmiany. Co pełną godzinę albo po wykryciu nowszej wiadomości tworzy nową; w innym wypadku edytuje własną wiadomość.
+- Token jest zapisany w `chrome.storage.local`. `discord-background.js` wykonuje tylko dozwolone operacje Discord REST w service workerze; potrzebny bot z dostępem do kanału, odczytem historii i wysyłaniem wiadomości. Embed jest używany dla rozpisek przekraczających 2000 znaków; po 6000 znaków trzeba ustawić limit.
+- Do usunięcia funkcji: usunąć `discord.js` z listy content scripts, `discord-background.js` z importScripts w `background.js`, host permission Discord i wpisy modułu w `dev-server.cjs`; wywołanie panelu jest zabezpieczone optional chaining.
 
 - `currentParticipantId` identyfikuje własną gildię; nie myl z ID gracza.
 - `isAttackBattleType` to **bonus atakujący/obronny**, nie wybór walka/negocjacja.

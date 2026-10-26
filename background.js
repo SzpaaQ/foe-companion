@@ -1,3 +1,4 @@
+if(typeof importScripts==='function')importScripts('discord-background.js');
 const pendingKey='foe-dev-reload';
 // Reload the game from the new worker, not a destroyed content-script timer.
 const recovery=chrome.storage.local.get(pendingKey).then(async stored=>{

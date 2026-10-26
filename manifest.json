@@ -5,7 +5,7 @@
   "version_name": "0.6.12",
   "background": {"service_worker":"background.js"},
   "permissions": ["storage","tabs","activeTab"],
-  "host_permissions": ["http://127.0.0.1/*","https://*.forgeofempires.com/*","<all_urls>"],
+  "host_permissions": ["http://127.0.0.1/*","https://*.forgeofempires.com/*","https://discord.com/api/*","<all_urls>"],
   "description": "Lokalny panel danych Forge of Empires i rozpiska Pól Chwały.",
   "minimum_chrome_version": "111",
   "web_accessible_resources": [
@@ -13,6 +13,6 @@
   ],
   "content_scripts": [
     {"matches":["https://*.forgeofempires.com/*"],"js":["request-signature.js","battle-army.js","battleground-live.js","pearls-main.js","capture.js"],"run_at":"document_start","world":"MAIN"},
-    {"matches":["https://*.forgeofempires.com/*"],"js":["pearls.js","model.js","quantum.js","quantum-history.js","notes.js","sector-automation.js","panel.js","dev-client.js"],"run_at":"document_start"}
+    {"matches":["https://*.forgeofempires.com/*"],"js":["pearls.js","model.js","quantum.js","quantum-history.js","notes.js","sector-automation.js","discord.js","panel.js","dev-client.js"],"run_at":"document_start"}
   ]
 }

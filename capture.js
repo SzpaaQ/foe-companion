@@ -144,14 +144,16 @@
     const response=await Reflect.apply(originalFetch,window,[connection.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(20000)}]);
     const data=await response.json();emit(connection.url,body,data,true);
     const list=Array.isArray(data)?data:[data];
-    const serverError=list.map(r=>/error/i.test(r?.responseData?.__class__||'')?r.responseData:r).find(r=>/error/i.test(r?.__class__||'')||r?.error);
+    const matched=list.find(r=>r.requestId===item.requestId&&r.requestClass===requestClass&&r.requestMethod===responseMethod);
+    const resultData=matched?.responseData;
+    const serverError=/error/i.test(resultData?.__class__||'')?resultData:/error/i.test(matched?.__class__||'')||matched?.error?matched:null;
     if(!response.ok||serverError){
       const code=serverError?.code??serverError?.errorCode??serverError?.__class__??'brak kodu';
-      throw Error('Żądanie '+requestMethod+' (ID '+item.requestId+'), HTTP '+response.status+', kod '+String(code).slice(0,100)+'.');
+      const detail=serverError?.message??serverError?.title;
+      throw Error('Żądanie '+requestMethod+' (ID '+item.requestId+'), HTTP '+response.status+', kod '+String(code).slice(0,100)+(detail?': '+String(detail).slice(0,160):'')+'.');
     }
-    const matched=list.find(r=>r.requestId===item.requestId&&r.requestClass===requestClass&&r.requestMethod===responseMethod);
     if(requestClass==='NegotiationGameService'&&requestMethod==='getRunning'&&matched&&Object.hasOwn(matched,'responseData')&&matched.responseData===null)return null;
-    const result=matched?.responseData;
+    const result=resultData;
     if(!result)throw Error('Brak potwierdzenia '+requestMethod+'.');
     return result;
   }
@@ -211,6 +213,7 @@
       const invalidWave=error.invalidWave===true;
       if(invalidWave)nextWave=null;
       battleUncertain=fightSent&&!invalidWave;
+      if(battleUncertain)publishBattleState();
       answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; można spróbować ponownie.'),{uncertain:battleUncertain,invalidWave});
     }finally{battleBusy=false;}
   });

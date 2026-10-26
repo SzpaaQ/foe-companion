@@ -2292,10 +2292,13 @@ Otwórz mapę Pól Chwały w grze.
       // Naglowek
       const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
       const titleEl=document.createElement('strong');titleEl.textContent='Otwarte sektory — automatyzacja i pilnowanie';titleEl.style.cssText='font-size:13px;color:#f1d69a';
+      const copyAll=document.createElement('button');copyAll.textContent='📋 Kopiuj wszystkie';copyAll.setAttribute('data-tooltip','Kopiuj otwarte i nadchodzące sektory z tabeli');copyAll.style.cssText='margin-left:auto;padding:3px 7px;font-size:11px;white-space:nowrap';
+      let displayedRows=[];
+      copyAll.onclick=async()=>{const now=Date.now()/1000;const clock=until=>{const seconds=Math.max(0,Math.ceil(until-now));return seconds?String(Math.floor(seconds/3600)).padStart(2,'0')+':'+String(Math.floor(seconds/60)%60).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'):'Otwarte';};try{await navigator.clipboard.writeText(displayedRows.map(row=>clock(row.until)+' | '+FoeModel.openSectorText(row)).join('\n'));}catch{setBattleFeedback('Nie udało się skopiować sektorów.');}};
       const closeBtn=document.createElement('button');closeBtn.textContent='×';closeBtn.setAttribute('aria-label','Zamknij');
       closeBtn.style.cssText='background:transparent;border:0;color:#e7eeee;font-size:20px;line-height:1;cursor:pointer;padding:0 4px';
       closeBtn.onclick=()=>modal.remove();
-      hdr.append(titleEl,closeBtn);box.append(hdr);
+      hdr.append(titleEl,copyAll,closeBtn);box.append(hdr);
       const bulkBar=document.createElement('div');bulkBar.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px';
       for(const kind of ['negotiation','attack']){const button=document.createElement('button');button.dataset.bulkMode=kind;
         button.onclick=()=>{const enabled=bulkAutomation.state[kind];if(enabled)bulkAutomation.stop(kind);else if(actionVisible(kind)&&battleReady)bulkAutomation.enable(kind,true);paintBulkControls();};bulkBar.append(button);}
@@ -2366,6 +2369,7 @@ Otwórz mapę Pól Chwały w grze.
         const open=candidates.filter(r=>r.until<=now).sort((a,b)=>Number(a.ignored)-Number(b.ignored)||(a.progress??0)-(b.progress??0)||a.id-b.id);
         const upcoming=candidates.filter(r=>r.until>now).sort((a,b)=>a.until-b.until||a.id-b.id).slice(0,5);
         const displayed=[...open,...upcoming];
+        displayedRows=displayed;copyAll.disabled=!displayed.length;
         const clock=until=>{const seconds=Math.max(0,Math.ceil(until-now));return seconds?String(Math.floor(seconds/3600)).padStart(2,'0')+':'+String(Math.floor(seconds/60)%60).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'):'Otwarte';};
         for(const cell of timeCells)cell.node.textContent=clock(cell.until);
         const snapshot=JSON.stringify([displayed,open.length,bulkSettings.closeEnemyProgress,displayed.map(r=>[getGuard(modalMapId,r.id),localSectorIgnored(r.id)]),battleReady,battlePending,battlePendingSector,battleWaveSector,autoSector,autoNegSector,negPending,negPendingSector,battleLastSector,Date.now()<battleLastUntil,battleLastOK,negLastSector,Date.now()<negLastUntil,negLastOK,actionVisible('attack'),actionVisible('negotiation')]);
@@ -2426,7 +2430,7 @@ Otwórz mapę Pól Chwały w grze.
           td(cb);
         }
         const ignore=document.createElement('input');ignore.type='checkbox';ignore.checked=localSectorIgnored(row.id);ignore.disabled=locked;ignore.setAttribute('aria-label','Ignoruj lokalnie sektor '+row.sector);ignore.onchange=()=>setLocalSectorIgnored(row.id,ignore.checked);td(ignore);
-        if(locked)for(const button of [copy,actBtn,autoBtn,negBtnM,autoNegBtnM]){button.disabled=true;button.style.cursor='default';}
+        if(locked)for(const button of [actBtn,autoBtn,negBtnM,autoNegBtnM]){button.disabled=true;button.style.cursor='default';}
         Array.from(tr.children).forEach((cell,i)=>{cell.hidden=hideColumn(i);});
         tbody.append(tr);
       }

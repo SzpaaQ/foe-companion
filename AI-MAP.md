@@ -1,8 +1,7 @@
-## Aktualny stan — 0.6.11, 2026-10-26
+## Aktualny stan — 0.6.12, 2026-10-26
 
-- Wydano modal Nasze sektory obok opcji pilnowania. Pokazuje własne sektory, atak przeciwnika i progres, zajęte/łączne sloty budynków, szansę oporu na sąsiadach oraz wskaźniki gildyjnego ignore/focus. Starsze wpisy poniżej są historią.
-- Lokalnie po 0.6.11: przycisk w zakładce Najazdy kwantowe otwiera historię zbiorów bez osady kwantowej. `quantum-history.create().loadLatest(playerId)` ładuje zapisany profil z IndexedDB; fallback wybiera ostatnio aktualizowany profil bieżącego świata.
-- Modal Nasze sektory: nagłówki tabeli są ikonami z tooltipami; kolumna budynków ma zawsze trzy równe kwadraty: opacity 1 zajęte, 0.5 wolne, 0 brakujący slot.
+- Wydanie 0.6.12: modal Nasze sektory obok opcji pilnowania pokazuje własne sektory, atak przeciwnika i progres, zajęte sloty, opór sąsiadów oraz wskaźniki gildyjnego ignore/focus. Emoji nagłówków mają tooltipy, a sloty to trzy równe kwadraty o opacity 1/0.5/0.
+- Przycisk w zakładce Najazdy kwantowe otwiera historię zbiorów bez osady kwantowej. `quantum-history.create().loadLatest(playerId)` ładuje profil z IndexedDB; fallback wybiera ostatnio aktualizowany profil bieżącego świata.
 - `openSectorGuardModal` — „Kopiuj wszystkie” kopiuje lokalny czas otwarcia w `HH:mm`, a już otwarte sektory jako „Otwarte”.
 - `panel.localIgnoreKey/localSectorIgnored/setLocalSectorIgnored`: localStorage `foe-companion.localSectorIgnore.v1:<host>:<endsAt>:<mapId>`, tablica ID. Modal ma ostatnią kolumnę Ignoruj. `tickBulk` dodaje `localIgnored` do wierszy i przekazuje klucz do polityki MAIN. Dotyczy obu globalnych automatów, nie ręcznych akcji ani osobnego pilnowania 🕐/⚡. Nie zmienia gildyjnych signals. Uszkodzony zapis blokuje kwalifikację.
 - `capture.checkLocalIgnore` sprawdza stan przed akcją oraz po ustawieniu armii; nie przerywa wysłanej akcji ani dalszych fal. Negocjacyjne pominięcie przed startem daje `sectorSkipped + notStarted`; kolejka zwalnia rezerwację bez naliczania wyniku.

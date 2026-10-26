@@ -1,10 +1,11 @@
 #### Do zrobienia
 - Historia najazdów kwantowych: dodać możliwość wyczyszczenia zapisanej historii.
 
-#### Lokalna zmiana po 0.6.11 — dostęp do dziennika bez osady
-- Przycisk w zakładce „Najazdy kwantowe” otwiera historię zbiorów bez wchodzenia do osady. Historia wczytuje profil gracza z IndexedDB; bez bieżącego `player_id` wybiera ostatnio aktualizowany profil danego świata. Nagłówek panelu zawiera tylko nazwę, wersję i zamknięcie.
-- W modalu Nasze sektory nagłówki to emoji z tooltipami; kolumna budynków ma zawsze trzy równe kwadraty: pełne zajęte (opacity 1), puste wolne (0.5), nieistniejący slot (0).
-- Pola Chwały: „Kopiuj wszystkie” zapisuje godzinę otwarcia w formacie HH:mm zamiast odliczania; otwarte sektory oznacza jako „Otwarte”.
+#### 2026-10-26 — wydanie 0.6.12
+- Nasze sektory: widok pól gildii z postępem ataku przeciwnika, zajętymi slotami, oporem sąsiadów i oznaczeniami ✋/🎯. Nagłówki emoji z tooltipami, sloty w stałym układzie trzech kwadratów (zajęty 1, wolny 0.5, brakujący 0).
+- Dziennik zbiorów dostępny z zakładki Najazdy kwantowe bez otwierania osady; historia ładuje zapisany profil IndexedDB.
+- Kopiowanie wszystkich sektorów używa lokalnej godziny otwarcia `HH:mm`; już otwarte sektory oznacza jako „Otwarte”.
+- Weryfikacja składni JS i diffu; testów projektu nie uruchamiano. Wygląd wymaga sprawdzenia w grze.
 
 #### 2026-10-26 — wydanie 0.6.11
 - Dodano modal Nasze sektory z listą własnych pól, postępem wroga, liczbą zajętych slotów, oporem sąsiadów oraz oznaczeniami gildii.

@@ -1,7 +1,5 @@
-#### Do zrobienia
-- Historia najazdów kwantowych: dodać możliwość wyczyszczenia zapisanej historii.
-
 #### Lokalne po 0.6.12
+- Ustawienia → Najazdy kwantowe: czyszczenie całego dziennika zbiorów bieżącego gracza po potwierdzeniu.
 - Modal sektorów (⋮): kopiowanie zamkniętego sektora z wiersza i przez „Kopiuj wszystkie” używa czasu `HH:mm`; przy postępie wroga kopiuje `🔥 👾N`. Otwarte sektory pokazują wyścig `🔥`, niezerowy postęp własny/wroga oraz szansę oporu, bez pustego pola postępu.
 - Nagłówek „Otwarte sektory”: przyciski po prawej, ikona własnych sektorów `🏠`.
 

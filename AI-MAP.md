@@ -2,6 +2,7 @@
 
 - Wydanie 0.6.12: modal Nasze sektory obok opcji pilnowania pokazuje własne sektory, atak przeciwnika i progres, zajęte sloty, opór sąsiadów oraz wskaźniki gildyjnego ignore/focus. Emoji nagłówków mają tooltipy, a sloty to trzy równe kwadraty o opacity 1/0.5/0.
 - Przycisk w zakładce Najazdy kwantowe otwiera historię zbiorów bez osady kwantowej. `quantum-history.create().loadLatest(playerId)` ładuje profil z IndexedDB; fallback wybiera ostatnio aktualizowany profil bieżącego świata.
+- Ustawienia → Najazdy kwantowe: „Wyczyść dziennik zbiorów” pyta o potwierdzenie i usuwa profil historii bieżącego gracza z IndexedDB.
 - `openSectorGuardModal` — „Kopiuj wszystkie” kopiuje lokalny czas otwarcia w `HH:mm`, a już otwarte sektory jako „Otwarte”.
 - Lokalna zmiana po 0.6.12: w modalu sektorów (⋮) zamknięte cele kopiowane pojedynczo lub przez „Kopiuj wszystkie” używają czasu otwarcia `HH:mm`; przy postępie wroga marker ma postać `🔥 👾N`. Kopiowanie otwartych sektorów pokazuje wyścig `🔥`, istniejący postęp własny/wroga i szansę oporu; pusty postęp jest pomijany.
 - Nagłówek „Otwarte sektory”: przyciski kopiowania, opcji pilnowania, własnych sektorów oraz automatyzacji są wyrównane do prawej; przycisk własnych sektorów używa `🏠`.

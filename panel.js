@@ -535,6 +535,7 @@ Otwórz mapę Pól Chwały w grze.
           <label><input id="quantum-show-history" type="checkbox"> Dziennik zbiorów</label>
           <label><input id="quantum-show-snapshot" type="checkbox"> Panel na zrzucie</label>
           <label><input id="quantum-show-actions" type="checkbox"> Działania na zrzucie</label>
+          <button id="quantum-clear-history" type="button">Wyczyść dziennik zbiorów</button><small id="quantum-clear-history-status" role="status" style="display:block;margin:4px 0"></small>
           </details>
 
           <small style="display:block;margin:8px 0;color:#c5ab87">Korzystanie z przycisków ataku, negocjacji i zbiorów może wiązać się z ryzykiem bana konta w grze.</small>
@@ -1033,6 +1034,11 @@ Otwórz mapę Pól Chwały w grze.
       cb.checked=qGet(key);
       cb.onchange=()=>{qSet(key,cb.checked);applyQuantumSettings();};
     }
+    $('quantum-clear-history').onclick=async()=>{
+      if(!confirm('Czy na pewno wyczyścić cały dziennik zbiorów Najazdów kwantowych? Tej operacji nie można cofnąć.'))return;
+      await quantumHistory.clear(ownPlayerId);
+      $('quantum-clear-history-status').textContent=quantumHistory.error||'Dziennik zbiorów został wyczyszczony.';
+    };
     applyQuantumSettings();
     const title=document.createElement('h3');title.id='pearl-name';$('pearl-status').before(title);
     const totalLabel=document.createElement('label');totalLabel.innerHTML='Total PR <input id="pearl-total" type="number" min="0" step="1" placeholder="Koszt poziomu" style="width:130px;padding:6px">';

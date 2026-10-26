@@ -27,12 +27,16 @@
    const request=write?store.put(value,key):store.get(key);
    tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Przerwany zapis'));
   });}
+  async function remove(key){const db=await open();return new Promise((resolve,reject)=>{
+   const tx=db.transaction('profiles','readwrite');tx.objectStore('profiles').delete(key);
+   tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Przerwane usuwanie'));
+  });}
   async function latest(world){const db=await open();return new Promise((resolve,reject)=>{
    const tx=db.transaction('profiles','readonly'),request=tx.objectStore('profiles').openCursor();let selected=null,selectedAt=-1;
    request.onsuccess=()=>{const cursor=request.result;if(!cursor)return;if(String(cursor.key).startsWith(world+':')){const value=cursor.value,at=Number(value?.updatedAt)||value?.events?.reduce((max,event)=>Math.max(max,Number(event.at)||0),0)||0;if(value?.world===world&&at>selectedAt){selected=value;selectedAt=at;}}cursor.continue();};
    tx.oncomplete=()=>resolve(selected);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Przerwany odczyt'));
   });}
-  return {load:key=>transact(key),save:(key,value)=>transact(key,value,true),latest};
+  return {load:key=>transact(key),save:(key,value)=>transact(key,value,true),remove,latest};
  }
  function create({storage=database(),world=location.host,now=()=>Date.now()}={}){
   let queue=Promise.resolve(),profile=null,doc=null,error='',onchange=()=>{};
@@ -96,7 +100,16 @@
    else{doc={schemaVersion:1,world,...(Number.isSafeInteger(playerId)?{playerId}:{}),events:[]};profile=key;}
    error='';onchange();
   });}
-  return {observe,ready:()=>queue,loadLatest,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
+  function clear(playerId){return enqueue(async()=>{
+   let key=Number.isSafeInteger(playerId)?world+':'+playerId:profile;
+   if(!key){try{key=root.localStorage?.getItem('foe-companion.quantum-history-profile:'+world)||null;}catch{}}
+   if(!key&&typeof storage.latest==='function'){const latest=await storage.latest(world);if(latest)key=world+':'+latest.playerId;}
+   if(key?.startsWith(world+':'))await storage.remove(key);
+   const clearedPlayerId=Number.isSafeInteger(playerId)?playerId:key?.startsWith(world+':')?Number(key.slice(world.length+1)):undefined;
+   profile=key?.startsWith(world+':')?key:null;
+   doc={schemaVersion:1,world,...(Number.isSafeInteger(clearedPlayerId)?{playerId:clearedPlayerId}:{}),events:[]};error='';onchange();
+  });}
+  return {observe,ready:()=>queue,loadLatest,clear,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
    export(){return JSON.stringify({exportedAt:new Date(now()).toISOString(),...copy(doc)},null,2);},
    get lastCycle(){return doc?.events.reduce((max,e)=>e.kind==='collection'&&e.cycle>max?e.cycle:max,0)||null;},
    get lastGroup(){const evs=doc?.events;if(!evs?.length)return null;const groups=groupEvents(evs).filter(g=>actionRows(g.actions).length);return groups.at(-1)||null;},

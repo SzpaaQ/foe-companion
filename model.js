@@ -116,7 +116,7 @@
 
 function sectorMarker(row){return row.enemyProgress>0?' 👾'+row.enemyProgress:row.race?' 🔥':'';}
   function progressText(row){return row.progress>0?row.progress+'/'+(row.maxProgress??'—'):'0';}
-  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';return type+row.color+' '+row.sector+sectorMarker(row)+' | '+progressText(row)+' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%')+(row.ignored?' ✋':'');}
+  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const markers=row.race?' 🔥':'';const progress=[];if(row.progress>0)progress.push(progressText(row));if(row.enemyProgress>0)progress.push('👾'+row.enemyProgress);return type+row.color+' '+row.sector+markers+(progress.length?' | '+progress.join(' '):'')+' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%')+(row.ignored?' ✋':'');}
 function line(row) {
     const time = row.until ? new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',hour12:false}).format(row.until*1000) : '';
     const battleType = row.isAttackBattleType === true ? '🟥 ' : row.isAttackBattleType === false ? '🟦 ' : '';

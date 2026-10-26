@@ -2465,8 +2465,8 @@ Otwórz mapę Pól Chwały w grze.
       const empty=document.createElement('p');empty.style.cssText='margin:8px 0;color:#8a9fa5';
       const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;font-size:11px';
       const thead=document.createElement('thead'),hrow=document.createElement('tr');
-      const headers=[['Sektor',''],['Wróg','Postęp przejęcia przez wroga'],['🏗️','Zajęte sloty budynków / wszystkie sloty'],['Sąsiedzi · opór','Szansa na wzrost oporu w sąsiednich sektorach'],['','Oznaczenia gildii']];
-      for(const [label,tip] of headers){const th=document.createElement('th');th.textContent=label;th.style.cssText='padding:4px 6px;border-bottom:1px solid #345058;color:#8fcfcf;font-weight:normal;text-align:'+(label==='Sektor'||label==='Sąsiedzi · opór'?'left':'center')+';white-space:nowrap';if(tip)th.setAttribute('data-tooltip',tip);hrow.append(th);}thead.append(hrow);table.append(thead);
+      const headers=[['🏰','Sektor należący do naszej gildii'],['👾','Atak przeciwnika i jego postęp'],['🏗️','Zajęte i wolne sloty budynków'],['🛡️','Sąsiednie sektory oraz ich szansa na wzrost oporu'],['','Gildyjne oznaczenia: ✋ ignorowana, 🎯 wskazana do ataku']];
+      for(const [label,tip] of headers){const th=document.createElement('th');th.textContent=label;th.style.cssText='padding:4px 6px;border-bottom:1px solid #345058;color:#8fcfcf;font-weight:normal;text-align:center;white-space:nowrap';if(tip)th.setAttribute('data-tooltip',tip);hrow.append(th);}thead.append(hrow);table.append(thead);
       const tbody=document.createElement('tbody');table.append(tbody);box.append(empty,table);
       const legend=document.createElement('p');legend.style.cssText='margin:8px 0 0;font-size:10px;color:#8a9fa5';legend.textContent='✋ Ignorowana przez gildię · 🎯 Oznaczona przez gildię do ataku';box.append(legend);modal.append(box);
       let tableSnapshot='';
@@ -2480,9 +2480,13 @@ Otwórz mapę Pól Chwały w grze.
           const td=(text,align='center')=>{const cell=document.createElement('td');cell.textContent=text;cell.style.cssText='padding:5px 6px;border-bottom:1px solid #1e3540;text-align:'+align+';color:#c6d4d6;vertical-align:top';tr.append(cell);return cell;};
           td((row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector,'left');
           td(row.enemyProgress>0?'👾 '+row.enemyProgress+'/'+row.enemyMaxProgress:'—');
-          td(row.usedBuildingSlots===null||row.totalBuildingSlots===null?'—':row.usedBuildingSlots+'/'+row.totalBuildingSlots);
+          const slots=td('');
+          if(Number.isSafeInteger(row.usedBuildingSlots)&&Number.isSafeInteger(row.totalBuildingSlots)&&row.totalBuildingSlots>0){
+            const used=Math.max(0,Math.min(row.usedBuildingSlots,row.totalBuildingSlots));slots.setAttribute('aria-label','Zajęte sloty budynków: '+used+' z '+row.totalBuildingSlots);slots.setAttribute('data-tooltip',used+' z '+row.totalBuildingSlots+' zajętych slotów budynków');
+            for(let i=0;i<row.totalBuildingSlots;i++){const square=document.createElement('span');square.textContent=i<used?'■':'□';square.style.cssText='display:inline-block;padding:0 1px;color:'+(i<used?'#f1d69a':'#809096')+';opacity:'+(i<used?'1':'.38')+';font-size:13px;line-height:1';slots.append(square);}
+          }else slots.textContent='—';
           td(neighbors.length?neighbors.map(n=>n.sector+' '+(n.chance===null?'—':n.chance+'%')).join(' · '):'—','left');
-          const marks=[...(row.ignored?['✋']:[]),...(row.focused?['🎯']:[])];const marker=td(marks.join(' ')||'');if(row.ignored)marker.title='Prowincja ignorowana przez gildię';if(row.focused)marker.title+=(marker.title?' · ':'')+'Prowincja oznaczona przez gildię do ataku';
+          const marks=[...(row.ignored?['✋']:[]),...(row.focused?['🎯']:[])];const marker=td(marks.join(' ')||'');if(row.ignored)marker.title='Prowincja ignorowana przez gildię';if(row.focused)marker.title+=(marker.title?' · ':'')+'Prowincja oznaczona przez gildię do ataku';if(marks.length)marker.setAttribute('data-tooltip',marker.title);
           tbody.append(tr);
         }
         convertTitles(modal);

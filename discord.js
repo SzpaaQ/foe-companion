@@ -64,12 +64,18 @@
     const sendText=document.createElement('span');sendText.textContent='Wysyłaj rozpiskę';
     sendLabel.append(enabled,sendText);scheduleHeading.append(sendLabel);
     const section=document.createElement('details');section.id='settings-discord';section.open=true;
-    section.innerHTML='<summary>Discord</summary><label>Token bota <input type="password" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limit dotyczy zamkniętych sektorów; otwarte są zawsze uwzględniane.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><button type="button" id="discord-test">Sprawdź połączenie</button><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału, odczytu historii i wysyłania wiadomości.</small>';
+    section.innerHTML='<summary>Discord</summary><label>Token bota <input type="password" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limit dotyczy zamkniętych sektorów; otwarte są zawsze uwzględniane.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><button type="button" id="discord-test">Sprawdź połączenie</button><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
     const quantum=settings.querySelector('#settings-quantum');(quantum||settings.lastElementChild)?.after(section);
     const token=section.querySelector('#discord-token'),channel=section.querySelector('#discord-channel'),maxSectors=section.querySelector('#discord-max-sectors'),maxMinutes=section.querySelector('#discord-max-minutes'),test=section.querySelector('#discord-test'),status=section.querySelector('#discord-status');
     token.style.cssText='width:220px!important;max-width:65vw';channel.style.cssText='width:180px!important;max-width:65vw';
     let config=defaults,storedState=null,busy=false,timer=null,lastStatus='',retryUntil=0;
     const setStatus=text=>{if(text!==lastStatus){status.textContent=text;lastStatus=text;}};
+    const discordFailure=(step,result)=>{
+      const details=[step,result?.error||'Nie udało się sprawdzić połączenia.'];
+      if(result?.discordMessage)details.push(`Discord: ${result.discordMessage}${result.discordCode?' ('+result.discordCode+')':''}`);
+      else if(result?.status)details.push(`HTTP ${result.status}`);
+      return details.join(' — ');
+    };
     const writeConfig=async next=>{
       const previous=config;config=validConfig(next);enabled.checked=config.enabled;
       token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;
@@ -93,7 +99,10 @@
       await writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0});
       if(!config.token||!config.channelId){setStatus('Wpisz token bota i ID kanału.');return;}
       test.disabled=true;setStatus('Sprawdzam dostęp do kanału…');
-      try{let result=await api(config,'channel');if(result?.ok){const history=await api(config,'latest');result=history?.ok?{...result,history:true}:history;}setStatus(result?.ok?'Połączenie i odczyt historii działają'+(result.channel?.name?' — #'+result.channel.name:'')+'.':result?.error||'Nie udało się sprawdzić połączenia.');}
+      try{
+        const channelResult=await api(config,'channel');
+        setStatus(channelResult?.ok?'Dostęp do kanału działa'+(channelResult.channel?.name?' — #'+channelResult.channel.name:'')+'.':discordFailure('Sprawdzenie kanału',channelResult));
+      }
       catch{setStatus('Nie udało się połączyć z usługą rozszerzenia.');}
       finally{test.disabled=false;}
     };
@@ -116,23 +125,23 @@
         const confirm=await storageGet(LOCK_KEY);if(confirm?.owner!==ownId)return;
         storedState=await storageGet(STATE_KEY)||null;
         const currentHour=hourKey();
-        const latest=await api(config,'latest');
-        if(!latest?.ok){retryUntil=Date.now()+(latest?.retryAfter?latest.retryAfter*1000:60000);setStatus(latest?.error||'Nie udało się odczytać kanału Discorda.');return;}
-        const latestId=latest.message?.id||null;
         const state=storedState&&storedState.channelId===config.channelId?storedState:null;
-        const sameSchedule=!!state?.messageId&&latestId===state.messageId&&state.hour===currentHour;
+        const sameSchedule=!!state?.messageId&&state.hour===currentHour;
         const contentHash=hashText(text);
         if(sameSchedule&&state.hash===contentHash&&state.text===text){
           setStatus('Rozpiska aktualna na Discordzie.');return;
         }
         if(sameSchedule){
           const edit=await api(config,'edit',{messageId:state.messageId,payload});
-          if(!edit?.ok){retryUntil=Date.now()+(edit?.retryAfter?edit.retryAfter*1000:60000);setStatus(edit?.error||'Nie udało się zaktualizować rozpiski.');if(edit?.error==='Nie znaleziono kanału albo wiadomości.')storedState=null;return;}
-          storedState={...state,text,hash:contentHash,hour:currentHour,updatedAt:now};
-          await storageSet({[STATE_KEY]:storedState});setStatus('Zaktualizowano rozpiskę na Discordzie.');return;
+          if(edit?.ok){
+            storedState={...state,text,hash:contentHash,hour:currentHour,updatedAt:now};
+            await storageSet({[STATE_KEY]:storedState});setStatus('Zaktualizowano rozpiskę na Discordzie.');return;
+          }
+          if(edit?.status!==404){retryUntil=Date.now()+(edit?.retryAfter?edit.retryAfter*1000:60000);setStatus(discordFailure('Edycja rozpiski',edit));return;}
+          storedState=null;await storageRemove(STATE_KEY);
         }
         const sent=await api(config,'send',{payload});
-        if(!sent?.ok){retryUntil=Date.now()+(sent?.retryAfter?sent.retryAfter*1000:60000);setStatus(sent?.error||'Nie udało się wysłać rozpiski.');return;}
+        if(!sent?.ok){retryUntil=Date.now()+(sent?.retryAfter?sent.retryAfter*1000:60000);setStatus(discordFailure('Wysyłanie rozpiski',sent));return;}
         storedState={channelId:config.channelId,messageId:sent.message?.id||null,botId:sent.message?.author?.id||null,text,hash:contentHash,hour:currentHour,updatedAt:now};
         await storageSet({[STATE_KEY]:storedState});setStatus('Wysłano nową rozpiskę na Discorda.');
       }catch{setStatus('Błąd podczas aktualizacji rozpiski Discorda.');}

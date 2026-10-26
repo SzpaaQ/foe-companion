@@ -15,8 +15,6 @@
       let url, method = 'GET', body;
       if (message.action === 'channel') {
         url = `https://discord.com/api/v10/channels/${channelId}`;
-      } else if (message.action === 'latest') {
-        url = `https://discord.com/api/v10/channels/${channelId}/messages?limit=1`;
       } else if (message.action === 'send' || message.action === 'edit') {
         const messageId = typeof message.messageId === 'string' ? message.messageId.trim() : '';
         if (message.action === 'edit' && !idPattern.test(messageId)) return {ok:false,error:'Brak prawidłowego ID wiadomości do edycji.'};
@@ -50,9 +48,8 @@
           :response.status===404?'Nie znaleziono kanału albo wiadomości.'
           :response.status===429?'Discord ograniczył tempo zapytań.'
           :`Discord zwrócił błąd HTTP ${response.status}.`;
-        return {ok:false,error,...(response.status===429&&Number.isFinite(retry)?{retryAfter:retry}:{})};
+        return {ok:false,error,action:message.action,status:response.status,...(typeof data?.message==='string'?{discordMessage:data.message}:{}),...(Number.isSafeInteger(data?.code)?{discordCode:data.code}:{}),...(response.status===429&&Number.isFinite(retry)?{retryAfter:retry}:{})};
       }
-      if (message.action === 'latest') return {ok:true,message:Array.isArray(data)?data[0]||null:null};
       if (message.action === 'channel') return {ok:true,channel:{id:data?.id,name:data?.name,type:data?.type}};
       return {ok:true,message:{id:data?.id,author:{id:data?.author?.id}}};
     };

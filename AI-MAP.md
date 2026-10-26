@@ -123,8 +123,8 @@ po symbolu lub napisie przycisku, potem czytaj ograniczony fragment.
 ### Discord — lokalnie, wymaga konfiguracji
 
 - Checkbox „Wysyłaj rozpiskę” w zakładce Pól Chwały. Ustawienia Discorda przyjmują token bota, ID kanału, limit liczby nadchodzących sektorów i limit minut (0 = bez limitu).
-- `discord.js` co 5 s pobiera najnowsze wiersze `FoeModel.rows(battle,false)`, tworzy sekcję otwartych i zamkniętych, porównuje pełny tekst oraz hash i nie edytuje wiadomości bez zmiany. Co pełną godzinę albo po wykryciu nowszej wiadomości tworzy nową; w innym wypadku edytuje własną wiadomość.
-- Token jest zapisany w `chrome.storage.local`. `discord-background.js` wykonuje tylko dozwolone operacje Discord REST w service workerze; potrzebny bot z dostępem do kanału, odczytem historii i wysyłaniem wiadomości. Embed jest używany dla rozpisek przekraczających 2000 znaków; po 6000 znaków trzeba ustawić limit.
+- `discord.js` co 5 s pobiera najnowsze wiersze `FoeModel.rows(battle,false)`, tworzy sekcję otwartych i zamkniętych, porównuje pełny tekst oraz hash i nie edytuje wiadomości bez zmiany. Co pełną godzinę tworzy nową wiadomość; w innym wypadku edytuje zapisaną własną wiadomość bez odczytywania historii kanału. Jeśli wiadomość została usunięta, publikuje nową.
+- Token jest zapisany w `chrome.storage.local`. `discord-background.js` wykonuje tylko dozwolone operacje Discord REST w service workerze; bot potrzebuje dostępu do kanału i wysyłania wiadomości. Test sprawdza osobno dostęp do kanału, a błędy publikacji i edycji pokazują etap, kod i odpowiedź Discorda. Embed jest używany dla rozpisek przekraczających 2000 znaków; po 6000 znaków trzeba ustawić limit.
 - Do usunięcia funkcji: usunąć `discord.js` z listy content scripts, `discord-background.js` z importScripts w `background.js`, host permission Discord i wpisy modułu w `dev-server.cjs`; wywołanie panelu jest zabezpieczone optional chaining.
 
 - `currentParticipantId` identyfikuje własną gildię; nie myl z ID gracza.

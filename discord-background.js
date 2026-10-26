@@ -61,7 +61,7 @@
           :`Discord zwrócił błąd HTTP ${response.status}.`;
         return {ok:false,error,action:message.action,status:response.status,...(typeof data?.message==='string'?{discordMessage:data.message}:{}),...(Number.isSafeInteger(data?.code)?{discordCode:data.code}:{}),...(response.status===429&&Number.isFinite(retry)?{retryAfter:retry}:{})};
       }
-      if (message.action === 'channel') return {ok:true,channel:{id:data?.id,name:data?.name,type:data?.type}};
+      if (message.action === 'channel') return {ok:true,channel:{id:data?.id,name:data?.name,type:data?.type,lastMessageId:data?.last_message_id??null}};
       return {ok:true,message:{id:data?.id,author:{id:data?.author?.id}}};
     };
     run().then(reply).catch(()=>reply({ok:false,error:'Nie udało się wykonać żądania do Discorda.'}));

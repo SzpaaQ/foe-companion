@@ -20,9 +20,6 @@
   const storageRemove=key=>new Promise(resolve=>chrome.storage.local.remove(key,resolve));
   const api=(config,action,extra={})=>chrome.runtime.sendMessage({type:'FOE_DISCORD_API',action,token:config.token,channelId:config.channelId,...extra});
 
-  function hourKey(date=new Date()){
-    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}-${String(date.getHours()).padStart(2,'0')}`;
-  }
   function hashText(text){let hash=2166136261;for(let i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,16777619);}return (hash>>>0).toString(16).padStart(8,'0');}
   function discordPayload(text){
     const wrap=part=>'```text\n'+part+'\n```';
@@ -123,17 +120,18 @@
         await storageSet({[LOCK_KEY]:{owner:ownId,expires:now+15000}});
         const confirm=await storageGet(LOCK_KEY);if(confirm?.owner!==ownId)return;
         storedState=await storageGet(STATE_KEY)||null;
-        const currentHour=hourKey();
         const state=storedState&&storedState.channelId===config.channelId?storedState:null;
-        const sameSchedule=!!state?.messageId&&state.hour===currentHour;
+        const channelCheck=await api(config,'channel');
+        if(!channelCheck?.ok){retryUntil=Date.now()+(channelCheck?.retryAfter?channelCheck.retryAfter*1000:60000);setStatus(discordFailure('Sprawdzenie ostatniej wiadomości',channelCheck));return;}
+        const isOurLastMessage=!!state?.messageId&&channelCheck.channel?.lastMessageId===state.messageId;
         const contentHash=hashText(text);
-        if(sameSchedule&&state.hash===contentHash&&state.text===text){
+        if(isOurLastMessage&&state.hash===contentHash&&state.text===text){
           setStatus('Rozpiska aktualna na Discordzie.');return;
         }
-        if(sameSchedule){
+        if(isOurLastMessage){
           const edit=await api(config,'edit',{messageId:state.messageId,payload});
           if(edit?.ok){
-            storedState={...state,text,hash:contentHash,hour:currentHour,updatedAt:now};
+            storedState={...state,text,hash:contentHash,updatedAt:now};
             await storageSet({[STATE_KEY]:storedState});setStatus('Zaktualizowano rozpiskę na Discordzie.');return;
           }
           if(edit?.status!==404){retryUntil=Date.now()+(edit?.retryAfter?edit.retryAfter*1000:60000);setStatus(discordFailure('Edycja rozpiski',edit));return;}
@@ -141,7 +139,7 @@
         }
         const sent=await api(config,'send',{payload});
         if(!sent?.ok){retryUntil=Date.now()+(sent?.retryAfter?sent.retryAfter*1000:60000);setStatus(discordFailure('Wysyłanie rozpiski',sent));return;}
-        storedState={channelId:config.channelId,messageId:sent.message?.id||null,botId:sent.message?.author?.id||null,text,hash:contentHash,hour:currentHour,updatedAt:now};
+        storedState={channelId:config.channelId,messageId:sent.message?.id||null,botId:sent.message?.author?.id||null,text,hash:contentHash,updatedAt:now};
         await storageSet({[STATE_KEY]:storedState});setStatus('Wysłano nową rozpiskę na Discorda.');
       }catch{setStatus('Błąd podczas aktualizacji rozpiski Discorda.');}
       finally{busy=false;}
@@ -151,5 +149,5 @@
   }
 
   globalThis.FoeDiscord={mount,buildText,discordPayload};
-  if(typeof module!=='undefined'&&module.exports)module.exports={buildText,discordPayload,hashText,hourKey};
+  if(typeof module!=='undefined'&&module.exports)module.exports={buildText,discordPayload,hashText};
 })();

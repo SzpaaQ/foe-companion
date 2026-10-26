@@ -1,4 +1,6 @@
-## Aktualny stan — 0.6.12, 2026-10-26
+## Aktualny stan — 0.6.13, 2026-10-26
+
+- Wydanie 0.6.13: rozpiska Discorda jest wysyłana jako kompaktowy blok tekstu z wyrównanymi godzinami i sektorami. Żądania Discord API mają wymagany User-Agent; sprawdzanie kanału i edycja zapamiętanej wiadomości nie wymagają odczytu historii.
 
 - Wydanie 0.6.12: modal Nasze sektory obok opcji pilnowania pokazuje własne sektory, atak przeciwnika i progres, zajęte sloty, opór sąsiadów oraz wskaźniki gildyjnego ignore/focus. Emoji nagłówków mają tooltipy, a sloty to trzy równe kwadraty o opacity 1/0.5/0.
 - Przycisk w zakładce Najazdy kwantowe otwiera historię zbiorów bez osady kwantowej. `quantum-history.create().loadLatest(playerId)` ładuje profil z IndexedDB; fallback wybiera ostatnio aktualizowany profil bieżącego świata.

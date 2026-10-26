@@ -25,15 +25,14 @@
   }
   function hashText(text){let hash=2166136261;for(let i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,16777619);}return (hash>>>0).toString(16).padStart(8,'0');}
   function discordPayload(text){
-    if(text.length<=2000)return {content:text,embeds:[]};
-    if(text.length<=4096)return {content:'',embeds:[{description:text}]};
-    if(text.length<=6000){
-      const lines=text.split('\n'),chunks=[];let chunk='';
-      for(const line of lines){const next=chunk?chunk+'\n'+line:line;if(next.length>4096){chunks.push(chunk);chunk=line;}else chunk=next;}
-      if(chunk)chunks.push(chunk);
-      return {content:'',embeds:chunks.map(description=>({description}))};
-    }
-    return null;
+    const wrap=part=>'```text\n'+part+'\n```';
+    if(text.length+12<=2000)return {content:wrap(text),embeds:[]};
+    if(text.length>6000)return null;
+    const lines=text.split('\n'),chunks=[];let chunk='';
+    for(const line of lines){if(line.length>4084)return null;const next=chunk?chunk+'\n'+line:line;if(next.length>4084){chunks.push(chunk);chunk=line;}else chunk=next;}
+    if(chunk)chunks.push(chunk);
+    if(chunks.length>10||text.length+chunks.length*12>6000)return null;
+    return {content:'',embeds:chunks.map(part=>({description:wrap(part)}))};
   }
   function buildText(rows,config,formatOpen,now=Date.now()/1000){
     const candidates=rows.filter(row=>row&&row.color!=='⚪');
@@ -48,7 +47,7 @@
       const guild=row.progress>0?' ⚔️'+row.progress+'/'+(row.maxProgress??'—'):'';
       const enemy=row.enemyProgress>0?' 👾'+row.enemyProgress:'';
       const time=new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(row.until*1000));
-      return time+' '+type+row.color+' '+row.sector+race+guild+enemy;
+      return time+'   '+type+row.color+' '+row.sector+race+guild+enemy;
     });
     return [openLines.join('\n'),closedLines.join('\n')].filter(Boolean).join('\n\n');
   }

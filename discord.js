@@ -2,7 +2,7 @@
   const CONFIG_KEY='foe.discord.config.v1';
   const STATE_KEY='foe.discord.schedule.v1';
   const LOCK_KEY='foe.discord.lease.v1';
-  const POLL_MS=5000;
+  const POLL_MS=1000;
   const defaults={enabled:false,token:'',channelId:'',maxSectors:0,maxMinutes:0};
   const ownId=Math.random().toString(36).slice(2)+Date.now().toString(36);
 
@@ -34,10 +34,10 @@
     if(chunks.length>10||text.length+chunks.length*12>6000)return null;
     return {content:'',embeds:chunks.map(part=>({description:wrap(part)}))};
   }
-  function buildText(rows,config,formatOpen,now=Date.now()/1000){
+  function buildText(rows,config,formatOpen,now=Date.now()/1000,frontierOnly=false){
     const candidates=rows.filter(row=>row&&row.color!=='⚪');
     const open=candidates.filter(row=>row.until<=now).sort((a,b)=>(a.progress??0)-(b.progress??0)||a.id-b.id);
-    let closed=candidates.filter(row=>row.until>now).sort((a,b)=>a.until-b.until||a.id-b.id);
+    let closed=candidates.filter(row=>row.until>now&&(!frontierOnly||row.frontier===true)).sort((a,b)=>a.until-b.until||a.id-b.id);
     if(config.maxMinutes>0)closed=closed.filter(row=>row.until-now<=config.maxMinutes*60);
     if(config.maxSectors>0)closed=closed.slice(0,config.maxSectors);
     const openLines=open.map(row=>'Otwarte '+formatOpen(row));
@@ -52,7 +52,7 @@
     return [openLines.join('\n'),closedLines.join('\n')].filter(Boolean).join('\n\n');
   }
 
-  function mount({root,getRows,formatOpen}){
+  function mount({root,getRows,formatOpen,isFrontierOnly=()=>false}){
     if(!root||typeof getRows!=='function'||typeof formatOpen!=='function')return null;
     const scheduleHeading=root.querySelector('#schedule-heading');
     const settings=root.querySelector('#settings');
@@ -113,7 +113,7 @@
         if(!config.enabled){const held=await storageGet(LOCK_KEY);if(held?.owner===ownId)await storageRemove(LOCK_KEY);setStatus('Wysyłanie wyłączone.');return;}
         if(!config.token||!config.channelId){setStatus('Wpisz token bota i ID kanału w Ustawienia → Discord.');return;}
         const rows=getRows();if(!Array.isArray(rows)){setStatus('Otwórz mapę Pól Chwały w grze.');return;}
-        const text=buildText(rows,config,formatOpen);
+        const text=buildText(rows,config,formatOpen,Date.now()/1000,isFrontierOnly());
         if(!text){setStatus('Brak sektorów do opublikowania.');return;}
         const payload=discordPayload(text);
         if(!payload){setStatus('Rozpiska przekracza limit Discorda 6000 znaków. Ustaw limit liczby sektorów lub czasu.');return;}

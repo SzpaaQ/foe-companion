@@ -2536,7 +2536,7 @@ Otwórz mapę Pól Chwały w grze.
       $('feedback').textContent='Wyeksportowano ostatnio odebrany stan mapy.';
     };
 
-    globalThis.FoeDiscord?.mount({root,getRows:()=>battle?FoeModel.rows(battle,false).rows:null,formatOpen:FoeModel.openSectorText});
+    globalThis.FoeDiscord?.mount({root,getRows:()=>{if(!battle)return null;const all=FoeModel.rows(battle,false).rows;const frontier=new Set(FoeModel.rows(battle,true).rows.map(row=>row.id));return all.map(row=>({...row,frontier:frontier.has(row.id)}));},formatOpen:FoeModel.openSectorText,isFrontierOnly:()=>$('frontier').checked});
     paint();
   }
 

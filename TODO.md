@@ -1,6 +1,47 @@
+# Discord — rozpiska
+## Zakładka Ustawienia: nowa sekcja Discord
+- dane wymagane do działania z discordem
+- limit sektorów lub minut do otwarcia sektora (czasam zdarza się, że jest jest spora lista, domyślnie bez limitu czyli "0" - cała rozpiska)
+## zakładka pola chwały
+- [x] wysyłaj rozpiskę
+chodzi o to, żebym mógł podczepić discorda i każda zmiana w rozpisce wysyłala wiadomość na kanał na dc z pełną rozpiską
+robimy tak:
+bez resetu godzinowego: jeśli ostatnia wiadomość na kanale jest naszą zapisaną rozpiską, edytujemy ją; jeśli jest inna, wysyłamy nową, żeby rozpiska wróciła na koniec kanału
+format rozpiski dokładnie taki sam jak z modala otwarte sektory, ale wysyłamy całą rozpiskę.
+Dzielimy wiadomość na Otwarte "\n\n" (dwa wiersze przerwy) i Zamknięte (słowa otwarte i zamknięte nie piszemy w wiadomości)
+
+Otwarte 🟦 🟢 C4H | 20%
+Otwarte 🟦 🟢 C4F | 50/132 | 20%
+14:27 🟦 🟡 C4F 🔥
+15:25 🟥 🟢 D4B 🔥 👾47
+15:26 🟦 🟢 C3Y 🔥
+15:27 🟦 🟢 C4H 🔥 👾19
+15:29 🟦 🟢 C2T 🔥
+
+rozpiska ma być sprawdzana co 1s, ale tylko jeśli coś się zmieni w jakimkolwiek wierszu lub wiersz zniknie lub pojawi się inny - chcę aby na dc była cały czas aktualna rozpiska.
+ale nie chcę żeby co 1 sekundę były wysyłane wiadomości na dc, dlatego musimy porównywać to co zostało wysłane i to co mamy aktualnie przed wysłaniem
+Sprawdź czy da się to wdrożyć
+
+## Wydanie 0.6.14 — 2026-10-26
+- Dodano `md/wiki.md` i osobne instrukcje po polsku dla każdej zakładki. Instrukcje opisują ikony, przyciski, pola, komunikaty i sposób użycia.
+- Wiersze otwartych sektorów wysyłane na Discord nie dostają dodatkowego słowa „Otwarte”; otwarte i nadchodzące sektory dzieli pusty wiersz.
+- Zamknięte wiersze w oknie sektorów mają nieaktywne przyciski i pola, w tym kopiowanie oraz lokalne „Ignoruj”.
+- Aktualizacja: testy offline 182/182; składnia JS sprawdzona.
+
+## Discord — wdrożenie (2026-10-26)
+- Funkcja działa jako osobny moduł `discord.js` z API w `discord-background.js`; wymaga tokenu bota i ID kanału. Panel tylko podpina moduł.
+- Sprawdzanie co 1 s porównuje pełną rozpiskę i edytuje wiadomość tylko po zmianie. Filtr „tylko sąsiedzi” dotyczy całej rozpiski: otwartych targetów przy naszej gildii oraz pozostałych zamkniętych sektorów sąsiadujących z naszymi polami. Jeśli last_message_id wskazuje naszą zapisaną rozpiskę, edytuje ją bez resetu godzinowego; jeśli nie, wysyła nową wiadomość.
+- Ustawienia mają limit liczby nadchodzących sektorów i limit minut do otwarcia; oba domyślnie 0 (bez limitu). Otwartych sektorów limity nie usuwają.
+- Konfiguracja wymaga sprawdzenia tokenu/uprawnień na serwerze. Rozpiski powyżej 6000 znaków wymagają ustawienia limitu Discorda.
+
+## Wydanie 0.6.14 — łapka gildii w autoataku
+- Ustawienie „Autoatak: ignoruj łapkę gildii” pozwala autoatakowi globalnemu zaatakować sektor oznaczony jako ignorowany przez gildię. Lokalne Ignoruj nadal blokuje akcję; negocjacje nadal respektują gildyjną łapkę.
+- Aktualizacja `getPlayerParticipant` bez pola `signals` usuwa nieaktualne oznaczenia w panelu i MAIN, bez wychodzenia z Pól Chwały.
+
+# Wdrożone
 #### Lokalne po 0.6.12
 - Ustawienia → Najazdy kwantowe: czyszczenie całego dziennika zbiorów bieżącego gracza po potwierdzeniu.
-- Modal sektorów (⋮): kopiowanie zamkniętego sektora z wiersza i przez „Kopiuj wszystkie” używa czasu `HH:mm`; przy postępie wroga kopiuje `🔥 👾N`. Otwarte sektory pokazują wyścig `🔥`, niezerowy postęp własny/wroga oraz szansę oporu, bez pustego pola postępu.
+- Modal sektorów (⋮): kopiowanie zamkniętego sektora z wiersza i przez „Kopiuj wszystkie” używa czasu `HH:mm`; postęp gildii ma format `⚔️N/M`, przed `👾N`, jeśli wróg też ma postęp. Otwarte sektory pokazują wyścig `🔥`, niezerowy postęp własny/wroga oraz szansę oporu, bez pustego pola postępu.
 - Nagłówek „Otwarte sektory”: przyciski po prawej, ikona własnych sektorów `🏠`.
 
 #### 2026-10-26 — wydanie 0.6.12
@@ -406,7 +447,7 @@ dobrze gdybym mógł wczytać zbiór z pliku json i na tym pracować. na polu os
 napiszemy to w pythonie
 
 
-# Wiadomości
+## Wiadomości
 w socket są przekazywane wiadomości, chcę aby wiadomości, z perłą architektury pokazywały powiuadomienie (podobnie jak z otawrtymi sektorami)
 w powiadomieniu gozina nazwa perły i czatu, niech samo nie znika - dopiero po zamknięciu
 
@@ -415,7 +456,7 @@ w powiadomieniu gozina nazwa perły i czatu, niech samo nie znika - dopiero po z
 
 
 
-# Oczekujące zmiany
+## Oczekujące zmiany
 
 Lista z 6 października 2026. Wdrożenie dopiero na wyraźne polecenie użytkownika.
 

@@ -1,4 +1,10 @@
-## Aktualny stan — 0.6.13, 2026-10-26
+## Aktualny stan — wydanie 0.6.14, 2026-10-26
+
+- 0.6.14: pełna instrukcja użytkownika w `md/`, z osobnym plikiem dla każdej zakładki oraz spisem treści w `md/wiki.md`. Wysyłana rozpiska Discorda nie dodaje słowa „Otwarte” przed wierszami sektorów. Globalny autoatak może pominąć gildyjne oznaczenie ignorowania. Zamknięte wiersze w oknie sektorów nie pozwalają na żadne kliknięcia ani zmianę pól.
+- Weryfikacja: składnia JS poprawna, 182/182 testy offline. Rozszerzenia nie sprawdzono ręcznie w zalogowanej grze.
+- Przy każdej przyszłej zmianie interfejsu natychmiast opisuj nowy przycisk, emoji, pole edytowalne, przełącznik, menu, okno, status i pozostałe elementy w instrukcji zakładki. Zaktualizuj `md/wiki.md`, jeśli dochodzi nowa zakładka lub sekcja. Pisz dla gracza po polsku, zrozumiale bez wiedzy programistycznej; wyjaśnij działanie, dostępność, użycie oraz znaczenie wyniku.
+
+## Poprzedni stan — 0.6.13, 2026-10-26
 
 - Wydanie 0.6.13: rozpiska Discorda jest wysyłana jako kompaktowy blok tekstu z wyrównanymi godzinami i sektorami. Żądania Discord API mają wymagany User-Agent; sprawdzanie kanału i edycja zapamiętanej wiadomości nie wymagają odczytu historii.
 
@@ -41,6 +47,13 @@ Pełny `GuildBattlegroundParticipant` bez pola `signals` oznacza pustą listę o
 `sector-automation.settings.attackChance`: 0–100, domyślnie 20. `eligible` odrzuca wyższą lub nieznaną szansę; kolejka przekazuje limit w `bulkPolicy`. `battleground-live.checkPolicy` ponawia kontrolę przed walką. Panel zapisuje limit wraz z pozostałymi ustawieniami, zmiana zatrzymuje automaty. Nie mylić z progresowym `attackProgress` ani oporem gracza `maxAttrition` dla negocjacji.
 
 # FoE Companion — mapa dla AI
+
+## Dokumentacja interfejsu
+
+- Instrukcja użytkownika znajduje się w `md/wiki.md`; osobny plik w `md/` opisuje każdą zakładkę i wszystkie elementy wspólne.
+- Każdy nowy przycisk, emoji pełniące funkcję wskaźnika lub sterowania, pole edytowalne, przełącznik, menu, dialog, status oraz inny element interfejsu trzeba opisać od razu w pliku właściwej zakładki. Zaktualizuj też spis treści `md/wiki.md`, jeśli dochodzi nowa zakładka lub sekcja.
+- Pisz instrukcje ludzkim, prostym językiem po polsku, zrozumiałym dla osoby nietechnicznej. Opis wyjaśnia, co element robi, kiedy jest dostępny, jak z niego korzystać i co oznacza jego stan lub wynik. Ostrzeżenia o wysyłaniu żądań do gry muszą być widoczne przy odpowiednich funkcjach.
+- Przed zakończeniem każdej zmiany UI porównaj widoczne i dynamicznie montowane kontrolki w źródłach (zwłaszcza `panel.js` i `quantum-history.js`) z dokumentacją, aby nie zostawić nowych elementów bez opisu.
 
 ## Pola Chwały — wydane w 0.6.06 (2026-10-25)
 

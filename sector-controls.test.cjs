@@ -66,7 +66,7 @@ test('floating window drags beyond right edge, ignores controls and cleans up on
 
 test('progress and copied rows omit controls, enemy replaces race, unknown limit stays explicit',()=>{
  const M=require('./model.js'),row={sector:'B3X',color:'🟡',isAttackBattleType:true,progress:58,maxProgress:132,gainAttritionChance:20,race:true,enemyProgress:34};
- assert.equal(M.openSectorText(row),'🟥 🟡 B3X 👾34 | 58/132 | 20%');
+ assert.equal(M.openSectorText(row),'🟥 🟡 B3X 🔥 | ⚔️58/132 👾34 | 20%');
  assert.equal(M.progressText({...row,progress:0}),'0');assert.equal(M.progressText({...row,maxProgress:null}),'58/—');assert.equal(M.sectorMarker({...row,enemyProgress:0}),' 🔥');
 });
 

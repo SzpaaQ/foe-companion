@@ -37,7 +37,7 @@
     let closed=candidates.filter(row=>row.until>now&&(!frontierOnly||row.frontier===true)).sort((a,b)=>a.until-b.until||a.id-b.id);
     if(config.maxMinutes>0)closed=closed.filter(row=>row.until-now<=config.maxMinutes*60);
     if(config.maxSectors>0)closed=closed.slice(0,config.maxSectors);
-    const openLines=open.map(row=>'Otwarte '+formatOpen(row));
+    const openLines=open.map(row=>formatOpen(row));
     const closedLines=closed.map(row=>{
       const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';
       const race=row.race||row.enemyProgress>0?' 🔥':'';

@@ -1,6 +1,16 @@
 (() => {
   const idPattern = /^\d{16,22}$/;
   const messageType = 'FOE_DISCORD_API';
+  const userAgentRuleId=7310641;
+  const userAgentReady=chrome.declarativeNetRequest?.updateDynamicRules?chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds:[userAgentRuleId],
+    addRules:[{
+      id:userAgentRuleId,
+      priority:1,
+      action:{type:'modifyHeaders',requestHeaders:[{header:'User-Agent',operation:'set',value:`DiscordBot (https://github.com/SzpaaQ/foe-companion, ${chrome.runtime.getManifest().version})`}]},
+      condition:{urlFilter:'||discord.com/api/',initiatorDomains:[chrome.runtime.id],resourceTypes:['xmlhttprequest']},
+    }],
+  }).then(()=>true).catch(()=>false):Promise.resolve(false);
 
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (sender.id !== chrome.runtime.id || !sender.tab || !/^https:\/\/[^/]+\.forgeofempires\.com\//.test(sender.url || '') || message?.type !== messageType) return;
@@ -28,6 +38,7 @@
         return {ok:false,error:'Nieznana operacja Discorda.'};
       }
 
+      if(!await userAgentReady)return {ok:false,error:'Nie udało się skonfigurować nagłówka User-Agent Discord API. Przeładuj rozszerzenie.'};
       let response;
       try {
         response = await fetch(url, {

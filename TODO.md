@@ -2,7 +2,7 @@
 - Historia najazdów kwantowych: dodać możliwość wyczyszczenia zapisanej historii.
 
 #### Lokalna zmiana po 0.6.11 — dostęp do dziennika bez osady
-- 📜 w nagłówku panelu otwiera historię zbiorów niezależnie od aktywnej zakładki i otwartej osady. Historia wczytuje profil gracza z IndexedDB; bez bieżącego `player_id` wybiera ostatnio aktualizowany profil danego świata.
+- Przycisk w zakładce „Najazdy kwantowe” otwiera historię zbiorów bez wchodzenia do osady. Historia wczytuje profil gracza z IndexedDB; bez bieżącego `player_id` wybiera ostatnio aktualizowany profil danego świata. Nagłówek panelu zawiera tylko nazwę, wersję i zamknięcie.
 - W modalu Nasze sektory nagłówki to emoji z tooltipami; kolumna budynków ma zawsze trzy równe kwadraty: pełne zajęte (opacity 1), puste wolne (0.5), nieistniejący slot (0).
 
 #### 2026-10-26 — wydanie 0.6.11

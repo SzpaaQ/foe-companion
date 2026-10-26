@@ -374,8 +374,6 @@ window.addEventListener('message', event => {
             </small>
           </h1>
 
-          <button id="quantum-history-open" title="Otwórz dziennik zbiorów bez wchodzenia do osady" aria-label="Historia zbiorów" style="padding:3px 6px;min-width:0">📜</button>
-
           <button
             id="close"
             aria-label="Zamknij"
@@ -1029,8 +1027,7 @@ Otwórz mapę Pól Chwały w grze.
     const applyQuantumSettings=()=>{
       $('quantum-history').hidden=!qGet('showHistory');
     };
-    FoeQuantumHistory.mount({root,button:$('quantum-history-open'),history:quantumHistory,getWidth:()=>$('quantum-summary').getBoundingClientRect().width,getSnapshot:()=>quantumTracker.map?{map:quantumTracker.map,summary:quantumTracker.summary()}:null,getSettings:()=>({showSnapshot:qGet('showSnapshot'),showActions:qGet('showActions')}),getPlayerId:()=>ownPlayerId});
-    $('quantum-history').onclick=()=>$('quantum-history-open').click();
+    FoeQuantumHistory.mount({root,button:$('quantum-history'),history:quantumHistory,getWidth:()=>$('quantum-summary').getBoundingClientRect().width,getSnapshot:()=>quantumTracker.map?{map:quantumTracker.map,summary:quantumTracker.summary()}:null,getSettings:()=>({showSnapshot:qGet('showSnapshot'),showActions:qGet('showActions')}),getPlayerId:()=>ownPlayerId});
     for(const [key,id] of [['showHistory','quantum-show-history'],['showSnapshot','quantum-show-snapshot'],['showActions','quantum-show-actions']]){
       const cb=$(id);if(!cb)continue;
       cb.checked=qGet(key);

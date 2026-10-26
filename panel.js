@@ -2295,7 +2295,9 @@ Otwórz mapę Pól Chwały w grze.
       const titleEl=document.createElement('strong');titleEl.textContent='Otwarte sektory — automatyzacja i pilnowanie';titleEl.style.cssText='font-size:13px;color:#f1d69a';
       const copyAll=document.createElement('button');copyAll.textContent='📋 Kopiuj wszystkie';copyAll.setAttribute('data-tooltip','Kopiuj otwarte i nadchodzące sektory z tabeli');copyAll.style.cssText='margin-left:auto;padding:3px 7px;font-size:11px;white-space:nowrap';
       let displayedRows=[];
-      copyAll.onclick=async()=>{const now=Date.now()/1000;const openingTime=until=>new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(until*1000));try{await navigator.clipboard.writeText(displayedRows.map(row=>{const time=row.until>now?openingTime(row.until):'Otwarte';const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';return time+' '+type+row.color+' '+row.sector+FoeModel.sectorMarker(row);}).join('\n'));}catch{setBattleFeedback('Nie udało się skopiować sektorów.');}};
+      const openingTime=until=>new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(until*1000));
+      const closedSectorCopyText=(row,now)=>{if(row.until<=now)return null;const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const marker=row.enemyProgress>0?' 🔥 👾'+row.enemyProgress:FoeModel.sectorMarker(row);return openingTime(row.until)+' '+type+row.color+' '+row.sector+marker;};
+      copyAll.onclick=async()=>{const now=Date.now()/1000;try{await navigator.clipboard.writeText(displayedRows.map(row=>closedSectorCopyText(row,now)||('Otwarte '+(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector+FoeModel.sectorMarker(row))).join('\n'));}catch{setBattleFeedback('Nie udało się skopiować sektorów.');}};
       const closeBtn=document.createElement('button');closeBtn.textContent='×';closeBtn.setAttribute('aria-label','Zamknij');
       closeBtn.style.cssText='background:transparent;border:0;color:#e7eeee;font-size:20px;line-height:1;cursor:pointer;padding:0 4px';
       closeBtn.onclick=()=>modal.remove();
@@ -2384,7 +2386,7 @@ Otwórz mapę Pól Chwały w grze.
         // Sektor
         const nameSpan=document.createElement('span');
         nameSpan.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector+FoeModel.sectorMarker(row);
-        const copy=document.createElement('button');copy.textContent='📋';copy.setAttribute('data-tooltip','Kopiuj sektor '+row.sector);copy.style.cssText=btnStyle;copy.onclick=async()=>{try{await navigator.clipboard.writeText(FoeModel.openSectorText(row));}catch{setBattleFeedback('Nie udało się skopiować sektora.');}};
+        const copy=document.createElement('button');copy.textContent='📋';copy.setAttribute('data-tooltip','Kopiuj sektor '+row.sector);copy.style.cssText=btnStyle;copy.onclick=async()=>{try{const closedText=closedSectorCopyText(row,Date.now()/1000);await navigator.clipboard.writeText(closedText||FoeModel.openSectorText(row));}catch{setBattleFeedback('Nie udało się skopiować sektora.');}};
         const tdN=document.createElement('td');tdN.style.cssText=tdBase+';text-align:left;white-space:nowrap';tdN.append(nameSpan,copy);tr.append(tdN);
         // Postep
         const tdP=document.createElement('td');tdP.textContent=FoeModel.progressText(row);tdP.style.cssText=tdBase+';text-align:center;color:#a5b8bc';tr.append(tdP);

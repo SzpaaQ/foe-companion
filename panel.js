@@ -455,7 +455,7 @@ window.addEventListener('message', event => {
         >
           <div id="gbg-title"><h2>Pola Chwały</h2></div>
 
-          <div id="open-sectors-heading" style="display:flex;align-items:center;gap:6px"><h3>Otwarte sektory</h3><button id="copy-open" title="Kopiuj otwarte sektory" aria-label="Kopiuj otwarte sektory" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0;min-width:0;line-height:1;cursor:pointer">📋</button><button id="sector-guard-open" title="Opcje pilnowania sektorów" aria-label="Opcje pilnowania sektorów" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0 2px;min-width:0;line-height:1;cursor:pointer;color:#8a9fa5;font-size:16px">⋮</button><button id="own-sectors-open" title="Nasze sektory" aria-label="Nasze sektory" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0 2px;min-width:0;line-height:1;cursor:pointer">🏰</button></div>
+          <div id="open-sectors-heading" style="display:flex;align-items:center;gap:6px"><h3 style="margin-right:auto">Otwarte sektory</h3><button id="copy-open" title="Kopiuj otwarte sektory" aria-label="Kopiuj otwarte sektory" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0;min-width:0;line-height:1;cursor:pointer">📋</button><button id="sector-guard-open" title="Opcje pilnowania sektorów" aria-label="Opcje pilnowania sektorów" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0 2px;min-width:0;line-height:1;cursor:pointer;color:#8a9fa5;font-size:16px">⋮</button><button id="own-sectors-open" title="Nasze sektory" aria-label="Nasze sektory" style="background:transparent;border:0;box-shadow:none;margin:0;padding:0 2px;min-width:0;line-height:1;cursor:pointer">🏠🏠</button></div>
           <div id="open-sectors"></div>
           <p id="battle-feedback" role="status"></p>
 
@@ -2208,7 +2208,7 @@ Otwórz mapę Pól Chwały w grze.
     const bulkKey='foe-companion.openSectorSettings.v1';
     let bulkSettings=FoeSectorAutomation.settings();
     try{bulkSettings=FoeSectorAutomation.settings(JSON.parse(localStorage.getItem(bulkKey)||'{}'));}catch{}
-    const automationInline=document.createElement('span');automationInline.id='automation-inline';automationInline.style.cssText='margin-left:auto;display:flex;gap:3px';$('open-sectors-heading').append(automationInline);
+    const automationInline=document.createElement('span');automationInline.id='automation-inline';automationInline.style.cssText='display:flex;gap:3px';$('open-sectors-heading').append(automationInline);
     const automationHandle=document.createElement('div');automationHandle.id='automation-handle';automationHandle.style.cssText='position:absolute;right:0;top:90%;transform:translateY(calc(-100% - 4px));display:flex;gap:3px;pointer-events:auto;z-index:3';root.append(automationHandle);
     for(const container of [automationInline,automationHandle])for(const [kind,emoji] of [['attack','⚔️'],['negotiation','🤝']]){
       const button=document.createElement('button');button.dataset.automationIndicator=kind;button.textContent=emoji;button.hidden=true;

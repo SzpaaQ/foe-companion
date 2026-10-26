@@ -1,3 +1,8 @@
+#### 2026-10-26 — wydanie 0.6.11
+- Dodano modal Nasze sektory z listą własnych pól, postępem wroga, liczbą zajętych slotów, oporem sąsiadów oraz oznaczeniami gildii.
+- Składnia JS sprawdzona; testów projektu nie uruchamiano. Wygląd i działanie wymagają potwierdzenia w grze.
+#### NASZE sektory — wdrożone w 0.6.11
+Modal 🏰 obok opcji pilnowania pokazuje sektory naszej gildii: postęp ataku przeciwnika, zajęte/łączne sloty budynków oraz sąsiednie sektory z szansą oporu. ✋ i 🎯 są wskaźnikami gildyjnych oznaczeń. Typy budynków nie są potrzebne.
 #### 2026-10-26 — pozostałe zadania Pól Chwały, wydanie 0.6.10
 
 Wdrożono i wydano:

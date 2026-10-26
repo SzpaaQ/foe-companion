@@ -1,6 +1,6 @@
-## Aktualny stan — 0.6.10, 2026-10-26
+## Aktualny stan — 0.6.11, 2026-10-26
 
-- Wydano poprzednie zmiany lokalne oraz lokalne Ignoruj i zamykanie negocjacjami. Starsze wpisy poniżej są historią.
+- Wydano modal Nasze sektory obok opcji pilnowania. Pokazuje własne sektory, atak przeciwnika i progres, zajęte/łączne sloty budynków, szansę oporu na sąsiadach oraz wskaźniki gildyjnego ignore/focus. Starsze wpisy poniżej są historią.
 - `panel.localIgnoreKey/localSectorIgnored/setLocalSectorIgnored`: localStorage `foe-companion.localSectorIgnore.v1:<host>:<endsAt>:<mapId>`, tablica ID. Modal ma ostatnią kolumnę Ignoruj. `tickBulk` dodaje `localIgnored` do wierszy i przekazuje klucz do polityki MAIN. Dotyczy obu globalnych automatów, nie ręcznych akcji ani osobnego pilnowania 🕐/⚡. Nie zmienia gildyjnych signals. Uszkodzony zapis blokuje kwalifikację.
 - `capture.checkLocalIgnore` sprawdza stan przed akcją oraz po ustawieniu armii; nie przerywa wysłanej akcji ani dalszych fal. Negocjacyjne pominięcie przed startem daje `sectorSkipped + notStarted`; kolejka zwalnia rezerwację bez naliczania wyniku.
 - `settings.closeWithNegotiations` (domyślnie false), `panel.startGuardClosing`, `guardNegClosing`: oba wyzwalacze pilnowania mogą uruchamiać serię negocjacji przez istniejący autoNegSector. Każda akcja kontroluje 20% szansy, opór gracza, gildyjne ignorowanie i rezerwę (również MAIN). Polityka progresu 100%, bez globalnego limitu sukcesów ani limitu porażek; zamykanie kończy się przy rezerwie/zamknięciu/błędzie/STOP. `stopAutoNeg` wstrzymuje pilnowanie przez `pauseGuards`, aby ⚡ nie uruchamiała go od razu ponownie. Ponowne zaznaczenie checkboxa uzbraja pilnowanie.
@@ -44,7 +44,7 @@ Pełny `GuildBattlegroundParticipant` bez pola `signals` oznacza pustą listę o
 - Powiadomienie pozostaje do 99% włącznie; przejęcie/zamknięcie usuwa je niezależnie od procentu. Kopiowanie pojedyncze i zbiorcze używa tekstu modelu, bez ikon przycisków.
 - 157 testów offline przechodzi. Wygląd w grze pozostaje do weryfikacji przez użytkownika; bez rzeczywistych walk/negocjacji w testach.
 
-Stan rozpoznany: 2026-10-26, manifest 0.6.10, etapy 1–4 wdrożone.
+Stan rozpoznany: 2026-10-26, manifest 0.6.11, etapy 1–4 wdrożone.
 To indeks do selektywnego czytania, nie zamiennik aktualnego kodu. Po zmianach
 architektury aktualizuj ten plik. Wyszukuj symbole, nie polegaj na numerach linii.
 
@@ -92,10 +92,10 @@ Zrzut / reload -> chrome.runtime.sendMessage
 
 | Obszar | Pliki i symbole startowe | Odpowiedzialność |
 |---|---|---|
-| UI / ustawienia | `panel.js`: `mount`, `paintOpenSectors`, `paintQuantum`, `openSectorGuardModal` | Zakładki, renderowanie, przyciski, stan automatów i ustawienia |
+| UI / ustawienia | `panel.js`: `mount`, `paintOpenSectors`, `paintQuantum`, `openSectorGuardModal`, `openOwnSectorsModal` | Zakładki, renderowanie, przyciski, stan automatów i ustawienia |
 | Ruch gry / akcje | `capture.js`: `emit`, `observeTransport`, `battleCall`, `prepareGameRequest`, `restoreGameResponse` | Przechwytywanie, podpisy, requestId, wykonanie akcji |
 | Podpis żądania | `request-signature.js`; `analyze-signatures.cjs` | Podpisywanie i pomocnicza weryfikacja offline; nie wypisuj danych sesji |
-| Model Pól Chwały | `model.js`: `rows`, topologie | Nazwy, sąsiedztwo, własna gildia, progres, blokada, ignorowanie |
+| Model Pól Chwały | `model.js`: `rows`, `neighbors`, topologie | Nazwy, sąsiedztwo, własna gildia, progres, blokada, sygnały i sloty budynków |
 | Stan socketu | `battleground-live.js`: `createTracker`, `check`, `waitForProgress`, `observeSockets` | Aktualność prowincji, epoch po reconnect, potwierdzanie progresu |
 | Kolejka otwartych sektorów | `sector-automation.js`: `create`, `eligible`, `tick`, `result`; panel: `tickBulk`, `paintBulkControls` | Limity, trwałe sukcesy na otwarcie, seria porażek |
 | Dobór armii do walki | `battle-army.js`: `plan`, `confirmed` | Wybór jednostek i weryfikacja ustawionego składu |

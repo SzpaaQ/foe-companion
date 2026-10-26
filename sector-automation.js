@@ -63,7 +63,7 @@
     const identity=opening(row.id);if(!identity)continue;
     active={kind,id:row.id,scope,identity,delay,policy:{localIgnoreKey,mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,reserve}};
     if(kind==='negotiation'){const count=ledger[scope].counts[identity]||={wins:0};count.pending=true;if(!save()){active=null;changed();return;}}
-    status=(kind==='attack'?'⚔️ ':'🤝 ')+row.sector+' · '+(kind==='attack'?'porażki z rzędu: '+losses+'/3':'sukcesy: '+(ledger[scope].counts[identity]?.wins||0)+'/'+config.negWins);
+    status=(kind==='attack'?'⚔️ ':'🤝 ')+row.sector+(kind==='negotiation'?' · sukcesy: '+(ledger[scope].counts[identity]?.wins||0)+'/'+config.negWins:'');
     changed();if(send(kind,row.id,active.policy)===false)result({ok:false,notStarted:true,message:'Nie udało się rozpocząć akcji.'});return;
    }
    if(negotiation&&!attack&&!Number.isSafeInteger(attrition)){status='Oczekiwanie na odczyt oporu z mapy.';changed();return;}

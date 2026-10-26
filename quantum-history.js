@@ -27,12 +27,17 @@
    const request=write?store.put(value,key):store.get(key);
    tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Przerwany zapis'));
   });}
-  return {load:key=>transact(key),save:(key,value)=>transact(key,value,true)};
+  async function latest(world){const db=await open();return new Promise((resolve,reject)=>{
+   const tx=db.transaction('profiles','readonly'),request=tx.objectStore('profiles').openCursor();let selected=null,selectedAt=-1;
+   request.onsuccess=()=>{const cursor=request.result;if(!cursor)return;if(String(cursor.key).startsWith(world+':')){const value=cursor.value,at=Number(value?.updatedAt)||value?.events?.reduce((max,event)=>Math.max(max,Number(event.at)||0),0)||0;if(value?.world===world&&at>selectedAt){selected=value;selectedAt=at;}}cursor.continue();};
+   tx.oncomplete=()=>resolve(selected);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Przerwany odczyt'));
+  });}
+  return {load:key=>transact(key),save:(key,value)=>transact(key,value,true),latest};
  }
  function create({storage=database(),world=location.host,now=()=>Date.now()}={}){
   let queue=Promise.resolve(),profile=null,doc=null,error='',onchange=()=>{};
   const enqueue=fn=>{queue=queue.then(fn).catch(e=>{error='Nie udało się zapisać lub odczytać historii: '+e.message;onchange();});return queue;};
-  async function save(){await storage.save(profile,copy(doc));error='';onchange();}
+  async function save(){doc.updatedAt=now();await storage.save(profile,copy(doc));error='';onchange();}
   function rememberEdit(before,label){
    const old=new Map(before.map(e=>[e.id,e])),current=new Map(doc.events.map(e=>[e.id,e])),patch=[];
    for(const [id,event] of old){
@@ -53,7 +58,7 @@
     const player=a.map.entities.find(e=>e.player_id!=null)?.player_id;
     if(player==null)return;
     const key=world+':'+player;
-    if(profile!==key){const loaded=await storage.load(key);doc=loaded||{schemaVersion:1,world,playerId:player,events:[]};profile=key;}
+    if(profile!==key){const loaded=await storage.load(key);doc=loaded||{schemaVersion:1,world,playerId:player,events:[]};profile=key;try{root.localStorage?.setItem('foe-companion.quantum-history-profile:'+world,key);}catch{}}
     const run=String(a.summary?.raid?.endsAt||a.map.entities.find(e=>e.type==='main_building')?.id||'unknown');
     const diff=b?.map?changes(b,a).filter(c=>c.kind!=='completed'):[];
     const pickup=responses.filter(r=>r?.requestClass==='CityProductionService'&&['pickupProduction','pickupAll'].includes(r.requestMethod)&&r.responseData&&!r.responseData.error);
@@ -79,7 +84,19 @@
     await save();
    });
   }
-  return {observe,ready:()=>queue,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
+  function loadLatest(playerId){return enqueue(async()=>{
+   let key=Number.isSafeInteger(playerId)?world+':'+playerId:null,loaded=null;
+   if(key)loaded=await storage.load(key);
+   if(!key){try{key=root.localStorage?.getItem('foe-companion.quantum-history-profile:'+world)||null;}catch{}}
+   if(!loaded&&key?.startsWith(world+':'))loaded=await storage.load(key);
+   if(!loaded&&!Number.isSafeInteger(playerId)&&typeof storage.latest==='function'){
+    loaded=await storage.latest(world);if(loaded)key=world+':'+loaded.playerId;
+   }
+   if(loaded){doc=loaded;profile=key;try{root.localStorage?.setItem('foe-companion.quantum-history-profile:'+world,key);}catch{}}
+   else{doc={schemaVersion:1,world,...(Number.isSafeInteger(playerId)?{playerId}:{}),events:[]};profile=key;}
+   error='';onchange();
+  });}
+  return {observe,ready:()=>queue,loadLatest,get error(){return error;},get document(){return copy(doc);},set onChange(fn){onchange=fn;},
    export(){return JSON.stringify({exportedAt:new Date(now()).toISOString(),...copy(doc)},null,2);},
    get lastCycle(){return doc?.events.reduce((max,e)=>e.kind==='collection'&&e.cycle>max?e.cycle:max,0)||null;},
    get lastGroup(){const evs=doc?.events;if(!evs?.length)return null;const groups=groupEvents(evs).filter(g=>actionRows(g.actions).length);return groups.at(-1)||null;},
@@ -214,7 +231,7 @@
   }
   return runs.map(run=>({...run,note:run.notes.join(' · ')}));
  }
- function mount({root:host,button,history,getWidth=()=>350,getSnapshot=()=>null,getSettings=()=>({})}){
+ function mount({root:host,button,history,getWidth=()=>350,getSnapshot=()=>null,getSettings=()=>({}),getPlayerId=()=>null}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');dialog.className='qh-window';
   dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483646;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:0;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:hidden;pointer-events:auto;font:11px/1.35 system-ui';
@@ -498,7 +515,7 @@
    views=[];const doc=history.document;list.replaceChildren();
    status.textContent=history.error;status.hidden=!history.error;
    download.disabled=!doc?.events.length;
-   if(!doc?.events.length){el('p',list,'Brak historii. Otwórz osadę kwantową w grze.');return;}
+   if(!doc?.events.length){el('p',list,'Brak zapisanej historii zbiorów dla tego świata.');return;}
    const grouped=groupEvents(doc.events).filter(e=>actionRows(e.actions).length);
    // Kumulatywne walki per event (od początku runu do tego eventu włącznie)
    const cumFights=new Map(); // eventId → walki
@@ -652,7 +669,7 @@
    if(grouped.length>limit){const more=el('button',list,'Pokaż starsze');more.onclick=()=>{limit+=30;paint();};}
    content.scrollTop=scrollTop;
   }
-  button.onclick=async()=>{if(!position)dialog.style.width='min('+Math.max(900,2*(getWidth()||350)+120)+'px,96vw)';if(!dialog.open)dialog.show();const rect=dialog.getBoundingClientRect();place(position?.x??(root.innerWidth-rect.width)/2,position?.y??Math.max(12,root.innerHeight*0.06));status.textContent='Wczytywanie historii…';await history.ready();paint();};
+  button.onclick=async()=>{if(!position)dialog.style.width='min('+Math.max(900,2*(getWidth()||350)+120)+'px,96vw)';if(!dialog.open)dialog.show();const rect=dialog.getBoundingClientRect();place(position?.x??(root.innerWidth-rect.width)/2,position?.y??Math.max(12,root.innerHeight*0.06));status.textContent='Wczytywanie historii…';await history.loadLatest?.(getPlayerId());await history.ready();paint();};
   dialog.addEventListener('close',()=>button.focus());history.onChange=paint;
   download.onclick=async()=>{await history.ready();const blob=new Blob([history.export()],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a',dialog);link.href=url;link.download='najazdy-kwantowe-historia-'+new Date().toISOString().slice(0,10)+'.json';link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  }

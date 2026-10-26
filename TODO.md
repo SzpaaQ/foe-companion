@@ -1,3 +1,7 @@
+#### Lokalna zmiana po 0.6.11 — dostęp do dziennika bez osady
+- 📜 w nagłówku panelu otwiera historię zbiorów niezależnie od aktywnej zakładki i otwartej osady. Historia wczytuje profil gracza z IndexedDB; bez bieżącego `player_id` wybiera ostatnio aktualizowany profil danego świata.
+- Zmiana kolumn budynków na kwadraty pozostaje odłożona.
+
 #### 2026-10-26 — wydanie 0.6.11
 - Dodano modal Nasze sektory z listą własnych pól, postępem wroga, liczbą zajętych slotów, oporem sąsiadów oraz oznaczeniami gildii.
 - Składnia JS sprawdzona; testów projektu nie uruchamiano. Wygląd i działanie wymagają potwierdzenia w grze.

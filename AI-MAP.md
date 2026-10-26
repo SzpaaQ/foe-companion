@@ -1,6 +1,7 @@
 ## Aktualny stan — 0.6.11, 2026-10-26
 
 - Wydano modal Nasze sektory obok opcji pilnowania. Pokazuje własne sektory, atak przeciwnika i progres, zajęte/łączne sloty budynków, szansę oporu na sąsiadach oraz wskaźniki gildyjnego ignore/focus. Starsze wpisy poniżej są historią.
+- Lokalnie po 0.6.11: 📜 w nagłówku otwiera historię zbiorów bez osady kwantowej. `quantum-history.create().loadLatest(playerId)` ładuje zapisany profil z IndexedDB; fallback wybiera ostatnio aktualizowany profil bieżącego świata.
 - `panel.localIgnoreKey/localSectorIgnored/setLocalSectorIgnored`: localStorage `foe-companion.localSectorIgnore.v1:<host>:<endsAt>:<mapId>`, tablica ID. Modal ma ostatnią kolumnę Ignoruj. `tickBulk` dodaje `localIgnored` do wierszy i przekazuje klucz do polityki MAIN. Dotyczy obu globalnych automatów, nie ręcznych akcji ani osobnego pilnowania 🕐/⚡. Nie zmienia gildyjnych signals. Uszkodzony zapis blokuje kwalifikację.
 - `capture.checkLocalIgnore` sprawdza stan przed akcją oraz po ustawieniu armii; nie przerywa wysłanej akcji ani dalszych fal. Negocjacyjne pominięcie przed startem daje `sectorSkipped + notStarted`; kolejka zwalnia rezerwację bez naliczania wyniku.
 - `settings.closeWithNegotiations` (domyślnie false), `panel.startGuardClosing`, `guardNegClosing`: oba wyzwalacze pilnowania mogą uruchamiać serię negocjacji przez istniejący autoNegSector. Każda akcja kontroluje 20% szansy, opór gracza, gildyjne ignorowanie i rezerwę (również MAIN). Polityka progresu 100%, bez globalnego limitu sukcesów ani limitu porażek; zamykanie kończy się przy rezerwie/zamknięciu/błędzie/STOP. `stopAutoNeg` wstrzymuje pilnowanie przez `pauseGuards`, aby ⚡ nie uruchamiała go od razu ponownie. Ponowne zaznaczenie checkboxa uzbraja pilnowanie.
@@ -101,7 +102,7 @@ Zrzut / reload -> chrome.runtime.sendMessage
 | Dobór armii do walki | `battle-army.js`: `plan`, `confirmed` | Wybór jednostek i weryfikacja ustawionego składu |
 | Negocjacje | `capture.js`: `negBestGuess`, `negFilter`, `ensureFreeNegotiationTurn`; `panel.js`: `startNeg`, `stopAutoNeg` | Solver, darmowe tury, przebieg i pętla per sektor |
 | Osada kwantowa | `quantum.js`: `createTracker`, `consume`, `summary`, `summarizeArmy` | Mapa osady, zasoby, budowy, prognoza produkcji, wojsko |
-| Historia osady | `quantum-history.js`: `create`, `observe`, `groupEvents`, `actionRows`, `actionRuns`, `mount` | Trwałe zdarzenia, grupowanie, notatki, undo/split i UI historii |
+| Historia osady | `quantum-history.js`: `create`, `observe`, `loadLatest`, `groupEvents`, `actionRows`, `actionRuns`, `mount` | Trwałe zdarzenia, odczyt profilu IndexedDB bez mapy, grupowanie, notatki, undo/split i UI historii |
 | Zrzuty osady | `quantum-history.js`: `captureScreenshot`, `startFraming`; `background.js`: `captureTab` | Kadrowanie, zapis zdjęcia, miniatura, powiększenie i eksport |
 | Perły | `pearls.js`, `pearls-main.js`: `createTracker`, `lockStages`, `liveLocks`, `arcProfit` | Obliczenia i śledzenie; sprawdź oba konteksty przy zmianie |
 | Zbiory miasta | `model.js`: `parseCity`, `updateCity`, `cityRows`; `panel.js`: `startCollection`; `capture.js`: `foe-collect` | Klasyfikacja budynków, gotowość produkcji, potwierdzenie zbioru |

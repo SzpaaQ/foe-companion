@@ -2232,7 +2232,7 @@ Otwórz mapę Pól Chwały w grze.
         try{localStorage.setItem(bulkKey,JSON.stringify(bulkSettings));}catch{setBattleFeedback('Nie udało się zapisać ustawień.');}
       };line.append(input);bulkConfig.append(line);
     }
-    const bulkHint=document.createElement('small');bulkHint.textContent='Negocjacje: szansa oporu 20%, bez limitu porażek. Autoatak: ustawiany limit szansy wzrostu oporu (domyślnie 20%), STOP po 3 porażkach z rzędu. Oba tryby respektują rezerwę walk i pomijają ignorowane sektory. Zamykanie z pilnowania jest wstrzymane; po STOP włącz ponownie jego checkbox, aby je wznowić.';bulkConfig.append(bulkHint);$('gbg-automation-settings').append(bulkConfig);
+    const bulkHint=document.createElement('small');bulkHint.textContent='Negocjacje: szansa oporu 20%, bez limitu porażek. Autoatak: ustawiany limit szansy wzrostu oporu (domyślnie 20%), STOP po 3 porażkach z rzędu. Oba tryby respektują rezerwę walk i lokalne Ignoruj. Autoatak domyślnie respektuje też łapkę gildii; powyższe ustawienie pozwala ją pominąć. Zamykanie z pilnowania jest wstrzymane; po STOP włącz ponownie jego checkbox, aby je wznowić.';bulkConfig.append(bulkHint);$('gbg-automation-settings').append(bulkConfig);
     function paintAutomationIndicators(){
       if(!bulkAutomation)return;const state=bulkAutomation.state;
       for(const button of root.querySelectorAll('[data-automation-indicator]')){
@@ -2312,6 +2312,11 @@ Otwórz mapę Pól Chwały w grze.
       for(const kind of ['negotiation','attack']){const button=document.createElement('button');button.dataset.bulkMode=kind;
         button.onclick=()=>{const enabled=bulkAutomation.state[kind];if(enabled)bulkAutomation.stop(kind);else if(actionVisible(kind)&&battleReady)bulkAutomation.enable(kind,true);paintBulkControls();};bulkBar.append(button);}
       const stopAll=document.createElement('button');stopAll.textContent='⏹ STOP';stopAll.dataset.bulkStop='1';stopAll.onclick=()=>{bulkAutomation.stop();if(autoSector!==null)requestStopAuto();if(autoNegSector!==null)stopAutoNeg('Auto-negocjacje zatrzymane.');paintBulkControls();};bulkBar.append(stopAll);
+      const ignoreGuildLabel=document.createElement('label');ignoreGuildLabel.style.cssText='display:flex;align-items:center;gap:4px;margin:0 0 0 4px;white-space:nowrap;color:#dce8ec';
+      const ignoreGuildToggle=document.createElement('input');ignoreGuildToggle.type='checkbox';ignoreGuildToggle.checked=bulkSettings.attackIgnoreGuildSignal===true;ignoreGuildToggle.setAttribute('aria-label','Autoatak ignoruje łapkę gildii');
+      const ignoreGuildText=document.createElement('span');ignoreGuildText.textContent='Ignoruj łapkę';ignoreGuildText.title='Pozwala globalnemu autoatakowi atakować sektory oznaczone przez gildię jako ignorowane. Lokalne Ignoruj nadal blokuje sektor.';
+      ignoreGuildToggle.onchange=()=>{const previous=bulkSettings,next={...bulkSettings,attackIgnoreGuildSignal:ignoreGuildToggle.checked};try{localStorage.setItem(bulkKey,JSON.stringify(next));bulkSettings=next;bulkAutomation.stop(null,'Ustawienia zmienione — uruchom ponownie.');}catch{bulkSettings=previous;ignoreGuildToggle.checked=previous.attackIgnoreGuildSignal===true;setBattleFeedback('Nie udało się zapisać ustawień.');}paintBulkControls();};
+      ignoreGuildLabel.append(ignoreGuildToggle,ignoreGuildText);bulkBar.append(ignoreGuildLabel);
       const bulkStatus=document.createElement('div');bulkStatus.dataset.bulkStatus='1';bulkStatus.style.cssText='font-size:11px;margin-top:8px;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';const negReason=document.createElement('div');negReason.dataset.bulkNegReason='1';negReason.style.cssText='font-size:11px;margin-bottom:8px';box.append(bulkBar,negReason);
       // Tabelka
       const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;font-size:11px';

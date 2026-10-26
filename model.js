@@ -93,6 +93,7 @@
     while(queue.length && visited++<10000){
       const value=queue.shift();
       if(!value || typeof value!=='object')continue;
+      if(value.requestClass==='GuildBattlegroundService'&&value.requestMethod==='getPlayerParticipant'&&Number.isSafeInteger(value.responseData?.participantId))participants.push({...value.responseData,signals:value.responseData.signals??[]});
       if(value.__class__==='GuildBattlegroundProvince') patches.push(value);
       else if(Number.isSafeInteger(value.participantId)&&(Array.isArray(value.signals)||(value.__class__==='GuildBattlegroundParticipant'&&!Object.hasOwn(value,'signals'))))participants.push({...value,signals:value.signals??[]});
       else if(Array.isArray(value))queue.push(...value.slice(0,1000));

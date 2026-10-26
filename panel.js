@@ -2429,7 +2429,7 @@ Otwórz mapę Pól Chwały w grze.
           cb.onchange=()=>{applyGuard(item,key,cb.checked);paintGuardColumns();paintOpenSectors();checkSectorAlerts();};
           td(cb);
         }
-        const ignore=document.createElement('input');ignore.type='checkbox';ignore.checked=localSectorIgnored(row.id);ignore.disabled=locked;ignore.setAttribute('aria-label','Ignoruj lokalnie sektor '+row.sector);ignore.onchange=()=>setLocalSectorIgnored(row.id,ignore.checked);td(ignore);
+        const ignore=document.createElement('input');ignore.type='checkbox';ignore.checked=localSectorIgnored(row.id);ignore.setAttribute('aria-label','Ignoruj lokalnie sektor '+row.sector);ignore.onchange=()=>setLocalSectorIgnored(row.id,ignore.checked);td(ignore);
         if(locked)for(const button of [actBtn,autoBtn,negBtnM,autoNegBtnM]){button.disabled=true;button.style.cursor='default';}
         Array.from(tr.children).forEach((cell,i)=>{cell.hidden=hideColumn(i);});
         tbody.append(tr);

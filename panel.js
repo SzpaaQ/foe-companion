@@ -195,6 +195,7 @@ window.addEventListener('message', event => {
     .catch(() => {});
 
   function mount() {
+    const advancedSettings=globalThis.FoeMode?.advanced===true;
     const host = document.createElement('div');
 
     host.style.cssText =
@@ -207,7 +208,7 @@ window.addEventListener('message', event => {
     });
 
     // The MAIN-world keyboard guard sees this flag even with our closed shadow root.
-    root.addEventListener('focusin',event=>{host.dataset.foeEditing=event.composedPath()[0]?.matches('input[data-history-note],textarea#notes-text')?'1':'0';});
+    root.addEventListener('focusin',event=>{host.dataset.foeEditing=event.composedPath()[0]?.matches('input[data-history-note],textarea#notes-text,#list')?'1':'0';});
     root.addEventListener('focusout',()=>{delete host.dataset.foeEditing;});
     root.innerHTML = `
       <style>
@@ -445,7 +446,7 @@ window.addEventListener('message', event => {
           </small>
 
           <p id="pearl-feedback" style="font-size:11px"></p>
-          <p style="font-size:10px;color:#7a9099;margin-top:6px">Po wpłacie z panelu stan PR na perle w grze może nie być widoczny do czasu kolejnej akcji. Aby odświeżyć: wpłać dodatkowe 1 PR, poczekaj na wpłatę innej osoby lub odśwież stronę.</p>
+          <p id="pearl-refresh-note" hidden style="font-size:10px;color:#7a9099;margin-top:6px">Po wpłacie z panelu stan PR na perle w grze może nie być widoczny do czasu kolejnej akcji. Aby odświeżyć: wpłać dodatkowe 1 PR, poczekaj na wpłatę innej osoby lub odśwież stronę.</p>
         </section>
 
         <section
@@ -493,8 +494,7 @@ Otwórz mapę Pól Chwały w grze.
           role="tabpanel"
           hidden
         >
-          <details id="settings-general" open><summary>Ustawienia</summary>
-          <details id="settings-pearls" open><summary>Perły</summary>
+          <details id="settings-pearls"><summary>Perły architektury</summary>
 
           <label>
             Przelicznik
@@ -510,15 +510,15 @@ Otwórz mapę Pól Chwały w grze.
 
           <label>Bonus Arki (%) <input id="arc-bonus" type="text" inputmode="decimal" value="92.7" style="width:75px;padding:6px;margin-left:8px" aria-label="Bonus nagrody Arki w procentach"></label>
           <label><input id="auto-copy" type="checkbox" checked> Kopiuj kwotę (klawisze 1–5)</label>
-          </details><details id="settings-open" open><summary>Wysuwaj panel</summary>
+          </details><details id="settings-open"><summary>Wysuwaj panel</summary>
           <div class="settings-open">
             <label><input id="auto-open" type="checkbox" checked> Otwarcie perły</label>
             <label><input id="auto-open-gbg" type="checkbox" checked> Pola Chwały</label>
             <label><input id="auto-open-quantum" type="checkbox" checked> Osada kwantowa</label>
-            <label><input id="auto-open-nego" type="checkbox" checked> Negocjacje</label>
+            <label hidden><input id="auto-open-nego" type="checkbox" checked> Negocjacje</label>
           </div>
-          </details></details>
-          <details id="settings-gbg" open><summary>Pola chwały</summary>
+          </details>
+          <details id="settings-gbg"><summary>Pola chwały</summary>
           <label><input id="show-attack-buttons" type="checkbox"> Wyświetlaj przyciski ataku</label>
           <label><input id="show-negotiation-buttons" type="checkbox"> Wyświetlaj przyciski negocjacji</label>
           <div class="settings-alert">
@@ -529,18 +529,18 @@ Otwórz mapę Pól Chwały w grze.
           </div>
           <div id="gbg-automation-settings"></div>
           </details>
-          <details id="settings-buildings" open><summary>Budynki</summary><label><input id="show-collection-buttons" type="checkbox"> Wyświetlaj przyciski zbiorów</label></details>
+          <details id="settings-buildings"><summary>Budynki</summary><label><input id="show-collection-buttons" type="checkbox"> Wyświetlaj przyciski zbiorów</label></details>
 
-          <details id="settings-quantum" open><summary>Najazdy kwantowe</summary>
+          <details id="settings-quantum"><summary>Najazdy kwantowe</summary>
           <label><input id="quantum-show-history" type="checkbox"> Dziennik zbiorów</label>
           <label><input id="quantum-show-snapshot" type="checkbox"> Panel na zrzucie</label>
           <label><input id="quantum-show-actions" type="checkbox"> Działania na zrzucie</label>
           <button id="quantum-clear-history" type="button">Wyczyść dziennik zbiorów</button><small id="quantum-clear-history-status" role="status" style="display:block;margin:4px 0"></small>
           </details>
 
-          <small style="display:block;margin:8px 0;color:#c5ab87">Korzystanie z przycisków ataku, negocjacji i zbiorów może wiązać się z ryzykiem bana konta w grze.</small>
 
-          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.6.14</strong></p><ul><li>Pełna instrukcja użytkownika: osobny opis każdej zakładki, przycisków, emoji, pól i komunikatów.</li><li>Globalny autoatak może pominąć gildyjne oznaczenie ignorowania; lokalne „Ignoruj” nadal blokuje automat.</li><li>Poprawione kopiowanie rozpiski Discorda i nieaktywne kontrolki nadchodzących sektorów.</li></ul><p><strong>0.6.13</strong></p><ul><li>Rozpiska Discorda: kompaktowy blok tekstu z wyrównanymi godzinami i sektorami.</li><li>Poprawiona autoryzacja żądań Discord API; sprawdzanie kanału i aktualizacja rozpiski nie wymagają odczytu historii wiadomości.</li></ul><p><strong>0.6.12</strong></p><ul><li>Nasze sektory: własne pola, ataki przeciwnika, sloty budynków, opór sąsiadów i oznaczenia gildii; emoji nagłówków z tooltipami, trzy równe kwadraty slotów.</li><li>Dziennik zbiorów dostępny z zakładki Najazdy kwantowe bez otwierania osady.</li><li>Kopiowanie wszystkich sektorów podaje godzinę otwarcia HH:mm zamiast odliczania.</li></ul><p><strong>0.6.11</strong></p><ul><li>Modal Nasze sektory: własne sektory, postęp ataku przeciwnika, zajęte sloty budynków, opór sąsiadów oraz gildyjne oznaczenia ✋ i 🎯.</li></ul><p><strong>0.6.10</strong></p><ul><li>Lokalne Ignoruj wyklucza sektor z obu automatów otwartych sektorów, niezależnie od gildyjnego oznaczenia.</li><li>Opcja zamykania negocjacjami dla 🕐 i ⚡, z rezerwą, limitem oporu i STOP; bez limitu porażek.</li><li>Ustawiany próg autozamykania ⚡, domyślnie 50% postępu wroga.</li><li>Ukrywanie całych kolumn akcji; przy obu opcjach wyłączonych także checkboxów. Puste nagłówki kolumn automatów.</li><li>Autoatak pomija niekwalifikujący się sektor przed wysłaniem walki i kontynuuje kolejkę bez naliczania porażki.</li></ul><p><strong>0.6.09</strong></p><ul><li>Modal: do 5 nadchodzących sektorów pod otwartymi, posortowanych według czasu otwarcia. Przygaszone wiersze mają wyłączone przyciski i checkboxy.</li><li>Kolumna Otwarcie: odliczanie HH:MM:SS lub Otwarte. Przejście do otwartych i uzupełnianie listy bez ponownego otwierania okna.</li></ul><p><strong>0.6.08</strong></p><ul><li>Usunięcie ostatniej gildyjnej łapki ✋ aktualizuje panel i oba automaty, także gdy gra pomija puste pole signals. Po zdjęciu oznaczenia sektor jest ponownie kwalifikowany bez przełączania automatu.</li></ul><p><strong>0.6.07</strong></p><ul><li>Własne sektory ⚪ wykluczone z list i alarmów otwartych sektorów.</li><li>Tabela otwartego modala odświeża progres, dostępność i stan akcji bez zmiany położenia okna.</li><li>Aktualizacje sektorów wszystkich gildii zerują nieaktualne blokady i progres, umożliwiając ponowną kwalifikację do automatyzacji.</li></ul><p><strong>0.6.06</strong></p><ul><li>Autoatak otwartych sektorów: ustawiany limit szansy wzrostu oporu, domyślnie 20%, sprawdzany ponownie przed walką.</li><li>Kontynuacja autonegocjacji po potwierdzonym przejęciu sektora i zakończeniu negocjacji.</li><li>Pływające okno, przeciąganie za nagłówek; status na dole bez tooltipa.</li><li>Powiadomienia do 99%, krótszy progres, wyścig 🔥, wróg 👾 i opór 🔻.</li><li>Kopiowanie pojedynczego sektora, przyciski automatów jako emoji i opisy kolumn pilnowania.</li></ul><p><strong>0.6.05</strong></p><ul><li>Powiadomienia sektorów: nasz postęp i postęp wroga 👾, alarm 🔔 we wspólnej liście, usuwanie zamkniętych sektorów.</li><li>Nagłówki 🔔, 🕐 i ⚡ przełączają całą widoczną kolumnę pilnowania.</li><li>Wskaźniki ⚔️ i 🤝 przy tytule otwartych sektorów oraz nad uchwytem panelu; kliknięcie zatrzymuje wybrany automat.</li><li>Modal pokazuje wspólne liczniki walk, negocjacji i oporu.</li></ul><p><strong>0.6.04</strong></p><ul><li>Otwarte sektory: widoczny przycisk autonegocjacji z powodem blokady, STOP tylko podczas automatyzacji. Limit sektora także z postępu innych gildii; pierwszy autoatak przy nieznanym limicie i zerowym postępie.</li><li>Otwarte sektory: wspólna kolejka autoataku i autonegocjacji, STOP, limity progresu i wybór typu sektora.</li><li>Negocjacje: limit oporu i trwały limit sukcesów na otwarcie, bez limitu porażek. Autoatak zatrzymuje się po 3 porażkach z rzędu.</li></ul><p><strong>0.6.03</strong></p><ul><li>Historia: licznik walk przy każdym zbiorze — skumulowane walki od początku najazdu do danego zbioru (⚔️ N).</li><li>Walki liczone jako suma interwałów między zbiorami × actionsPerHour z danego okresu.</li></ul><p><strong>0.6.02</strong></p><ul><li>Najazdy: ustawienia w panelu — dziennik zbiorów, panel na zrzucie, działania na zrzucie.</li><li>Zrzut: tytuł z nazwą i datą zbioru widoczny na zrzucie; przyciski przeniesione na dół panelu.</li><li>Historia: porównanie Przed/Po wycentrowane z 15 px odstępem pod zrzutem; zawartość wyrównana do lewej.</li><li>Sekcja działań na zrzucie: skondensowana lista z godziną, etykietą, budynkami i notatką.</li><li>Etykiety zbiorów bez sekund; „Zestawienie" i „Pozostałe budynki" wyrównane do lewej.</li></ul><p><strong>0.6.01</strong></p><ul><li>Historia zbiorów: pływające okno bez blokowania strony, przeciągane za pasek tytułu; do 80% szerokości poza prawą krawędzią. Zmiana szerokości za prawy dolny róg.</li><li>Najazdy: sekcja Wojsko ze stanem jednostek, zdrowiem, składem atakującym i czasem ostatniego odczytu.</li></ul><p><strong>0.6.00</strong></p><ul><li>Najazdy: uporządkowana historia bez technicznych duplikatów, nazwy zbieranych budynków i najnowsze działania na górze.</li><li>Kolejne zbiory, sprzedaże i budowy w tekstowych grupach z licznikami; trwałe uwagi wyrównane do prawej.</li><li>Wycentrowane porównanie Przed/Po, eksport po prawej, zamknięcie × i poprawione odstępy od suwaków.</li><li>Osobne, domyślnie wyłączone ustawienia przycisków ataku, negocjacji i zbiorów oraz informacja o ryzyku bana.</li><li>Pola Chwały: nowa ikona wyścigu, uproszczone zaznaczenie sektora i tytuł powiadomień.</li><li>Wydanie porządkuje funkcje panelu z linii 0.5: zbiory, najazdy i rozpiski Pól Chwały.</li></ul><p><strong>0.5.02</strong></p><ul><li>🏁 Wyścig: sąsiedztwo konkurencyjnej gildii w powiadomieniu i rozpisce do 30 minut przed otwarciem.</li><li>Wyłączone wpłaty PR z panelu oraz negocjacje poza Polami Chwały.</li><li>Kategoria PR korzysta także z definicji produkcji: widoczne niezmotywowane Emporium Solary i oba egzemplarze Elizejskiego Młyna; obsługa losowej produkcji PR.</li><li>Pełniejsza lista budynków: widoczne nieaktywne produkcje, nowe budynki i osobne egzemplarze; kategorie PR i wojska niezależne od motywacji.</li><li>Zbiory: domyślna karta Ulubione, zapis wybranych budynków i przyciski dodawania/usuwania.</li><li>Zbierz wszystkie w każdej podzakładce: jedno zbiorcze żądanie dla gotowych budynków wybranej kategorii i osobna kontrola wyniku każdego zbioru.</li><li>Potwierdzenie zbioru wymaga zmiany stanu budynku; brak fałszywego sukcesu przy odrzuconym zbiorze.</li></ul><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
+
+          <details id="changelog"><summary>Changelog · ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)}</summary><div style="max-height:240px;overflow-y:auto;font-size:11px;line-height:1.45"><p><strong>0.7.0</strong></p><ul><li>Podsumowanie linii 0.6: automatyzacja Pól Chwały, historia najazdów, rozpiska Discord i porządkowanie ustawień.</li><li>Tryb podstawowy ukrywa zaawansowane ustawienia; lokalny plik bot je pokazuje. Wspólny styl checkboxów, zwijane sekcje i konfigurowalna rozpiska.</li><li>Modal sektorów: zmiana szerokości, kopiowanie zamkniętych sektorów, zaznaczanie tekstu i wyróżnianie wykonywanej akcji.</li><li>Edytowalne checkboxy zamkniętych sektorów i reset wyborów po przejęciu. Opcjonalny opór zamkniętych sektorów w rozpisce i kopii.</li><li>Potwierdzone odrzucenie walki przez serwer pozwala ponowić próbę bez odświeżania strony.</li></ul><p><strong>0.6.14</strong></p><ul><li>Pełna instrukcja użytkownika: osobny opis każdej zakładki, przycisków, emoji, pól i komunikatów.</li><li>Globalny autoatak może pominąć gildyjne oznaczenie ignorowania; lokalne „Ignoruj” nadal blokuje automat.</li><li>Poprawione kopiowanie rozpiski Discorda i nieaktywne kontrolki nadchodzących sektorów.</li></ul><p><strong>0.6.13</strong></p><ul><li>Rozpiska Discorda: kompaktowy blok tekstu z wyrównanymi godzinami i sektorami.</li><li>Poprawiona autoryzacja żądań Discord API; sprawdzanie kanału i aktualizacja rozpiski nie wymagają odczytu historii wiadomości.</li></ul><p><strong>0.6.12</strong></p><ul><li>Nasze sektory: własne pola, ataki przeciwnika, sloty budynków, opór sąsiadów i oznaczenia gildii; emoji nagłówków z tooltipami, trzy równe kwadraty slotów.</li><li>Dziennik zbiorów dostępny z zakładki Najazdy kwantowe bez otwierania osady.</li><li>Kopiowanie wszystkich sektorów podaje godzinę otwarcia HH:mm zamiast odliczania.</li></ul><p><strong>0.6.11</strong></p><ul><li>Modal Nasze sektory: własne sektory, postęp ataku przeciwnika, zajęte sloty budynków, opór sąsiadów oraz gildyjne oznaczenia ✋ i 🎯.</li></ul><p><strong>0.6.10</strong></p><ul><li>Lokalne Ignoruj wyklucza sektor z obu automatów otwartych sektorów, niezależnie od gildyjnego oznaczenia.</li><li>Opcja zamykania negocjacjami dla 🕐 i ⚡, z rezerwą, limitem oporu i STOP; bez limitu porażek.</li><li>Ustawiany próg autozamykania ⚡, domyślnie 50% postępu wroga.</li><li>Ukrywanie całych kolumn akcji; przy obu opcjach wyłączonych także checkboxów. Puste nagłówki kolumn automatów.</li><li>Autoatak pomija niekwalifikujący się sektor przed wysłaniem walki i kontynuuje kolejkę bez naliczania porażki.</li></ul><p><strong>0.6.09</strong></p><ul><li>Modal: do 5 nadchodzących sektorów pod otwartymi, posortowanych według czasu otwarcia. Przygaszone wiersze mają wyłączone przyciski i checkboxy.</li><li>Kolumna Otwarcie: odliczanie HH:MM:SS lub Otwarte. Przejście do otwartych i uzupełnianie listy bez ponownego otwierania okna.</li></ul><p><strong>0.6.08</strong></p><ul><li>Usunięcie ostatniej gildyjnej łapki ✋ aktualizuje panel i oba automaty, także gdy gra pomija puste pole signals. Po zdjęciu oznaczenia sektor jest ponownie kwalifikowany bez przełączania automatu.</li></ul><p><strong>0.6.07</strong></p><ul><li>Własne sektory ⚪ wykluczone z list i alarmów otwartych sektorów.</li><li>Tabela otwartego modala odświeża progres, dostępność i stan akcji bez zmiany położenia okna.</li><li>Aktualizacje sektorów wszystkich gildii zerują nieaktualne blokady i progres, umożliwiając ponowną kwalifikację do automatyzacji.</li></ul><p><strong>0.6.06</strong></p><ul><li>Autoatak otwartych sektorów: ustawiany limit szansy wzrostu oporu, domyślnie 20%, sprawdzany ponownie przed walką.</li><li>Kontynuacja autonegocjacji po potwierdzonym przejęciu sektora i zakończeniu negocjacji.</li><li>Pływające okno, przeciąganie za nagłówek; status na dole bez tooltipa.</li><li>Powiadomienia do 99%, krótszy progres, wyścig 🔥, wróg 👾 i opór 🔻.</li><li>Kopiowanie pojedynczego sektora, przyciski automatów jako emoji i opisy kolumn pilnowania.</li></ul><p><strong>0.6.05</strong></p><ul><li>Powiadomienia sektorów: nasz postęp i postęp wroga 👾, alarm 🔔 we wspólnej liście, usuwanie zamkniętych sektorów.</li><li>Nagłówki 🔔, 🕐 i ⚡ przełączają całą widoczną kolumnę pilnowania.</li><li>Wskaźniki ⚔️ i 🤝 przy tytule otwartych sektorów oraz nad uchwytem panelu; kliknięcie zatrzymuje wybrany automat.</li><li>Modal pokazuje wspólne liczniki walk, negocjacji i oporu.</li></ul><p><strong>0.6.04</strong></p><ul><li>Otwarte sektory: widoczny przycisk autonegocjacji z powodem blokady, STOP tylko podczas automatyzacji. Limit sektora także z postępu innych gildii; pierwszy autoatak przy nieznanym limicie i zerowym postępie.</li><li>Otwarte sektory: wspólna kolejka autoataku i autonegocjacji, STOP, limity progresu i wybór typu sektora.</li><li>Negocjacje: limit oporu i trwały limit sukcesów na otwarcie, bez limitu porażek. Autoatak zatrzymuje się po 3 porażkach z rzędu.</li></ul><p><strong>0.6.03</strong></p><ul><li>Historia: licznik walk przy każdym zbiorze — skumulowane walki od początku najazdu do danego zbioru (⚔️ N).</li><li>Walki liczone jako suma interwałów między zbiorami × actionsPerHour z danego okresu.</li></ul><p><strong>0.6.02</strong></p><ul><li>Najazdy: ustawienia w panelu — dziennik zbiorów, panel na zrzucie, działania na zrzucie.</li><li>Zrzut: tytuł z nazwą i datą zbioru widoczny na zrzucie; przyciski przeniesione na dół panelu.</li><li>Historia: porównanie Przed/Po wycentrowane z 15 px odstępem pod zrzutem; zawartość wyrównana do lewej.</li><li>Sekcja działań na zrzucie: skondensowana lista z godziną, etykietą, budynkami i notatką.</li><li>Etykiety zbiorów bez sekund; „Zestawienie" i „Pozostałe budynki" wyrównane do lewej.</li></ul><p><strong>0.6.01</strong></p><ul><li>Historia zbiorów: pływające okno bez blokowania strony, przeciągane za pasek tytułu; do 80% szerokości poza prawą krawędzią. Zmiana szerokości za prawy dolny róg.</li><li>Najazdy: sekcja Wojsko ze stanem jednostek, zdrowiem, składem atakującym i czasem ostatniego odczytu.</li></ul><p><strong>0.6.00</strong></p><ul><li>Najazdy: uporządkowana historia bez technicznych duplikatów, nazwy zbieranych budynków i najnowsze działania na górze.</li><li>Kolejne zbiory, sprzedaże i budowy w tekstowych grupach z licznikami; trwałe uwagi wyrównane do prawej.</li><li>Wycentrowane porównanie Przed/Po, eksport po prawej, zamknięcie × i poprawione odstępy od suwaków.</li><li>Osobne, domyślnie wyłączone ustawienia przycisków ataku, negocjacji i zbiorów oraz informacja o ryzyku bana.</li><li>Pola Chwały: nowa ikona wyścigu, uproszczone zaznaczenie sektora i tytuł powiadomień.</li><li>Wydanie porządkuje funkcje panelu z linii 0.5: zbiory, najazdy i rozpiski Pól Chwały.</li></ul><p><strong>0.5.02</strong></p><ul><li>🏁 Wyścig: sąsiedztwo konkurencyjnej gildii w powiadomieniu i rozpisce do 30 minut przed otwarciem.</li><li>Wyłączone wpłaty PR z panelu oraz negocjacje poza Polami Chwały.</li><li>Kategoria PR korzysta także z definicji produkcji: widoczne niezmotywowane Emporium Solary i oba egzemplarze Elizejskiego Młyna; obsługa losowej produkcji PR.</li><li>Pełniejsza lista budynków: widoczne nieaktywne produkcje, nowe budynki i osobne egzemplarze; kategorie PR i wojska niezależne od motywacji.</li><li>Zbiory: domyślna karta Ulubione, zapis wybranych budynków i przyciski dodawania/usuwania.</li><li>Zbierz wszystkie w każdej podzakładce: jedno zbiorcze żądanie dla gotowych budynków wybranej kategorii i osobna kontrola wyniku każdego zbioru.</li><li>Potwierdzenie zbioru wymaga zmiany stanu budynku; brak fałszywego sukcesu przy odrzuconym zbiorze.</li></ul><p><strong>0.5.01</strong></p><ul><li>Przeładowanie karty gry przez nowy proces rozszerzenia po aktualizacji.</li><li>Serwer deweloperski: status połączenia klienta, przekazania wersji i braku zapytań zamiast deklaracji wykonanego odświeżenia.</li></ul><p><strong>0.5.0</strong></p><ul><li>Zbiory: aktywne bonusy podwojenia i zaopatrzenia wraz z pozostałymi użyciami z odpowiedzi gry.</li><li>Zwijane ustawienia z pamięcią, wyrównane pola i wyraźne nagłówki.</li><li>Powiadomienia sektorów przy przycisku panelu: odliczanie, zamykanie i automatyczne ukrywanie.</li><li>Perły: zaniżone wpłaty zastępowane pełną kwotą inwestora, uwzględnienie przesunięć rankingu i kontrola przed wpłatą.</li><li>Zbiory: karty PR, pereł, wojska i pozostałych; oznaczenia gotowych zbiorów.</li><li>Nazwy budynków przechwytywane z metadanych gry; poprawiony przycisk resetowania nazw i tooltip.</li><li>Ustawiany zakres przerwy między turami negocjacji.</li><li>Opcje Pól Chwały przeniesione z diagnostyki; godziny w logach serwera deweloperskiego.</li><li>Pełna historia wersji w przewijalnym changelogu. Poprawione ładowanie modułu pereł w panelu i skrypcie gry.</li></ul><p><strong>0.4.22</strong> · status autonegocjacji w osobnej linii pod przyciskami</p>
 <p><strong>0.4.21</strong> · automatyczna aktualizacja soli podpisu z pliku JS gry</p>
 <p><strong>0.4.20</strong> · aktualizacja soli podpisu do wersji gry 1.345</p>
 <p><strong>0.4.19</strong> · separatory między sekcjami kwantowymi</p>
@@ -562,23 +562,7 @@ Otwórz mapę Pól Chwały w grze.
 <p><strong>0.4.3</strong> · zbiory kwantowe — produkcja do prawej, pogrubione godziny i liczebności</p>
 <p><strong>0.4.2</strong> · tooltipy budynk&#243;w kwantowych — produkcja z emoji, 1 linia na pozycję</p>
 <p><strong>0.4.1</strong> · perły, negocjacje misji, uzycie w polu chwały, testy</p><p><strong>0.3.0</strong> · Pierwsza wersja w historii Git: panel, perły, Pola Chwały i osada kwantowa. Kolejne poprawki tej wersji: solver i zamykanie negocjacji, obsługa brakujących towarów, rezerwa walk tylko w automacie, odblokowanie po invalid wave, sortowanie sektorów, stabilny układ, rozpiska do 100 px, zwijane notatki i komunikaty.</p></div></details>
-          <details id="diagnostics"><summary id="diagnostics-heading">Diagnostyka</summary>
-
-          <small>
-            Wersja ${(chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version)} · odczyt gry
-            <span id="quantum-calculation-version"></span>
-          </small>
-
-          <p id="status"></p>
-
-          <pre id="methods"></pre>
-
-          <p>
-            Tryb developerski: uruchom START-DEV.cmd
-            w folderze projektu. Zapis kodu przeładuje
-            rozszerzenie i kartę gry. Zamknij skrypt,
-            aby wyłączyć.
-          </p></details>
+          <small style="display:block;margin:8px 0;color:#c5ab87">Korzystanie z przycisków ataku, negocjacji i zbiorów może wiązać się z ryzykiem bana konta w grze.</small>
         </section>
       </aside>
     `;
@@ -694,7 +678,7 @@ Otwórz mapę Pól Chwały w grze.
       }
     });
     const negoOpenKey='foe-companion.autoOpenNego';
-    $('auto-open-nego').checked=localStorage.getItem(negoOpenKey)!=='0';
+    $('auto-open-nego').checked=false;
     $('auto-open-nego').onchange=()=>localStorage.setItem(negoOpenKey,$('auto-open-nego').checked?'1':'0');
     let standaloneToken=null,standaloneGame=null;
     const appendNego=text=>{const line=document.createElement('p');line.textContent=text;$('standalone-history').append(line);line.scrollIntoView?.({block:'nearest'});};
@@ -779,9 +763,9 @@ Otwórz mapę Pól Chwały w grze.
       const seconds=Math.max(0,Math.ceil(entry.until-now));
       const time=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
       const type=entry.isAttackBattleType===true?'🟥 ':entry.isAttackBattleType===false?'🟦 ':'';
-      const progress=seconds===0&&entry.progress>0?' '+entry.progress+'/'+(entry.maxProgress??'—'):'';
-      const marker=seconds===0&&entry.enemyProgress>0?' 👾'+entry.enemyProgress:entry.race?' 🔥':'';
-      return (entry.guardAlarm?'🔔 ':'')+(seconds===0?'Otwarte ':countdown?time+' ':'')+type+(entry.color||'⚪')+' '+entry.sector+progress+marker;
+      const progress=FoeModel.displaySettings.ownProgress&&seconds===0&&entry.progress>0?' '+entry.progress+'/'+(entry.maxProgress??'—'):'';
+      const marker=FoeModel.displaySettings.enemyProgress&&seconds===0&&entry.enemyProgress>0?' 👾'+entry.enemyProgress:entry.race?' 🔥':'';
+      return (entry.guardAlarm?'🔔 ':'')+(seconds===0?'Otwarte ':countdown?time+' ':'')+type+FoeModel.guildColor(entry)+entry.sector+progress+marker;
     }
     function paintSectorPopup(){
       const now=Date.now()/1000;
@@ -898,7 +882,6 @@ Otwórz mapę Pól Chwały w grze.
     document.addEventListener('pointerdown',()=>{if(soundSettings.enabled)unlockAudio().catch(()=>{});},{capture:true});
     setInterval(checkSectorAlerts,1000);
     document.addEventListener('visibilitychange',checkSectorAlerts);
-    $('quantum-calculation-version').textContent=' · Obliczenia Najazdów: '+(FoeQuantum.calculationVersion||1);
     // Extend the existing UI without replacing user styling and settings.
     const style=document.createElement('style');
     style.textContent=`aside{display:flex;flex-direction:column;overflow:hidden}header,nav{flex-shrink:0}aside>section{flex:1;min-height:0;overflow:auto}#notes-dock{flex-shrink:0;max-height:300px;overflow:hidden;border-top:1px solid #345058;padding-top:8px;margin-top:10px;display:flex;flex-direction:column}#notes-dock label{margin:0 0 4px}#notes-text{font:13px/1.5 system-ui;box-sizing:border-box;width:100%;height:140px;min-height:60px;max-height:250px;resize:vertical;background:#0b191e;color:#e7eeee;border:1px solid #45616a;border-radius:7px;padding:8px}#notes-status{font-size:11px;min-height:16px;color:#90a5ad}.quantum-group{border-top:1px solid #345058;padding:10px 0}.quantum-resources{font-size:16px;color:#f1d69a}`;
@@ -914,7 +897,7 @@ Otwórz mapę Pól Chwały w grze.
       #gbg-stop-controls button[hidden]{display:block!important;visibility:hidden;pointer-events:none}
       #neg-status{height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       #neg-status::before{content:'Status: ';font-weight:bold}
-      #list{max-height:100px;box-sizing:border-box;overflow-y:auto}
+      #list{user-select:text!important;-webkit-user-select:text!important;cursor:text;max-height:100px;box-sizing:border-box;overflow-y:auto}
       #open-sectors{overflow-y:auto;overflow-x:hidden}
       #neg-panel{height:160px;box-sizing:border-box;overflow-y:scroll;overflow-x:hidden;overflow-wrap:anywhere}
       #neg-panel:empty{overflow:hidden}
@@ -976,6 +959,18 @@ Otwórz mapę Pól Chwały w grze.
       #settings .settings-alert input[type=number]{width:38px!important}
       #settings .settings-alert select{flex:0 1 135px;width:135px;margin-left:auto}
       #settings input:not([type=checkbox]),#settings select,#settings #gbg-sound-test{height:28px;min-height:28px;box-sizing:border-box;font:inherit;line-height:18px;padding:4px!important;vertical-align:middle}
+      [hidden]{display:none!important}
+      input[type=checkbox]{appearance:none;width:13px;height:13px;min-width:13px;box-sizing:border-box;margin:0;border:1px solid #3a5057;border-radius:1px;background:#0b191e;color:#b4c5c7;display:inline-grid;place-content:center;vertical-align:middle;cursor:pointer}
+      input[type=checkbox]::before{content:"✓";font:600 10px/1 system-ui;transform:scale(0);transition:transform 80ms ease-in-out}
+      input[type=checkbox]:checked{background:#294349;border-color:#59747a}
+      input[type=checkbox]:checked::before{transform:scale(1)}
+      input[type=checkbox]:indeterminate{background:#294349;border-color:#59747a}
+      input[type=checkbox]:indeterminate::before{content:"−";transform:scale(1)}
+      input:focus,select:focus,textarea:focus,button:focus,[contenteditable]:focus{outline:none;box-shadow:none}
+      input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,[contenteditable]:focus-visible{border-color:#74878a}
+      input[type=checkbox]:disabled{opacity:.5;cursor:default}
+      button[role=checkbox]{border:1px solid #45616a;border-radius:3px;background:#0b191e;color:#e7eeee;padding:2px 5px}
+      button[role=checkbox][aria-checked=true],button[role=checkbox][aria-checked=mixed]{background:#294349;border-color:#59747a}
       #gbg-sound-status{font-size:10px;line-height:16px;height:16px;min-height:16px;margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       #sector-popup{position:absolute;bottom:10%;max-width:calc(100vw - 100px);max-height:50vh;overflow:auto;background:#102126;color:#e7eeee;padding:7px 26px 7px 9px;border-radius:0;box-shadow:0 2px 10px #0008;pointer-events:auto;font:12px/1.5 system-ui;z-index:2}
       #sector-popup[hidden]{display:none!important}
@@ -1433,6 +1428,27 @@ Otwórz mapę Pól Chwały w grze.
         };
       });
 
+    $('settings').prepend($('settings-open'));
+    $('list').tabIndex=0;
+    for(const event of ['pointerdown','mousedown','mouseup','click','copy','selectstart'])$('list').addEventListener(event,e=>e.stopPropagation());
+    const scheduleKey='foe-companion.scheduleDisplay.v1';
+    try{FoeModel.setDisplaySettings(JSON.parse(localStorage.getItem(scheduleKey)||'{}'));}catch{}
+    const scheduleConfig=document.createElement('details');scheduleConfig.id='settings-schedule';
+    scheduleConfig.innerHTML='<summary>Rozpiska</summary>';
+    for(const [key,label] of [['guildColor','Kolor gildii w sektorze'],['ownProgress','Pokazuj progres w sektorze'],['enemyProgress','Pokazuj progres wroga w sektorze'],['closedAttrition','Opór zamkniętych sektorów'],['closedCount','Liczba zamkniętych sektorów w modalu']]){
+      const line=document.createElement('label'),input=document.createElement('input');line.textContent=label+' ';
+      input.type=key==='closedCount'?'number':'checkbox';
+      if(input.type==='number'){input.min='0';input.max='500';input.step='1';input.value=FoeModel.displaySettings[key];}else input.checked=FoeModel.displaySettings[key];
+      input.onchange=()=>{
+        const value=input.type==='number'?Number(input.value):input.checked;
+        if(input.type==='number'&&(!input.value||!Number.isInteger(value)||value<0||value>500)){input.value=FoeModel.displaySettings[key];return;}
+        const previous=FoeModel.displaySettings;
+        try{localStorage.setItem(scheduleKey,JSON.stringify({...previous,[key]:value}));FoeModel.setDisplaySettings({[key]:value});}
+        catch{if(input.type==='number')input.value=previous[key];else input.checked=previous[key];return;}
+        paint();paintOpenSectors();paintSectorPopup();
+      };line.append(input);scheduleConfig.append(line);
+    }
+    $('settings-gbg').querySelector('summary').after(scheduleConfig);
     const autoKey='foe-companion-gbg-auto';
     let bulkAutomation=null;
     let modalActionStatus='';
@@ -1443,28 +1459,30 @@ Otwórz mapę Pól Chwały w grze.
         try{localStorage.setItem('foe-companion.showActions.'+kind,checkbox.checked?'1':'0');}catch{checkbox.checked=actionVisible(kind);return;}
         if(!checkbox.checked&&kind==='attack')requestStopAuto();
         if(!checkbox.checked&&kind==='negotiation')stopAutoNeg('Przyciski negocjacji wyłączone.');
-        paintOpenSectors();paintCity();
+        refreshActionSettings();paintOpenSectors();paintCity();
       };
     }
 
     let selectedSector=null;
-    let autoSettings={reserve:3,min:0.3,max:0.4};
-    try{const v=JSON.parse(localStorage.getItem(autoKey));if(v&&Number.isInteger(v.reserve)&&v.reserve>=0&&Number.isFinite(v.min)&&v.min>=0&&Number.isFinite(v.max)&&v.max>=v.min)autoSettings=v;}catch{}
-    const autoConfig=document.createElement('details');autoConfig.id='settings-autoattack';autoConfig.open=true;
+    let autoSettings={reserve:3,min:0.7,max:1.5};
+    try{const v=JSON.parse(localStorage.getItem(autoKey));if(v&&Number.isInteger(v.reserve)&&v.reserve>=0&&Number.isFinite(v.min)&&v.min>=0&&Number.isFinite(v.max)&&v.max>=v.min){autoSettings=v;}}catch{}
+    const autoConfig=document.createElement('details');autoConfig.id='settings-autoattack';
     autoConfig.innerHTML='<summary>Autoatak</summary><label>Pozostaw walk <input id="auto-reserve" type="number" min="0" step="1"></label><label>Przerwa (s) <span class="settings-range"><input id="auto-min" aria-label="Minimalna przerwa po walce" type="number" min="0" step="0.1"> – <input id="auto-max" aria-label="Maksymalna przerwa po walce" type="number" min="0" step="0.1"></span></label><small>Stop po 3 porażkach z rzędu.</small><p id="auto-settings-error"></p>';
     $('gbg-automation-settings').append(autoConfig);
     const negTurnKey='foe-companion.negotiationTurnDelay';
-    let negTurnSettings={min:1,max:2};
-    try{const saved=JSON.parse(localStorage.getItem(negTurnKey));if(saved&&Number.isFinite(saved.min)&&Number.isFinite(saved.max)&&saved.min>=0&&saved.max>=saved.min&&saved.max<=60)negTurnSettings={min:saved.min,max:saved.max};}catch{}
-    const negTurnConfig=document.createElement('details');negTurnConfig.id='settings-negotiations';negTurnConfig.open=true;
+    let negTurnSettings={min:3.7,max:6};
+    try{const saved=JSON.parse(localStorage.getItem(negTurnKey));if(saved&&Number.isFinite(saved.min)&&Number.isFinite(saved.max)&&saved.min>=0&&saved.max>=saved.min&&saved.max<=60){negTurnSettings={min:saved.min,max:saved.max};}}catch{}
+    const negTurnConfig=document.createElement('details');negTurnConfig.id='settings-negotiations';
     negTurnConfig.innerHTML='<summary>Negocjacje</summary><label>Między turami (s) <span class="settings-range"><input id="nego-turn-min" type="number" min="0" max="60" step="0.1" aria-label="Minimalna przerwa między turami"> – <input id="nego-turn-max" type="number" min="0" max="60" step="0.1" aria-label="Maksymalna przerwa między turami"></span></label><small id="nego-turn-error" role="status"></small>';
     autoConfig.after(negTurnConfig);
-    const foldKey='foe-companion.settingsFold';let folds={};
-    try{folds=JSON.parse(localStorage.getItem(foldKey)||'{}')||{};}catch{}
-    for(const section of $('settings').querySelectorAll('details[id]')){
-      if(typeof folds[section.id]==='boolean')section.open=folds[section.id];
-      section.addEventListener('toggle',()=>{folds[section.id]=section.open;try{localStorage.setItem(foldKey,JSON.stringify(folds));}catch{}});
-    }
+    const registerSettingsFolds=()=>{
+      for(const section of $('settings').querySelectorAll('details[id]')){
+        if(section.dataset.foldRegistered)continue;
+        section.open=false;
+        section.dataset.foldRegistered='1';
+      }
+    };
+    registerSettingsFolds();
     for(const key of ['min','max']){
       $('nego-turn-'+key).value=negTurnSettings[key];
       $('nego-turn-'+key).onchange=()=>{
@@ -1653,7 +1671,6 @@ Otwórz mapę Pól Chwały w grze.
       if(data?.channel==='foe-map-refresh-error')setBattleFeedback(data.message);
       if(data?.channel==='foe-battle-ready'){
         battleReady=data.ready===true;battleReadyReason=data.reason||'';
-        const d=data.diagnostics;
         paintOpenSectors();
       }
       if(data?.channel==='foe-quick-battle-result'&&data.token===battlePending){
@@ -1685,11 +1702,30 @@ Otwórz mapę Pól Chwały w grze.
     });
     window.postMessage({channel:'foe-battle-state-query'},location.origin);
     setInterval(()=>{if(!battleReady&&!battlePending)window.postMessage({channel:'foe-battle-state-query'},location.origin);},3000);
+    function syncSectorSelections(){
+      if(!battle?.map?.provinces)return;
+      const key='foe-companion.sectorSelectionCycles.v1:'+location.host+':'+battle.endsAt+':'+battle.map.id;
+      try{
+        const cycles=JSON.parse(localStorage.getItem(key)||'{}');
+        const guards=loadGuards(),ignored=new Set(JSON.parse(localStorage.getItem(localIgnoreKey())||'[]'));
+        let changed=false;
+        for(const p of battle.map.provinces){
+          const id=p.id??0,previous=cycles[id],lock=Number(p.lockedUntil)||0;
+          if(previous&&(previous.owner!==p.ownerId||(lock>0&&lock!==previous.lock))){
+            delete guards[battle.map.id+':'+id];ignored.delete(id);cancelCloseAtHour(id);changed=true;
+          }
+          cycles[id]={owner:p.ownerId,lock:lock||previous?.lock||0};
+        }
+        if(changed){saveGuards(guards);localStorage.setItem(localIgnoreKey(),JSON.stringify([...ignored]));}
+        const encoded=JSON.stringify(cycles);if(localStorage.getItem(key)!==encoded)localStorage.setItem(key,encoded);
+      }catch{}
+    }
     function paintOpenSectors(){
+      syncSectorSelections();
       root.querySelector('#sector-guard-modal')?.refresh?.();
       root.querySelector('#own-sectors-modal')?.refresh?.();
       const list=$('open-sectors');
-      const snapshot=JSON.stringify([actionVisible('attack'),actionVisible('negotiation'),battle?FoeModel.rows(battle,true).rows.filter(r=>r.color!=='⚪'&&r.until<=Date.now()/1000):null,battleReady,battlePending,battlePendingSector,battleWaveSector,autoSector,autoNegSector,negPending,negPendingSector,battleLastSector,Date.now()<battleLastUntil,battleLastOK,negLastSector,Date.now()<negLastUntil,negLastOK]);
+      const snapshot=JSON.stringify([FoeModel.displaySettings,actionVisible('attack'),actionVisible('negotiation'),battle?FoeModel.rows(battle,true).rows.filter(r=>r.color!=='⚪'&&r.until<=Date.now()/1000):null,battleReady,battlePending,battlePendingSector,battleWaveSector,autoSector,autoNegSector,negPending,negPendingSector,battleLastSector,Date.now()<battleLastUntil,battleLastOK,negLastSector,Date.now()<negLastUntil,negLastOK]);
       if(list.renderSnapshot===snapshot&&list.selectedSector===selectedSector)return;
       list.renderSnapshot=snapshot;list.selectedSector=selectedSector;list.replaceChildren();
       list.copyText='';
@@ -1709,7 +1745,7 @@ Otwórz mapę Pól Chwały w grze.
           line.style.background='rgba(45,180,170,0.22)';line.style.boxShadow='none';
           line.title=(activeNegotiation?'Negocjacja w toku':activeBattle?'Walka w toku':'Zaznaczony sektor')+(row.ignored?' · Prowincja oznaczona przez gildię jako ignorowana':'');
         }
-        const name=document.createElement('span');name.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector+FoeModel.sectorMarker(row);name.style.flex='1';
+        const name=document.createElement('span');name.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+FoeModel.guildColor(row)+row.sector+FoeModel.sectorMarker(row);name.style.flex='1';
         name.style.cursor=activeBattle||activeNegotiation?'default':'pointer';
         name.style.textDecoration='none';
         name.setAttribute('role','button');name.setAttribute('tabindex','0');
@@ -1718,7 +1754,7 @@ Otwórz mapę Pól Chwały w grze.
         name.onclick=()=>{if(activeBattle||activeNegotiation)return;selectedSector=selectedSector===row.id?null:row.id;paintOpenSectors();};
         name.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();name.onclick();}};
 
-        const progress=document.createElement('span');progress.textContent=FoeModel.progressText(row);progress.title='Postęp przejęcia naszej gildii';
+        const progress=document.createElement('span');progress.textContent=FoeModel.progressText(row);progress.hidden=!FoeModel.displaySettings.ownProgress;progress.title='Postęp przejęcia naszej gildii';
         const chance=document.createElement('span');chance.textContent=(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');chance.title='Szansa na wzrost oporu';
 
         // isAttackBattleType wybiera atak lub obronę, nie walkę lub negocjacje.
@@ -1787,17 +1823,6 @@ Otwórz mapę Pól Chwały w grze.
       paintOpenSectors();
       checkSectorAlerts();
       $('export-battle').disabled=!battle;
-      $('status').textContent =
-        `Odebrano ${count} odpowiedzi. ${
-          mapReady
-            ? 'Mapa sąsiedztwa gotowa.'
-            : 'Ładowanie mapy sąsiedztwa.'
-        }`;
-
-      $('methods').textContent =
-        methods.join('\n') ||
-        'Oczekiwanie na ruch gry';
-
       $('notice').textContent = notice;
 
       if (!battle) {
@@ -1827,7 +1852,7 @@ Otwórz mapę Pól Chwały w grze.
 
     let contributionPending=null,contributionMessage='',contributionBlocked=false;
     function contributionButton(amount,icon,title,desiredTotal,lock){
-      const button=document.createElement('button');button.textContent=icon;button.title=title;button.setAttribute('aria-label',title);
+      const button=document.createElement('button');button.textContent=icon;button.title=title;button.setAttribute('aria-label',title);button.dataset.pearlContribution='true';
       button.disabled=!!contributionPending||contributionBlocked||!battleReady||!Number.isSafeInteger(amount)||amount<=0||!Number.isSafeInteger(construction?.level);
       const targetKey=JSON.stringify([construction?.target,construction?.level]);
       button.onclick=()=>{
@@ -1875,6 +1900,7 @@ Otwórz mapę Pól Chwały w grze.
       }
 
       $('pearl-rows').replaceChildren();
+      $('pearl-refresh-note').hidden=true;
 
       $('pearl-status').textContent =
         !result
@@ -2014,6 +2040,7 @@ Otwórz mapę Pól Chwały w grze.
         ownerLine.append(ownerLabel, ownerAmount_, ownerCopy);
         $('pearl-rows').append(ownerLine);
       }
+      $('pearl-refresh-note').hidden=!$('pearl-rows').querySelector('[data-pearl-contribution]:not(:disabled)');
     };
 
     let collectPending=null;const attemptedCollections=new Map();let collectFeedback='';
@@ -2213,7 +2240,7 @@ Otwórz mapę Pól Chwały w grze.
     }
     const bulkKey='foe-companion.openSectorSettings.v1';
     let bulkSettings=FoeSectorAutomation.settings();
-    try{bulkSettings=FoeSectorAutomation.settings(JSON.parse(localStorage.getItem(bulkKey)||'{}'));}catch{}
+    try{const savedBulk=JSON.parse(localStorage.getItem(bulkKey)||'{}');bulkSettings=FoeSectorAutomation.settings(savedBulk);}catch{}
     const automationInline=document.createElement('span');automationInline.id='automation-inline';automationInline.style.cssText='display:flex;gap:3px';$('open-sectors-heading').append(automationInline);
     const automationHandle=document.createElement('div');automationHandle.id='automation-handle';automationHandle.style.cssText='position:absolute;right:0;top:90%;transform:translateY(calc(-100% - 4px));display:flex;gap:3px;pointer-events:auto;z-index:3';root.append(automationHandle);
     for(const container of [automationInline,automationHandle])for(const [kind,emoji] of [['attack','⚔️'],['negotiation','🤝']]){
@@ -2222,17 +2249,33 @@ Otwórz mapę Pól Chwały w grze.
       button.onclick=()=>bulkAutomation.stop(kind);container.append(button);
     }
     bulkAutomation=FoeSectorAutomation.create({storage:localStorage,onChange:paintBulkControls});
-    const bulkConfig=document.createElement('details');bulkConfig.open=true;
+    const bulkConfig=document.createElement('details');bulkConfig.id='settings-bulk-automation';
     const bulkSummary=document.createElement('summary');bulkSummary.textContent='Automatyzacja otwartych sektorów';bulkConfig.append(bulkSummary);
-    for(const [key,label,max] of [['closeWithNegotiations','Zamykaj sektory negocjacjami'],['closeEnemyProgress','Autozamykanie ⚡: próg postępu wroga (%)',100],['attackProgress','Autoatak: limit progresu (%)',100],['attackChance','Autoatak: maks. szansa wzrostu oporu (%)',100],['negProgress','Negocjacje: limit progresu (%)',100],['negWins','Negocjacje: sukcesy na otwarcie',10000],['maxAttrition','Negocjacje: maksymalny opór',10000],['attack','Autoatak: bonus atakujący'],['defense','Autoatak: bonus obronny']]){
+    for(const [key,label,max] of [['closeWithNegotiations','Zamykaj sektory negocjacjami'],['closeEnemyProgress','Autozamykanie ⚡: próg postępu wroga (%)',100],['attackProgress','Autoatak: limit progresu (%)',100],['attackChance','Autoatak: maks. szansa wzrostu oporu (%)',100],['negProgress','Negocjacje: limit progresu (%)',100],['negWins','Negocjacje: sukcesy na otwarcie',10000],['maxAttrition','Negocjacje: maksymalny opór',10000],['attack','Autoatak: 🟥 Atak'],['defense','Autoatak: 🟦 Obrona']]){
       const line=document.createElement('label'),input=document.createElement('input');line.textContent=label+' ';input.type=max?'number':'checkbox';
+      line.dataset.automationSetting=['attackProgress','attackChance','attack','defense'].includes(key)?'attack':['negProgress','negWins','maxAttrition'].includes(key)?'negotiation':'shared';
       if(max){input.min=['maxAttrition','attackChance'].includes(key)?'0':'1';input.max=max;input.step='1';input.value=bulkSettings[key];}else input.checked=bulkSettings[key];
       input.onchange=()=>{const value=max?Number(input.value):input.checked;if(max&&(!Number.isInteger(value)||value<Number(input.min)||value>max)){input.value=bulkSettings[key];return;}
         bulkSettings={...bulkSettings,[key]:value};if(guardNegClosing)stopAutoNeg('Ustawienia zamykania zmienione.');bulkAutomation.stop(null,'Ustawienia zmienione — uruchom ponownie.');
         try{localStorage.setItem(bulkKey,JSON.stringify(bulkSettings));}catch{setBattleFeedback('Nie udało się zapisać ustawień.');}
       };line.append(input);bulkConfig.append(line);
     }
-    const bulkHint=document.createElement('small');bulkHint.textContent='Negocjacje: szansa oporu 20%, bez limitu porażek. Autoatak: ustawiany limit szansy wzrostu oporu (domyślnie 20%), STOP po 3 porażkach z rzędu. Oba tryby respektują rezerwę walk i lokalne Ignoruj. Autoatak domyślnie respektuje też łapkę gildii; powyższe ustawienie pozwala ją pominąć. Zamykanie z pilnowania jest wstrzymane; po STOP włącz ponownie jego checkbox, aby je wznowić.';bulkConfig.append(bulkHint);$('gbg-automation-settings').append(bulkConfig);
+    const bulkHint=document.createElement('small');bulkHint.textContent='Negocjacje: szansa oporu 20%, bez limitu porażek. Autoatak: ustawiany limit szansy wzrostu oporu (domyślnie 20%), STOP po 3 porażkach z rzędu. Oba tryby respektują rezerwę walk i lokalne Ignoruj. Oba automaty domyślnie respektują łapkę gildii; opcja Ignoruj łapkę w oknie sektorów pozwala ją pominąć. Zamykanie z pilnowania jest wstrzymane; po STOP włącz ponownie jego checkbox, aby je wznowić.';bulkConfig.append(bulkHint);$('gbg-automation-settings').append(bulkConfig);
+    // Keep controls for enabling actions reachable; hide only their dependent settings.
+    $('auto-reserve').closest('label').before($('show-attack-buttons').closest('label'));
+    $('nego-turn-min').closest('label').before($('show-negotiation-buttons').closest('label'));
+    const attackGroup=document.createElement('details');attackGroup.id='settings-bulk-attack';attackGroup.innerHTML='<summary>Autoatak</summary>';
+    const negGroup=document.createElement('details');negGroup.id='settings-bulk-negotiation';negGroup.innerHTML='<summary>Negocjacje</summary>';
+    const sharedGroup=document.createElement('details');sharedGroup.id='settings-bulk-closing';sharedGroup.innerHTML='<summary>Zamykanie sektorów</summary>';
+    for(const line of bulkConfig.querySelectorAll('[data-automation-setting]'))(line.dataset.automationSetting==='attack'?attackGroup:line.dataset.automationSetting==='negotiation'?negGroup:sharedGroup).append(line);
+    const separator=document.createElement('hr');separator.dataset.automationSeparator='1';
+    bulkConfig.append(attackGroup,separator,negGroup,sharedGroup,bulkHint);
+    function refreshActionSettings(){
+      const attack=actionVisible('attack'),negotiation=actionVisible('negotiation');
+      attackGroup.hidden=!attack;negGroup.hidden=!negotiation;sharedGroup.hidden=!attack&&!negotiation;separator.hidden=!attack||!negotiation;
+    }
+    for(const section of [autoConfig,negTurnConfig,bulkConfig,$('settings-buildings')])section.hidden=!advancedSettings;
+    refreshActionSettings();
     function paintAutomationIndicators(){
       if(!bulkAutomation)return;const state=bulkAutomation.state;
       for(const button of root.querySelectorAll('[data-automation-indicator]')){
@@ -2249,15 +2292,20 @@ Otwórz mapę Pól Chwały w grze.
       for(const [kind,label] of [['attack','⚔️ Autoatak otwartych sektorów'],['negotiation','🤝 Autonegocjacje otwartych sektorów']]){
         const button=root.querySelector('[data-bulk-mode="'+kind+'"]');if(!button)continue;
         button.textContent=(state[kind]?'⏹ ':'▶ ')+(kind==='attack'?'⚔️':'🤝');
-        button.hidden=!state[kind]&&!(state.active?.kind===kind)&&!actionVisible(kind);
+        button.hidden=!state[kind]&&!(state.active?.kind===kind)&&(!actionVisible(kind)||(kind==='attack'&&!bulkSettings.attack&&!bulkSettings.defense));
         const negBlocked=kind==='negotiation'&&(!Number.isSafeInteger(playerAttrition)||playerAttrition>bulkSettings.maxAttrition);
         const reason=negBlocked?(Number.isSafeInteger(playerAttrition)?'Opór '+playerAttrition+' przekracza limit '+bulkSettings.maxAttrition+'. Zmień maksymalny opór w ustawieniach automatyzacji.':'Otwórz mapę Pól Chwały, aby odczytać aktualny opór.'):'';
         button.setAttribute('data-tooltip',label+(reason?' — '+reason:''));button.setAttribute('aria-label',label);
         const note=root.querySelector('[data-bulk-neg-reason]');if(kind==='negotiation'&&note){note.textContent=reason;note.hidden=!reason||!actionVisible(kind)||state.negotiation;}
         button.disabled=!state[kind]&&(negBlocked||!!state.active||!battleReady||kind==='attack'&&!bulkSettings.attack&&!bulkSettings.defense||autoSector!==null||autoNegSector!==null);
       }
+      const showAttack=actionVisible('attack'),showNeg=actionVisible('negotiation');
+      const ignore=root.querySelector('[data-ignore-guild]');if(ignore)ignore.hidden=!(showNeg||(showAttack&&(bulkSettings.attack||bulkSettings.defense)));
+      stats.hidden=!showAttack;negStats.hidden=!showNeg;
+      let firstCounter=true;
+      for(const cell of root.querySelectorAll('[data-modal-counter]')){cell.hidden=cell.dataset.modalCounter==='0'?!showAttack:cell.dataset.modalCounter==='1'?!showNeg:false;cell.style.borderLeft=!cell.hidden&&!firstCounter?'1px solid #345058':'0';if(!cell.hidden)firstCounter=false;}
       const stop=root.querySelector('[data-bulk-stop]');if(stop)stop.hidden=!bulkAutomation.engaged&&autoSector===null&&autoNegSector===null;
-      const status=root.querySelector('[data-bulk-status]');if(status)status.textContent=(battlePending||negPending)?modalActionStatus:(state.attack||state.negotiation)?state.status:modalActionStatus||state.status;
+      const status=root.querySelector('[data-bulk-status]');if(status){status.textContent=(battlePending||negPending)?modalActionStatus:(state.attack||state.negotiation)?state.status:modalActionStatus||state.status;status.hidden=(!showAttack&&!showNeg&&!battlePending&&!negPending)||/^Przyciski (negocjacji|ataku) wyłączone[.]$/.test(status.textContent);}
     }
     function tickBulk(){
       paintBulkControls();
@@ -2294,16 +2342,16 @@ Otwórz mapę Pól Chwały w grze.
       const modalMapId=battle.map.id;
       const modal=document.createElement('div');modal.id='sector-guard-modal';
       modal.style.cssText='position:fixed;inset:0;z-index:2147483646;pointer-events:none';
-      const box=document.createElement('div');box.style.cssText='position:absolute;left:50%;top:8vh;transform:translateX(-50%);box-sizing:border-box;width:min(820px,96vw);min-width:0;background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;max-height:85vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c;pointer-events:auto';
+      const box=document.createElement('div');box.style.cssText='position:absolute;left:50%;top:8vh;transform:translateX(-50%);box-sizing:border-box;width:min(820px,96vw);min-width:min(380px,96vw);max-width:96vw;resize:horizontal;background:#102126;border:1px solid #345058;border-radius:6px;padding:14px 16px;max-height:85vh;overflow:auto;color:#e7eeee;font:12px/1.5 system-ui;box-shadow:0 8px 30px #000c;pointer-events:auto';
       modal.append(box);
       // Naglowek
       const hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
-      const titleEl=document.createElement('strong');titleEl.textContent='Otwarte sektory — automatyzacja i pilnowanie';titleEl.style.cssText='font-size:13px;color:#f1d69a';
+      const titleEl=document.createElement('strong');titleEl.textContent='Otwarte sektory';titleEl.style.cssText='font-size:13px;color:#f1d69a';
       const copyAll=document.createElement('button');copyAll.textContent='📋 Kopiuj wszystkie';copyAll.setAttribute('data-tooltip','Kopiuj otwarte i nadchodzące sektory z tabeli');copyAll.style.cssText='margin-left:auto;padding:3px 7px;font-size:11px;white-space:nowrap';
       let displayedRows=[];
       const openingTime=until=>new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(until*1000));
-      const closedSectorCopyText=(row,now)=>{if(row.until<=now)return null;const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const raceMarker=row.race||row.enemyProgress>0?' 🔥':'';const guildProgress=row.progress>0?' ⚔️'+row.progress+'/'+(row.maxProgress??'—'):'';const enemyProgress=row.enemyProgress>0?' 👾'+row.enemyProgress:'';return openingTime(row.until)+' '+type+row.color+' '+row.sector+raceMarker+guildProgress+enemyProgress;};
-      copyAll.onclick=async()=>{const now=Date.now()/1000;try{await navigator.clipboard.writeText(displayedRows.map(row=>closedSectorCopyText(row,now)||('Otwarte '+FoeModel.openSectorText(row))).join('\n'));}catch{setBattleFeedback('Nie udało się skopiować sektorów.');}};
+      const closedSectorCopyText=(row,now)=>row.until>now?FoeModel.closedSectorText(row):null;
+      copyAll.onclick=async()=>{const now=Date.now()/1000;try{await navigator.clipboard.writeText(displayedRows.map(row=>closedSectorCopyText(row,now)||FoeModel.openSectorText(row)).join('\n'));}catch{setBattleFeedback('Nie udało się skopiować sektorów.');}};
       const closeBtn=document.createElement('button');closeBtn.textContent='×';closeBtn.setAttribute('aria-label','Zamknij');
       closeBtn.style.cssText='background:transparent;border:0;color:#e7eeee;font-size:20px;line-height:1;cursor:pointer;padding:0 4px';
       closeBtn.onclick=()=>modal.remove();
@@ -2312,9 +2360,9 @@ Otwórz mapę Pól Chwały w grze.
       for(const kind of ['negotiation','attack']){const button=document.createElement('button');button.dataset.bulkMode=kind;
         button.onclick=()=>{const enabled=bulkAutomation.state[kind];if(enabled)bulkAutomation.stop(kind);else if(actionVisible(kind)&&battleReady)bulkAutomation.enable(kind,true);paintBulkControls();};bulkBar.append(button);}
       const stopAll=document.createElement('button');stopAll.textContent='⏹ STOP';stopAll.dataset.bulkStop='1';stopAll.onclick=()=>{bulkAutomation.stop();if(autoSector!==null)requestStopAuto();if(autoNegSector!==null)stopAutoNeg('Auto-negocjacje zatrzymane.');paintBulkControls();};bulkBar.append(stopAll);
-      const ignoreGuildLabel=document.createElement('label');ignoreGuildLabel.style.cssText='display:flex;align-items:center;gap:4px;margin:0 0 0 4px;white-space:nowrap;color:#dce8ec';
-      const ignoreGuildToggle=document.createElement('input');ignoreGuildToggle.type='checkbox';ignoreGuildToggle.checked=bulkSettings.attackIgnoreGuildSignal===true;ignoreGuildToggle.setAttribute('aria-label','Autoatak ignoruje łapkę gildii');
-      const ignoreGuildText=document.createElement('span');ignoreGuildText.textContent='Ignoruj łapkę';ignoreGuildText.title='Pozwala globalnemu autoatakowi atakować sektory oznaczone przez gildię jako ignorowane. Lokalne Ignoruj nadal blokuje sektor.';
+      const ignoreGuildLabel=document.createElement('label');ignoreGuildLabel.dataset.ignoreGuild='1';ignoreGuildLabel.style.cssText='display:flex;align-items:center;gap:4px;margin:0 0 0 4px;white-space:nowrap;color:#dce8ec';
+      const ignoreGuildToggle=document.createElement('input');ignoreGuildToggle.type='checkbox';ignoreGuildToggle.checked=bulkSettings.attackIgnoreGuildSignal===true;ignoreGuildToggle.setAttribute('aria-label','Automaty ignorują łapkę gildii');
+      const ignoreGuildText=document.createElement('span');ignoreGuildText.textContent='Ignoruj łapkę';ignoreGuildText.title='Pozwala globalnemu autoatakowi i autonegocjacjom działać na sektorach ignorowanych przez gildię. Lokalne Ignoruj nadal blokuje sektor.';
       ignoreGuildToggle.onchange=()=>{const previous=bulkSettings,next={...bulkSettings,attackIgnoreGuildSignal:ignoreGuildToggle.checked};try{localStorage.setItem(bulkKey,JSON.stringify(next));bulkSettings=next;bulkAutomation.stop(null,'Ustawienia zmienione — uruchom ponownie.');}catch{bulkSettings=previous;ignoreGuildToggle.checked=previous.attackIgnoreGuildSignal===true;setBattleFeedback('Nie udało się zapisać ustawień.');}paintBulkControls();};
       ignoreGuildLabel.append(ignoreGuildToggle,ignoreGuildText);bulkBar.append(ignoreGuildLabel);
       const bulkStatus=document.createElement('div');bulkStatus.dataset.bulkStatus='1';bulkStatus.style.cssText='font-size:11px;margin-top:8px;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';const negReason=document.createElement('div');negReason.dataset.bulkNegReason='1';negReason.style.cssText='font-size:11px;margin-bottom:8px';box.append(bulkBar,negReason);
@@ -2352,7 +2400,11 @@ Otwórz mapę Pól Chwały w grze.
       const btnStyle='padding:3px 5px;background:transparent;border-color:transparent;outline:none;font-size:13px;line-height:1;cursor:pointer';
       const empty=document.createElement('p');empty.textContent='Brak otwartych sektorów.';empty.style.color='#8a9fa5';
       let tableSnapshot='';const timeCells=[];
-      const paintRow=tr=>{const g=getGuard(battle.map.id,tr.dataset.sid);tr.style.background=(g.guard||g.closeAtHour||g.closeWhenThreatened)?'rgba(30,100,200,0.15)':tr.dataset.ignored==='1'?'rgba(190,45,45,0.12)':'';};
+      const paintRow=tr=>{const id=Number(tr.dataset.sid),g=getGuard(battle.map.id,id);
+        const activeBattle=autoSector===id||battlePendingSector===id||battleWaveSector===id,activeNegotiation=autoNegSector===id||negPendingSector===id;
+        tr.style.background=activeBattle||activeNegotiation||selectedSector===id?'rgba(45,180,170,0.22)':tr.dataset.ignored==='1'?'rgba(190,45,45,0.16)':(g.guard||g.closeAtHour||g.closeWhenThreatened)?'rgba(30,100,200,0.18)':'';
+        tr.title=activeNegotiation?'Negocjacja w toku':activeBattle?'Walka w toku':selectedSector===id?'Zaznaczony sektor':'';
+      };
       function paintGuardColumns(){
         for(const [key,{toggle,items}] of guardColumns){
           const visible=items.filter(i=>!i.tr.hidden&&!i.cb.disabled),checked=visible.filter(i=>i.cb.checked).length,all=visible.length>0&&checked===visible.length;
@@ -2364,7 +2416,7 @@ Otwórz mapę Pól Chwały w grze.
       function applyGuard(item,key,checked){
         if(battle?.map?.id!==modalMapId||item.cb.disabled)return;
         item.cb.checked=checked;setGuard(modalMapId,item.id,{[key]:checked});
-        if(key==='closeAtHour'){if(checked)scheduleCloseAtHour(item.id);else cancelCloseAtHour(item.id);}
+        if(key==='closeAtHour'){if(checked&&item.tr.dataset?.locked!=='true')scheduleCloseAtHour(item.id);else cancelCloseAtHour(item.id);}
         if(checked&&key!=='guard')bulkAutomation.resumeGuards();paintRow(item.tr);
       }
       function toggleGuardColumn(key){
@@ -2376,17 +2428,19 @@ Otwórz mapę Pól Chwały w grze.
         if(battle?.map?.id!==modalMapId){modal.close?.();return;}
         const now=Date.now()/1000;
         const showAttack=actionVisible('attack'),showNeg=actionVisible('negotiation');
-        const hideColumn=i=>i===4||i===5?!showAttack:i===6||i===7?!showNeg:i>=8?!showAttack&&!showNeg:false;
+        const hideColumn=i=>i===2?!FoeModel.displaySettings.ownProgress:i===4||i===5?!showAttack:i===6||i===7?!showNeg:i>=8?!showAttack&&!showNeg:false;
         Array.from(hrow.children).forEach((cell,i)=>{cell.hidden=hideColumn(i);});
-        legend.textContent='🔔 Powiadomienie gdy wróg atakuje · 🕐 Zamykanie 30s przed pełną godziną · ⚡ Zamykanie gdy wróg >'+bulkSettings.closeEnemyProgress+'% · '+(bulkSettings.closeWithNegotiations?'🤝 negocjacjami':'⚔️ walkami');
+        const canClose=bulkSettings.closeWithNegotiations?showNeg:showAttack;
+        legend.hidden=!showAttack&&!showNeg;
+        legend.textContent='🔔 Powiadomienie gdy wróg atakuje'+(canClose?' · 🕐 Zamykanie 30s przed pełną godziną · ⚡ Zamykanie gdy wróg >'+bulkSettings.closeEnemyProgress+'% · '+(bulkSettings.closeWithNegotiations?'🤝 negocjacjami':'⚔️ walkami'):'');
         const candidates=FoeModel.rows(battle,true).rows.filter(r=>r.color!=='⚪');
         const open=candidates.filter(r=>r.until<=now).sort((a,b)=>Number(a.ignored)-Number(b.ignored)||(a.progress??0)-(b.progress??0)||a.id-b.id);
-        const upcoming=candidates.filter(r=>r.until>now).sort((a,b)=>a.until-b.until||a.id-b.id).slice(0,5);
+        const upcoming=candidates.filter(r=>r.until>now).sort((a,b)=>a.until-b.until||a.id-b.id).slice(0,FoeModel.displaySettings.closedCount);
         const displayed=[...open,...upcoming];
         displayedRows=displayed;copyAll.disabled=!displayed.length;
         const clock=until=>{const seconds=Math.max(0,Math.ceil(until-now));return seconds?String(Math.floor(seconds/3600)).padStart(2,'0')+':'+String(Math.floor(seconds/60)%60).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0'):'Otwarte';};
-        for(const cell of timeCells)cell.node.textContent=clock(cell.until);
-        const snapshot=JSON.stringify([displayed,open.length,bulkSettings.closeEnemyProgress,displayed.map(r=>[getGuard(modalMapId,r.id),localSectorIgnored(r.id)]),battleReady,battlePending,battlePendingSector,battleWaveSector,autoSector,autoNegSector,negPending,negPendingSector,battleLastSector,Date.now()<battleLastUntil,battleLastOK,negLastSector,Date.now()<negLastUntil,negLastOK,actionVisible('attack'),actionVisible('negotiation')]);
+        for(const cell of timeCells){const text=clock(cell.until);if(cell.node.textContent!==text)cell.node.textContent=text;}
+        const snapshot=JSON.stringify([selectedSector,FoeModel.displaySettings,displayed,open.length,bulkSettings.closeEnemyProgress,displayed.map(r=>[getGuard(modalMapId,r.id),localSectorIgnored(r.id)]),battleReady,battlePending,battlePendingSector,battleWaveSector,autoSector,autoNegSector,negPending,negPendingSector,battleLastSector,Date.now()<battleLastUntil,battleLastOK,negLastSector,Date.now()<negLastUntil,negLastOK,actionVisible('attack'),actionVisible('negotiation')]);
         if(snapshot===tableSnapshot)return;tableSnapshot=snapshot;
         tbody.replaceChildren();timeCells.length=0;for(const column of guardColumns.values())column.items=[];empty.hidden=!!displayed.length;
       for(const row of displayed){
@@ -2396,13 +2450,18 @@ Otwórz mapę Pól Chwały w grze.
         const time=document.createElement('td');time.style.cssText=tdBase+';text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums';time.textContent=clock(row.until);tr.append(time);timeCells.push({node:time,until:row.until});
         // Sektor
         const nameSpan=document.createElement('span');
-        nameSpan.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector+FoeModel.sectorMarker(row);
+        nameSpan.textContent=(row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+FoeModel.guildColor(row)+row.sector+FoeModel.sectorMarker(row);
+        const activeBattle=autoSector===row.id||battlePendingSector===row.id||battleWaveSector===row.id,activeNegotiation=autoNegSector===row.id||negPendingSector===row.id;
+        nameSpan.style.cursor=activeBattle||activeNegotiation?'default':'pointer';nameSpan.setAttribute('role','button');nameSpan.setAttribute('tabindex','0');
+        nameSpan.setAttribute('aria-pressed',String(selectedSector===row.id));nameSpan.setAttribute('aria-disabled',String(activeBattle||activeNegotiation));
+        nameSpan.onclick=()=>{if(activeBattle||activeNegotiation)return;selectedSector=selectedSector===row.id?null:row.id;paintOpenSectors();};
+        nameSpan.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();nameSpan.onclick();}};
         const copy=document.createElement('button');copy.textContent='📋';copy.setAttribute('data-tooltip','Kopiuj sektor '+row.sector);copy.style.cssText=btnStyle;copy.onclick=async()=>{try{const closedText=closedSectorCopyText(row,Date.now()/1000);await navigator.clipboard.writeText(closedText||FoeModel.openSectorText(row));}catch{setBattleFeedback('Nie udało się skopiować sektora.');}};
         const tdN=document.createElement('td');tdN.style.cssText=tdBase+';text-align:left;white-space:nowrap';tdN.append(nameSpan,copy);tr.append(tdN);
         // Postep
         const tdP=document.createElement('td');tdP.textContent=FoeModel.progressText(row);tdP.style.cssText=tdBase+';text-align:center;color:#a5b8bc';tr.append(tdP);
         // Szansa oporu
-        const tdC=document.createElement('td');tdC.textContent=(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');tdC.style.cssText=tdBase+';text-align:center;color:#a5b8bc';tr.append(tdC);
+        const tdC=document.createElement('td');tdC.textContent=locked&&!FoeModel.displaySettings.closedAttrition?'':(row.gainAttritionChance===null?'—':row.gainAttritionChance+'%');tdC.style.cssText=tdBase+';text-align:center;color:#a5b8bc';tr.append(tdC);
         // ⚔️ jednorazowa walka
         const actBtn=document.createElement('button');actBtn.style.cssText=btnStyle;
         actBtn.textContent=battlePendingSector===row.id?'⏳':battleLastSector===row.id&&Date.now()<battleLastUntil?(battleLastOK?'✅':'⚠️'):'⚔️';
@@ -2438,13 +2497,13 @@ Otwórz mapę Pól Chwały w grze.
         // 3 checkboxy pilnowania
         const g=getGuard(battle.map.id,row.id);
         for(const key of ['guard','closeAtHour','closeWhenThreatened']){
-          const cb=document.createElement('input');cb.type='checkbox';cb.checked=g[key];cb.disabled=locked;cb.style.cursor='pointer';
+          const cb=document.createElement('input');cb.type='checkbox';cb.checked=g[key];cb.disabled=false;cb.style.cursor='pointer';
           const item={cb,id:row.id,tr};guardColumns.get(key).items.push(item);
           cb.onchange=()=>{applyGuard(item,key,cb.checked);paintGuardColumns();paintOpenSectors();checkSectorAlerts();};
           td(cb);
         }
-        const ignore=document.createElement('input');ignore.type='checkbox';ignore.checked=localSectorIgnored(row.id);ignore.disabled=locked;ignore.setAttribute('aria-label','Ignoruj lokalnie sektor '+row.sector);ignore.onchange=()=>setLocalSectorIgnored(row.id,ignore.checked);td(ignore);
-        if(locked)for(const button of [copy,actBtn,autoBtn,negBtnM,autoNegBtnM]){button.disabled=true;button.style.cursor='default';}
+        const ignore=document.createElement('input');ignore.type='checkbox';ignore.checked=localSectorIgnored(row.id);ignore.disabled=false;ignore.setAttribute('aria-label','Ignoruj lokalnie sektor '+row.sector);ignore.onchange=()=>setLocalSectorIgnored(row.id,ignore.checked);td(ignore);
+        if(locked)for(const button of [actBtn,autoBtn,negBtnM,autoNegBtnM]){button.disabled=true;button.style.cursor='default';}
         Array.from(tr.children).forEach((cell,i)=>{cell.hidden=hideColumn(i);});
         tbody.append(tr);
       }
@@ -2485,10 +2544,10 @@ Otwórz mapę Pól Chwały w grze.
         const rows=FoeModel.rows(battle,false).rows,byId=new Map(rows.map(row=>[row.id,row]));
         const owned=rows.filter(row=>row.ownerId===battle.currentParticipantId).sort((a,b)=>a.sector.localeCompare(b.sector));
         const data=owned.map(row=>({row,neighbors:FoeModel.neighbors(battle,row.id).map(n=>byId.get(n.id)).filter(n=>n&&n.ownerId!==battle.currentParticipantId).map(n=>({sector:n.sector,chance:n.gainAttritionChance})).sort((a,b)=>a.sector.localeCompare(b.sector))}));
-        const snapshot=JSON.stringify(data);if(snapshot===tableSnapshot)return;tableSnapshot=snapshot;tbody.replaceChildren();empty.hidden=!!data.length;empty.textContent='Brak sektorów należących do naszej gildii.';
+        const snapshot=JSON.stringify([FoeModel.displaySettings,data]);if(snapshot===tableSnapshot)return;tableSnapshot=snapshot;tbody.replaceChildren();empty.hidden=!!data.length;empty.textContent='Brak sektorów należących do naszej gildii.';
         for(const {row,neighbors} of data){const tr=document.createElement('tr');
           const td=(text,align='center')=>{const cell=document.createElement('td');cell.textContent=text;cell.style.cssText='padding:5px 6px;border-bottom:1px solid #1e3540;text-align:'+align+';color:#c6d4d6;vertical-align:top';tr.append(cell);return cell;};
-          td((row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+row.color+' '+row.sector,'left');
+          td((row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'')+FoeModel.guildColor(row)+row.sector,'left');
           td(row.enemyProgress>0?'👾 '+row.enemyProgress+'/'+row.enemyMaxProgress:'—');
           const slots=td('');
           const validSlots=Number.isSafeInteger(row.usedBuildingSlots)&&Number.isSafeInteger(row.totalBuildingSlots)&&row.totalBuildingSlots>0;
@@ -2537,19 +2596,21 @@ Otwórz mapę Pól Chwały w grze.
     };
 
     globalThis.FoeDiscord?.mount({root,getRows:()=>{if(!battle)return null;const all=FoeModel.rows(battle,false).rows;const frontier=new Set(FoeModel.rows(battle,true).rows.map(row=>row.id));return all.map(row=>({...row,frontier:frontier.has(row.id)}));},formatOpen:FoeModel.openSectorText,isFrontierOnly:()=>$('frontier').checked});
+    registerSettingsFolds();
     paint();
   }
 
+  const startPanel=()=>Promise.resolve(globalThis.FoeMode?.ready).then(mount);
   if (
     document.readyState === 'loading'
   ) {
     document.addEventListener(
       'DOMContentLoaded',
-      mount,
+      startPanel,
       { once: true }
     );
   } else {
-    mount();
+    startPanel();
   }
 })();
 // sshdsd

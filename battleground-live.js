@@ -73,7 +73,7 @@
    if(!policy||!['attack','negotiation'].includes(policy.kind)||!Number.isFinite(policy.progress)||policy.progress<=0||policy.progress>100||!Number.isInteger(policy.reserve)||policy.reserve<0)throw Error('Nieprawidłowe warunki automatyzacji.');
    const s=check(id,policy.reserve,policy.kind==='negotiation'?2:1),p=s.value;
    if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
-   if(ignored.has(id)&&!(policy.kind==='attack'&&policy.attackIgnoreGuildSignal===true))throw unavailable('Sektor oznaczony jako ignorowany.');
+   if(ignored.has(id)&&!(policy.attackIgnoreGuildSignal===true))throw unavailable('Sektor oznaczony jako ignorowany.');
    if(Number.isFinite(s.maxProgress)&&s.maxProgress>0&&s.progress/s.maxProgress*100>=policy.progress)throw unavailable('Osiągnięto limit progresu.');
    const firstAttack=policy.kind==='attack'&&s.progress===0&&s.maxProgress==null;
    if(!firstAttack&&(!Number.isFinite(s.maxProgress)||s.maxProgress<=0||s.progress/s.maxProgress*100>=policy.progress))throw Error('Osiągnięto limit progresu lub brak potwierdzonego limitu.');

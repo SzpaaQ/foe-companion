@@ -150,7 +150,9 @@
     if(!response.ok||serverError){
       const code=serverError?.code??serverError?.errorCode??serverError?.__class__??'brak kodu';
       const detail=serverError?.message??serverError?.title;
-      throw Error('Żądanie '+requestMethod+' (ID '+item.requestId+'), HTTP '+response.status+', kod '+String(code).slice(0,100)+(detail?': '+String(detail).slice(0,160):'')+'.');
+      const error=Error('Żądanie '+requestMethod+' (ID '+item.requestId+'), HTTP '+response.status+', kod '+String(code).slice(0,100)+(detail?': '+String(detail).slice(0,160):'')+'.');
+      error.confirmedRejection=response.ok&&!!serverError;
+      throw error;
     }
     if(requestClass==='NegotiationGameService'&&requestMethod==='getRunning'&&matched&&Object.hasOwn(matched,'responseData')&&matched.responseData===null)return null;
     const result=resultData;
@@ -212,9 +214,9 @@
       if(!fightSent&&!nextWave&&bulkPolicy&&battlegroundLive?.canSkipAttack(provinceId,bulkPolicy,error)){answer(false,'Pomijam sektor: '+error.message+' Szukam następnego.',{provinceId,sectorSkipped:true,notStarted:true});return;}
       const invalidWave=error.invalidWave===true;
       if(invalidWave)nextWave=null;
-      battleUncertain=fightSent&&!invalidWave;
+      battleUncertain=fightSent&&!invalidWave&&!error.confirmedRejection;
       if(battleUncertain)publishBattleState();
-      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; można spróbować ponownie.'),{uncertain:battleUncertain,invalidWave});
+      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':error.confirmedRejection?' Serwer odrzucił żądanie. Możesz ponowić próbę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; można spróbować ponownie.'),{uncertain:battleUncertain,invalidWave});
     }finally{battleBusy=false;}
   });
   // Wire IDs share one sequence. Restore the game's IDs before its callbacks read a response.

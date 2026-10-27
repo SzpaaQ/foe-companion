@@ -12,6 +12,14 @@ const recovery=chrome.storage.local.get(pendingKey).then(async stored=>{
 let reloading=false;
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(sender.id!==chrome.runtime.id || !sender.tab || !/^https:\/\/[^/]+\.forgeofempires\.com\//.test(sender.url||''))return;
+  if(message?.type==='FOE_FEATURE_MODE'){
+    (async()=>{
+      let advanced=false;
+      try{advanced=(await fetch(chrome.runtime.getURL('bot'),{cache:'no-store'})).ok;}catch{}
+      reply({advanced});
+    })().catch(()=>reply({advanced:false}));
+    return true;
+  }
   if(message?.type==='DEV_VERSION'){
     fetch('http://127.0.0.1:18743/version',{cache:'no-store',signal:AbortSignal.timeout(1500)})
       .then(r=>r.ok?r.json():null).then(reply).catch(()=>reply(null));

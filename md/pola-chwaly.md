@@ -58,6 +58,8 @@ Kliknij **⋮** przy nagłówku „Otwarte sektory”, aby otworzyć tabelę cel
 
 Na dole okna znajduje się zwijana **Konsola Pól Chwały**. Zapisuje akcje użytkownika związane z automatami, żądania walki i negocjacji faktycznie wysłane przez rozszerzenie oraz ich wyniki. Każdy wpis ma lokalną godzinę do sekundy (`HH:mm:ss`). Błędy są czerwone, wygrane zielone, a przegrane pomarańczowe. Konsola przewija się do najnowszego wpisu i przechowuje do 250 komunikatów z bieżącej karty i sesji strony; sam status połączenia nie tworzy wpisu. **📋** kopiuje wszystkie zapisane wpisy, a **🧹** czyści konsolę. Po wykonaniu którejś z tych czynności ikona na chwilę zmienia się na **✓**.
 
+Konsola w sekcji **Szczegóły** jest dostępna w widoku zaawansowanym po włączeniu przycisków ataku lub negocjacji. Gdy oba rodzaje przycisków są wyłączone, cały wiersz **Szczegóły** jest ukryty.
+
 Tabela może zawierać otwarte sektory i określoną w ustawieniach liczbę nadchodzących sektorów (domyślnie 10). Nadchodzące wiersze są przygaszone i ich akcje są nieaktywne. Po czasie blokady automat odczekuje jeszcze 2 sekundy przed wysłaniem akcji; ruszy wcześniej, jeśli socket gry jawnie potwierdzi otwarcie sektora. Sektory należące do naszej gildii (⚪) są pomijane.
 
 - **📋 Kopiuj wszystkie** kopiuje widoczne otwarte i nadchodzące sektory. **📋 Kopiuj zamknięte** obok kopiuje wyłącznie nadchodzące sektory z tabeli. Godzina otwarcia ma format `HH:mm`; tekst nie dodaje słowa „Otwarte”. Po udanym kopiowaniu przycisk przez około 1,5 sekundy pokazuje **✓**. Dotyczy to także małego **📋** przy sektorze. Przy błędzie pojawia się **Błąd kopiowania**.

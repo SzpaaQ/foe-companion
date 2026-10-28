@@ -75,7 +75,7 @@
    if(active.scope!==scope){active=null;stop(null,'Zmieniła się mapa lub gracz — sprawdź stan gry przed wznowieniem.');return true;}
    if(active.kind==='attack'&&data.ok&&data.nextWave)return 'wave';
    const previous=active;active=null;lastFinishedAt=now();delayFloor=0;nextAt=lastFinishedAt+previous.delay;
-   const skipped=data.sectorSkipped===true&&data.notStarted===true||previous.kind==='negotiation'&&data.sectorClosed===true&&data.negotiationEnded===true;
+   const skipped=data.sectorSkipped===true&&data.notStarted===true||previous.kind==='negotiation'&&data.sectorClosed===true;
    const confirmed=skipped|| (previous.kind==='attack'?data.ok&&typeof data.won==='boolean'&&(data.won===false||data.refreshed):data.won===true&&data.ok&&data.refreshed||data.won===false&&data.continueAuto&&(data.surrendered||data.negotiationEnded));
    if(previous.kind==='negotiation'){
     const count=ledger[previous.scope]?.counts[previous.identity];

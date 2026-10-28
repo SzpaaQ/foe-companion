@@ -739,8 +739,8 @@
           }
         }catch{cleanup=' Nie potwierdzono zamknięcia negocjacji — sprawdź ją w grze.';}
       }
-      if(started&&negotiationEnded&&battlegroundLive?.closedSince(provinceId,sectorBefore)){
-        answer(false,'Sektor przejęty — negocjacja zakończona, szukam następnego.',{sectorClosed:true,negotiationEnded:true,continueAuto:true});return;
+      if(started&&battlegroundLive?.closedSince(provinceId,sectorBefore)){
+        answer(false,'Sektor przejęty — pomijam go i szukam następnego.',{sectorClosed:true,negotiationEnded,continueAuto:true});return;
       }
       if(bulkPolicy?.guardClosing===true&&error.code==='INSUFFICIENT_GOODS'&&negotiationEnded){
         answer(false,'Brak towarów — zamykanie przechodzi na walki.',{insufficientGoods:true,negotiationEnded:true});return;

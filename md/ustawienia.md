@@ -22,6 +22,8 @@ Każdy checkbox włącza automatyczne wysunięcie panelu po otwarciu wskazanego 
 
 - **Wyświetlaj przyciski ataku** pokazuje przyciski ręcznej i automatycznej walki przy sektorach.
 - **Wyświetlaj przyciski negocjacji** pokazuje przyciski ręcznej i automatycznej negocjacji przy sektorach.
+- Akcje ataku, negocjacji i zbiorów są dostępne tylko w widoku zaawansowanym. W widoku podstawowym ich przyciski pozostają wyłączone, również po wcześniejszym zapisaniu preferencji.
+- Gdy wyłączone są jednocześnie **Wyświetlaj przyciski ataku** i **Wyświetlaj przyciski negocjacji**, cała sekcja **Automatyzacja** oraz **Szczegóły** w oknie sektorów są ukryte.
 - **Alert** włącza dźwiękowy sygnał o sektorze wkrótce otwieranym lub atakowanym przez przeciwnika. Możesz go też użyć razem z pilnowaniem w tabeli sektorów.
 - Lista dźwięków **Sygnał alertu** pozwala wybrać **Trzy piknięcia**, **Ding-dong**, **Pojedynczy**, **Melodyjka** albo **Alarm**.
 - Pole **Wyprzedzenie w minutach** określa, ile minut przed otwarciem mają pojawiać się zwykłe alerty. Wartość od 1 do 60 minut.

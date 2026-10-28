@@ -1,5 +1,7 @@
 # 🏘️ Zbiory
 
+Przyciski **🤲** do ręcznego zbierania budynków są dostępne tylko w widoku zaawansowanym. W widoku podstawowym pozostają wyłączone.
+
 ## Kiedy pojawiają się dane
 
 Otwórz widok miasta w grze i poczekaj, aż gra przekaże listę budynków. Jeśli panel nie ma danych, pokaże prośbę o odświeżenie gry. Lista i godziny aktualizują się na bieżąco.

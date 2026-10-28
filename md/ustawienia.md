@@ -14,6 +14,7 @@ Każdy checkbox włącza automatyczne wysunięcie panelu po otwarciu wskazanego 
 
 - **Otwarcie perły** — po otwarciu perły architektury.
 - **Pola Chwały** — po otwarciu mapy Pól Chwały.
+- **Tylko okno sektorów** — opcja podrzędna dla Pól Chwały. Zamiast wysuwać panel i przełączać kartę, otwiera modal **Otwarte sektory**. Wybór zapamiętuje się po odświeżeniu.
 - **Osada kwantowa** — po otwarciu osady kwantowej.
 - **Negocjacje** — po otwarciu ekranu negocjacji poza Polami Chwały.
 
@@ -28,17 +29,28 @@ Każdy checkbox włącza automatyczne wysunięcie panelu po otwarciu wskazanego 
 - **Autoatak: Pozostaw walk** określa, ile walk należy zachować jako rezerwę. Wartość zero nie pozostawia rezerwy.
 - **Przerwa (s)** określa minimalne i maksymalne opóźnienie między automatycznymi walkami. Wartości muszą być nieujemne, a maksymalna nie mniejsza niż minimalna. Automat zatrzymuje się po trzech porażkach z rzędu.
 - **Negocjacje: Między turami (s)** określa minimalną i maksymalną przerwę pomiędzy turami negocjacji. Zakres to 0–60 sekund; maksymalna wartość musi być nie mniejsza niż minimalna.
-- **Zamykaj sektory negocjacjami** pozwala opcji 🕐 i ⚡ zamykać sektor negocjacjami zamiast walkami. Warunki negocjacji, m.in. dostępny opór i rezerwa, nadal muszą być spełnione.
-- **Autozamykanie ⚡: próg postępu wroga (%)** określa próg 1–100%, domyślnie 50%. Sektor kwalifikuje się, gdy postęp wroga jest wyższy od tego progu.
+- **Zamykaj sektory negocjacjami** pozwala opcji 🕐 i ⚡ zamykać sektor negocjacjami zamiast walkami. Zamykanie pomija limity zwykłych automatów. Negocjacje wymagają wystarczających towarów; po ich wyczerpaniu zamykanie przechodzi na walki. Trzy kolejne przegrane walki zatrzymują zamykanie z komunikatem o niepowodzeniu.
+- **Autozamykanie ⚡: próg postępu wroga (%)** określa próg 1–100%, domyślnie 50%. Zamykanie uruchamia się, gdy postęp wroga osiągnie lub przekroczy ten próg.
 - **Autoatak: limit progresu (%)** ogranicza autoatak do sektorów, których postęp naszej gildii jest poniżej ustawionej granicy. Sektor, który osiągnął granicę, jest pomijany.
 - **Autoatak: maks. szansa wzrostu oporu (%)** ogranicza autoatak do sektorów o nie większej szansie wzrostu oporu. Domyślnie to 20%. Wartość zero dopuszcza tylko sektory bez ryzyka; nieznana szansa nie przechodzi limitu.
 - **Negocjacje: limit progresu (%)** ogranicza automatyczne negocjacje do sektorów, których postęp naszej gildii jest poniżej ustawionej granicy.
 - **Negocjacje: sukcesy na otwarcie** ustala limit udanych negocjacji na dane otwarcie sektora. Domyślnie jest to 100 sukcesów; zakres wynosi 1–10000. Nie jest to limit porażek.
 - **Negocjacje: maksymalny opór** określa najwyższy opór gracza, przy którym automat może negocjować. Domyślnie wynosi 100; gdy opór jest wyższy albo nie został odczytany, negocjacje są blokowane.
-- **Autoatak: 🟥 Atak** i **Autoatak: 🟦 Obrona** określają, które typy walk może podejmować automat. Domyślnie obie opcje są włączone.
+- **Autoatak: 🟥 Atak** i **Autoatak: 🟦 Obrona** określają, które typy walk może podejmować automat. Domyślnie obie opcje są włączone. Checkbox **Zamykaj sektory** w pasku automatyzacji otwartego okna ignoruje limity progresu i rezerwę do czasu zamknięcia sektora.
 - Domyślny **Autoatak: limit progresu (%)** wynosi 100%. Przerwa między automatycznymi walkami wynosi od 0,7 do 1,5 sekundy, a przerwa między turami negocjacji od 3,7 do 6 sekund.
 
 Po zmianie ustawień automaty zatrzymują się, aby nie kontynuować ze starą konfiguracją. Uruchom je ponownie, jeśli chcesz pracować z nowymi wartościami.
+
+### Pola Chwały → Rozpiska
+
+- **Kolor gildii w sektorze** (**⚪**) — dodaje do rozpiski kółko w kolorze gildii.
+- **Pokazuj progres w sektorze** (**⚔️**) — dodaje postęp naszej gildii, jeśli jest większy od zera.
+- **Pokazuj progres wroga w sektorze** (**👾**) — dodaje postęp przeciwnika, jeśli jest większy od zera.
+- **Oznaczaj wyścig** (**🔥**) — włącza oznaczenie wyścigu o sektor.
+- **Opór zamkniętych sektorów** (**🔻**) — dodaje szansę wzrostu oporu do opisu zamkniętych sektorów. Nie zmienia opisu otwartych sektorów.
+- **Liczba zamkniętych sektorów w modalu** — określa liczbę nadchodzących sektorów w oknie **Otwarte sektory**; zakres 0–500, domyślnie 10.
+
+Pięć przełączników jest domyślnie włączonych. Zmienisz je także małymi emoji pod rozpiską w panelu i pod tabelą w oknie sektorów. Pełna widoczność i ciemny cień oznaczają włączenie, przygaszenie do połowy bez cienia — wyłączenie. Wybór zapisuje się i jest wspólny dla obu miejsc oraz ustawień. Dotyczy treści rozpiski i kopiowania, a także formatu wysyłanego na Discord. Kolumny postępu i szansy oporu w tabeli okna pozostają widoczne.
 
 ## Ustawienia → Budynki
 

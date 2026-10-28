@@ -1,9 +1,9 @@
 (function(root) {
   'use strict';
   const topologies = new Map();
-  let displaySettings={guildColor:true,ownProgress:true,enemyProgress:true,closedAttrition:true,closedCount:10};
+  let displaySettings={guildColor:true,ownProgress:true,enemyProgress:true,markRace:true,showOpen:true,closedAttrition:true,closedCount:10};
   function setDisplaySettings(value={}){
-    for(const key of ['guildColor','ownProgress','enemyProgress','closedAttrition'])if(typeof value[key]==='boolean')displaySettings[key]=value[key];
+    for(const key of ['guildColor','ownProgress','enemyProgress','markRace','showOpen','closedAttrition'])if(typeof value[key]==='boolean')displaySettings[key]=value[key];
     if(Number.isInteger(value.closedCount)&&value.closedCount>=0&&value.closedCount<=500)displaySettings.closedCount=value.closedCount;
     return {...displaySettings};
   }
@@ -11,9 +11,9 @@
   function closedSectorText(row){
     const time=new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(row.until*1000));
     const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';
-    const race=row.race||row.enemyProgress>0?' 🔥':'';
+    const race=displaySettings.markRace&&(row.race||row.enemyProgress>0)?' 🔥':'';
     const ours=displaySettings.ownProgress&&row.progress>0?' ⚔️'+progressText(row):'';
-    const enemy=displaySettings.enemyProgress&&row.enemyProgress>0?' 👾'+row.enemyProgress:'';
+    const enemy=displaySettings.enemyProgress&&row.enemyProgress>0?' 👾'+row.enemyProgress+'/'+(row.enemyMaxProgress??'—'):'';
     return time+' '+type+guildColor(row)+row.sector+race+ours+enemy+(displaySettings.closedAttrition?' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%'):'');
   }
   if(typeof module !== 'undefined'){setTopology(require('./sectors.json'));setTopology(require('./sectors-volcano.json'));}
@@ -132,7 +132,7 @@
 
 function sectorMarker(row){return displaySettings.enemyProgress&&row.enemyProgress>0?' 👾'+row.enemyProgress:row.race?' 🔥':'';}
   function progressText(row){return row.progress>0?row.progress+'/'+(row.maxProgress??'—'):'0';}
-  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const markers=row.race?' 🔥':'';const progress=[];if(displaySettings.ownProgress&&row.progress>0)progress.push('⚔️'+progressText(row));if(displaySettings.enemyProgress&&row.enemyProgress>0)progress.push('👾'+row.enemyProgress);return type+guildColor(row)+row.sector+markers+(progress.length?' | '+progress.join(' '):'')+' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%')+(row.ignored?' ✋':'');}
+  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const markers=displaySettings.markRace&&row.race?' 🔥':'';const progress=[];if(displaySettings.ownProgress&&row.progress>0)progress.push('⚔️'+progressText(row));if(displaySettings.enemyProgress&&row.enemyProgress>0)progress.push('👾'+row.enemyProgress+'/'+(row.enemyMaxProgress??'—'));return type+guildColor(row)+row.sector+markers+(progress.length?' | '+progress.join(' '):'')+' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%')+(row.ignored?' ✋':'');}
 function line(row) {const remaining=row.until-Date.now()/1000;return closedSectorText({...row,race:row.race&&remaining>0&&remaining<=1800});}
 
   // --- Zbiory ---

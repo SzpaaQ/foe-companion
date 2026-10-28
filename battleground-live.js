@@ -20,7 +20,7 @@
    if(initial){
     attrition=initial.currentPlayerParticipant?.attrition?.__class__==='GuildBattlegroundAttrition'?(initial.currentPlayerParticipant.attrition.level??0):null;
     own=initial.currentParticipantId??0;mapId=initial.map.id;endsAt=initial.endsAt;ignored=new Set((initial.battlegroundParticipants?.find(p=>p.participantId===own)?.signals||[]).filter(s=>s.signal==='ignore').map(s=>s.provinceId??0));provinces.clear();
-    for(const p of initial.map.provinces)if(p&&Number.isSafeInteger(p.id??0))provinces.set(p.id??0,{value:{...p,conquestProgress:p.conquestProgress??[]},version:++serial,socketVersion:source==='socket'?serial:0,epoch,at:now()});
+    for(const p of initial.map.provinces)if(p&&Number.isSafeInteger(p.id??0))provinces.set(p.id??0,{value:{...p,lockedUntil:p.lockedUntil??0,conquestProgress:p.conquestProgress??[]},version:++serial,socketVersion:source==='socket'?serial:0,confirmedOpen:source==='socket'&&p.lockedUntil===0&&p.ownerId!==own&&!p.isSpawnSpot,epoch,at:now()});
    }
    for(const r of Array.isArray(data)?data:[data]){
     if(r?.requestClass!=='GuildBattlegroundService')continue;
@@ -33,7 +33,12 @@
      const id=p.id??0,previous=provinces.get(id);
      // Province responses omit default-valued fields (e.g. a removed lock).
      const value={...previous?.value,...p,ownerId:p.ownerId??0,lockedUntil:p.lockedUntil??0,isSpawnSpot:p.isSpawnSpot??false,isAttackBattleType:p.isAttackBattleType??false,gainAttritionChance:p.gainAttritionChance??0,conquestProgress:p.conquestProgress??[]};
-     provinces.set(id,{value,version:++serial,socketVersion:source==='socket'?serial:previous?.socketVersion??0,epoch,at:now()});
+     const hasLock=Object.hasOwn(p,'socketHasLockedUntil')?p.socketHasLockedUntil===true:Object.hasOwn(p,'lockedUntil');
+     const confirmedOpen=source==='socket'&&hasLock&&Number(p.lockedUntil)===0&&value.ownerId!==own&&!value.isSpawnSpot
+      ?true
+      :hasLock&&Number(p.lockedUntil)>0||value.ownerId===own||value.isSpawnSpot
+       ?false:previous?.confirmedOpen===true;
+     provinces.set(id,{value,version:++serial,socketVersion:source==='socket'?serial:previous?.socketVersion??0,confirmedOpen,epoch,at:now()});
     }
    }
    const responses=Array.isArray(data)?data:[data];let attritionUpdated=!!initial;
@@ -52,11 +57,13 @@
    flush();
   }
   function unavailable(message){const error=Error(message);error.code='SECTOR_INELIGIBLE';return error;}
+  function isOpen(id){const p=provinces.get(id);return !!p&&(p.confirmedOpen===true||p.value.lockedUntil<=0||p.value.lockedUntil+2<=now()/1000);}
+  function socketOpenSnapshot(){return {mapId,endsAt,ids:[...provinces].filter(([,p])=>p.confirmedOpen===true).map(([id])=>id)};}
   function canSkipAttack(id,policy,error){const s=snapshot(id);return !!(error?.code==='SECTOR_INELIGIBLE'&&policy?.kind==='attack'&&connected&&s?.epoch===epoch&&mapId===policy.mapId&&endsAt===policy.endsAt);}
   function check(id,reserve,cost=1){
    const s=snapshot(id),p=s?.value;
    if(!p||own==null)throw Error('Brak danych sektora — otwórz mapę w grze.');
-   if(p.isSpawnSpot||p.ownerId===own||p.lockedUntil>now()/1000)throw unavailable('Sektor nie jest już otwarty.');
+   if(p.isSpawnSpot||p.ownerId===own||!isOpen(id))throw unavailable('Sektor nie jest jeszcze otwarty (blokada serwera lub bufor 2 s).');
    if(Number.isInteger(reserve)&&reserve>=0){
     if(!connected)throw Error('Brak połączenia z aktualizacjami socketu — automat zatrzymany.');
     if(s.epoch!==epoch)throw Error('Po przerwaniu socketu otwórz mapę w grze, aby uzupełnić brakujące aktualizacje.');
@@ -71,6 +78,20 @@
   }
   function checkPolicy(id,policy){
    if(!policy||!['attack','negotiation'].includes(policy.kind)||!Number.isFinite(policy.progress)||policy.progress<=0||policy.progress>100||!Number.isInteger(policy.reserve)||policy.reserve<0)throw Error('Nieprawidłowe warunki automatyzacji.');
+   if(policy.guardClosing===true){
+    const s=check(id);
+    if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
+    if(!connected||s.epoch!==epoch)throw Error('Brak aktualnego połączenia z mapą — zamykanie zatrzymane.');
+    return s;
+   }
+   if(policy.closeUntilClosed===true){
+    const s=check(id),p=s.value;
+    if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
+    if(ignored.has(id)&&policy.attackIgnoreGuildSignal!==true)throw unavailable('Sektor oznaczony jako ignorowany.');
+    if(policy.kind==='negotiation'&&(!Number.isSafeInteger(attrition)||attrition>policy.maxAttrition||p.gainAttritionChance!==20))throw Error('Negocjacje nie spełniają wymagań oporu.');
+    if(policy.kind==='attack'&&(!Number.isFinite(policy.attackChance)||p.gainAttritionChance>policy.attackChance||!(p.isAttackBattleType===true?policy.attack:policy.defense)))throw Error('Walka nie spełnia warunków autoataku.');
+    return s;
+   }
    const s=check(id,policy.reserve,policy.kind==='negotiation'?2:1),p=s.value;
    if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
    if(ignored.has(id)&&!(policy.attackIgnoreGuildSignal===true))throw unavailable('Sektor oznaczony jako ignorowany.');
@@ -100,7 +121,7 @@
     waiters.add(checkUpdate);timer=schedule(()=>finish(false),timeout);checkUpdate();
    });
   }
-  return {consume,snapshot,closedSince,check,checkPolicy,canSkipAttack,waitForProgress,setConnected(value){if(connected&&!value)epoch++;connected=value;flush();}};
+  return {consume,snapshot,closedSince,check,checkPolicy,canSkipAttack,waitForProgress,isOpen,socketOpenSnapshot,setConnected(value){if(connected&&!value){epoch++;for(const p of provinces.values())p.confirmedOpen=false;}connected=value;flush();}};
  }
  const readers=new WeakMap();
  function createSocketReader(win){
@@ -138,7 +159,7 @@
   reader.onConnection(status);
   reader.subscribe(batch=>{
    const updates=batch.filter(r=>r.requestClass==='GuildBattlegroundService'&&(['getProvince','getProvinces','getUpdatedProvinces','getPlayerParticipant'].includes(r.requestMethod)||(Array.isArray(r.responseData)?r.responseData:[r.responseData]).some(v=>Array.isArray(v?.signals)||v?.__class__==='GuildBattlegroundParticipant')));
-   if(updates.length)receive(updates.map(r=>!['getProvince','getProvinces','getUpdatedProvinces'].includes(r.requestMethod)?r:({...r,responseData:(Array.isArray(r.responseData)?r.responseData:[r.responseData]).filter(p=>p?.__class__==='GuildBattlegroundProvince').map(p=>({...p,ownerId:p.ownerId??0,lockedUntil:p.lockedUntil??0,isSpawnSpot:p.isSpawnSpot??false,isAttackBattleType:p.isAttackBattleType??false,gainAttritionChance:p.gainAttritionChance??0,conquestProgress:p.conquestProgress??[]}))})));
+   if(updates.length)receive(updates.map(r=>!['getProvince','getProvinces','getUpdatedProvinces'].includes(r.requestMethod)?r:({...r,responseData:(Array.isArray(r.responseData)?r.responseData:[r.responseData]).filter(p=>p?.__class__==='GuildBattlegroundProvince').map(p=>({...p,ownerId:p.ownerId??0,lockedUntil:p.lockedUntil??0,socketHasLockedUntil:Object.hasOwn(p,'lockedUntil'),isSpawnSpot:p.isSpawnSpot??false,isAttackBattleType:p.isAttackBattleType??false,gainAttritionChance:p.gainAttritionChance??0,conquestProgress:p.conquestProgress??[]}))})));
   });
   return true;
  }

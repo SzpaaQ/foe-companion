@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FoE Companion — baza",
-  "version": "0.7.0",
-  "version_name": "0.7.0",
+  "version": "0.7.3",
+  "version_name": "0.7.03",
   "background": {"service_worker":"background.js"},
   "permissions": ["storage","tabs","activeTab","declarativeNetRequestWithHostAccess"],
   "host_permissions": ["http://127.0.0.1/*","https://*.forgeofempires.com/*","https://discord.com/api/*","<all_urls>"],

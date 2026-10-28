@@ -6,7 +6,7 @@
   },true);
   const LIMIT = 24000000;
   const battlegroundLive=globalThis.FoeBattlegroundLive?.createTracker();
-  globalThis.FoeBattlegroundLive?.observeSockets(window,data=>emit(location.origin+'/socket/',null,data,true,'socket'),connected=>battlegroundLive.setConnected(connected));
+  globalThis.FoeBattlegroundLive?.observeSockets(window,data=>emit(location.origin+'/socket/',null,data,true,'socket'),connected=>{battlegroundLive.setConnected(connected);window.postMessage({channel:'foe-sector-open-confirmed',...battlegroundLive.socketOpenSnapshot()},location.origin);});
   // Dynamiczne wyciąganie soli z pliku JS gry — uruchamia się gdy gra załaduje ForgeHX-*.js
   (function autoUpdateSalt(){
     const extract=async url=>{
@@ -82,6 +82,7 @@
       if (typeof data === 'string') { if (data.length > LIMIT) return; data = JSON.parse(data); }
       if (!data || typeof data !== 'object') return;
       battlegroundLive?.consume(data,source);
+      if(source==='socket'&&battlegroundLive){const snapshot=battlegroundLive.socketOpenSnapshot();window.postMessage({channel:'foe-sector-open-confirmed',...snapshot},location.origin);}
       observeOpenNegotiation(data,body);
       const queue=[data];for(let i=0;i<queue.length&&i<200000;i++){
         const v=queue[i];if(!v||typeof v!=='object')continue;
@@ -101,7 +102,7 @@
           return method;
         }); } catch {}
       }
-      window.postMessage({channel:'foe-companion-v1', data, methods, internal, at:Date.now()}, location.origin);
+      window.postMessage({channel:'foe-companion-v1', data, methods, internal, source, at:Date.now()}, location.origin);
     } catch { /* Observation must not interrupt the game. */ }
   }
   const originalFetch = window.fetch;
@@ -137,10 +138,11 @@
     }
     finally{collectBusy=false;}
   });
-  async function battleCall(connection,requestClass,requestMethod,requestData,responseMethod=requestMethod){
+  async function battleCall(connection,requestClass,requestMethod,requestData,responseMethod=requestMethod,gbgAction=null){
     const item={__class__:'ServerRequest',requestClass,requestMethod,requestData,requestId:++lastRequestId};
     const body=JSON.stringify([item]),headers={'Content-Type':'application/json',Signature:FoeRequestSignature.sign(connection.h,body)};
     if(connection.client)headers['Client-Identification']=connection.client;
+    if(gbgAction)window.postMessage({channel:'foe-gbg-request',...gbgAction,requestClass,requestMethod},location.origin);
     const response=await Reflect.apply(originalFetch,window,[connection.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(20000)}]);
     const data=await response.json();emit(connection.url,body,data,true);
     const list=Array.isArray(data)?data:[data];
@@ -160,7 +162,7 @@
     return result;
   }
   function checkLocalIgnore(policy,id){
-    if(!policy?.localIgnoreKey)return;
+    if(policy?.guardClosing===true||!policy?.localIgnoreKey)return;
     const ids=JSON.parse(localStorage.getItem(policy.localIgnoreKey)||'[]');if(!Array.isArray(ids))throw Error('Nieprawidłowy zapis lokalnego ignorowania.');
     if(ids.includes(id)){const error=Error('Sektor lokalnie ignorowany.');error.code='SECTOR_INELIGIBLE';error.localIgnored=true;throw error;}
   }
@@ -168,8 +170,8 @@
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-quick-battle')return;
     const {token,provinceId,reserve,automatic,bulkPolicy}=event.data;
     const answer=(ok,message,extra={})=>window.postMessage({channel:'foe-quick-battle-result',token,ok,message,...extra},location.origin);
-    if(battleBusy||paymentBusy||collectBusy||negBusy)return answer(false,'Trwa inne żądanie.');
-    if(!battleTransport||battleUncertain)return answer(false,'Brak zweryfikowanego połączenia. Odśwież grę i otwórz mapę.');
+    if(battleBusy||paymentBusy||collectBusy||negBusy)return answer(false,'Trwa inne żądanie.',{notStarted:true,retryable:true});
+    if(!battleTransport||battleUncertain)return answer(false,'Brak zweryfikowanego połączenia. Odśwież grę i otwórz mapę.',{notStarted:true,uncertain:battleUncertain});
     if(!Number.isSafeInteger(provinceId)||provinceId<0)return answer(false,'Nieprawidłowy sektor.');
     if(nextWave&&nextWave.provinceId!==provinceId)return answer(false,'Najpierw zakończ rozpoczętą walkę.');
     battleBusy=true;
@@ -183,11 +185,11 @@
           battlegroundLive.check(provinceId,reserve,1);
         }
         const context={__class__:'BattlegroundArmyContext',battleType:'battleground',provinceId};
-        const army=await battleCall(connection,'ArmyUnitManagementService','getArmyInfo',[context]);
+        const army=await battleCall(connection,'ArmyUnitManagementService','getArmyInfo',[context],'getArmyInfo',{kind:'attack',provinceId});
         const pools=FoeBattleArmy.plan(army);
         stage='wymiana armii';
         changed=true;
-        const updated=await battleCall(connection,'ArmyUnitManagementService','updatePools',[pools,context],'getArmyInfo');
+        const updated=await battleCall(connection,'ArmyUnitManagementService','updatePools',[pools,context],'getArmyInfo',{kind:'attack',provinceId});
         stage='potwierdzenie składu';
         if(!FoeBattleArmy.confirmed(updated,pools))throw Error('Skład, liczba lub zdrowie jednostek nie odpowiadają planowi. Walka nie została wysłana.');
       }
@@ -195,7 +197,7 @@
       changed=true;
       stage='szybka walka';fightSent=true;
       const progressBefore=battlegroundLive?.snapshot(provinceId);
-      const realm=await battleCall(connection,'BattlefieldService','startByBattleType',[type,true]);
+      const realm=await battleCall(connection,'BattlefieldService','startByBattleType',[type,true],'startByBattleType',{kind:'attack',provinceId});
       if(realm?.__class__!=='BattleRealm'||!realm.state?.ranking_data)throw Error('unconfirmed');
       const more=!!realm.state.ranking_data.nextArmy;
       const returnedType=realm.battleType;
@@ -216,7 +218,9 @@
       if(invalidWave)nextWave=null;
       battleUncertain=fightSent&&!invalidWave&&!error.confirmedRejection;
       if(battleUncertain)publishBattleState();
-      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':error.confirmedRejection?' Serwer odrzucił żądanie. Możesz ponowić próbę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; można spróbować ponownie.'),{uncertain:battleUncertain,invalidWave});
+      const notStarted=!fightSent||error.confirmedRejection===true;
+      const retryable=notStarted&&!battleUncertain&&!invalidWave;
+      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':error.confirmedRejection?' Serwer odrzucił żądanie. Ponawiam próbę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; ponawiam próbę.'),{uncertain:battleUncertain,invalidWave,notStarted,retryable,confirmedRejection:error.confirmedRejection===true});
     }finally{battleBusy=false;}
   });
   // Wire IDs share one sequence. Restore the game's IDs before its callbacks read a response.
@@ -467,8 +471,8 @@
   }
 
   let negBusy = false;
-  async function ensureFreeNegotiationTurn(connection,slots,costs){
-    const bag=await battleCall(connection,'ResourceService','getPlayerResourceBag',[]);
+  async function ensureFreeNegotiationTurn(connection,slots,costs,provinceId){
+    const bag=await battleCall(connection,'ResourceService','getPlayerResourceBag',[],'getPlayerResourceBag',Number.isSafeInteger(provinceId)?{kind:'negotiation',provinceId}:null);
     const resources=bag?.resources?.resources||bag?.resources;
     if(!resources||!(resources.negotiation_game_turn>0))throw Error('Brak potwierdzonej bezpłatnej tury. Płatna negocjacja zablokowana.');
     const required={};
@@ -477,7 +481,7 @@
       if(['premium','diamonds'].includes(id)||!Number.isFinite(cost)||cost<0)throw Error('Nie można potwierdzić kosztu bez diamentów.');
       required[id]=(required[id]||0)+cost;
     }
-    for(const [id,amount] of Object.entries(required))if(!Number.isFinite(resources[id])||resources[id]<amount)throw Error('Brak towarów: '+id+'. Zakup za diamenty zablokowany.');
+    for(const [id,amount] of Object.entries(required))if(!Number.isFinite(resources[id])||resources[id]<amount){const error=Error('Brak towarów: '+id+'. Zakup za diamenty zablokowany.');error.code='INSUFFICIENT_GOODS';throw error;}
   }
   function negotiationTurnPause(range){
     const valid=range&&Number.isFinite(range.min)&&Number.isFinite(range.max)&&range.min>=0&&range.max>=range.min&&range.max<=60;
@@ -633,21 +637,22 @@
     if (!Number.isSafeInteger(provinceId) || provinceId < 0) return answer(false, 'Nieprawidłowy sektor.',{notStarted:true});
 
     negBusy = true;
-    const connection = battleTransport;let started=false,sectorBefore=null;
+    const connection = battleTransport;let started=false,sectorBefore=null,stage='przygotowanie negocjacji';
     try {
       // Read the game-provided map/socket state; never poll the map here.
       if(!battlegroundLive)throw Error('Brak modułu aktualizacji socketu. Przeładuj rozszerzenie i grę.');
       battlegroundLive.check(provinceId,reserve,2);
       if(bulkPolicy){
         checkLocalIgnore(bulkPolicy,provinceId);
-        if(bulkPolicy.kind!=='negotiation'||!Number.isSafeInteger(bulkPolicy.maxAttrition)||bulkPolicy.maxAttrition<0)throw Error('Nieprawidłowy limit oporu.');
+        if(bulkPolicy.kind!=='negotiation'||(bulkPolicy.guardClosing!==true&&(!Number.isSafeInteger(bulkPolicy.maxAttrition)||bulkPolicy.maxAttrition<0)))throw Error('Nieprawidłowy limit oporu.');
         battlegroundLive.checkPolicy(provinceId,bulkPolicy);
       }
       sectorBefore=battlegroundLive.snapshot(provinceId);
       // 2. Rozpocznij negocjację.
-      started=true;
-      const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId]);
+      stage='startNegotiation';started=true;
+      const game = await battleCall(connection, 'GuildBattlegroundService', 'startNegotiation', [provinceId],'startNegotiation',{kind:'negotiation',provinceId});
       if (game?.__class__ !== 'NegotiationGame') throw Error('Nie uruchomiono negocjacji.');
+      stage='negotiation';
 
       const goods = Object.keys(game.possibleCosts?.resources || {});
       if (!goods.length) throw Error('Brak listy towarów w negocjacji.');
@@ -659,14 +664,15 @@
       let candidates = negAllCandidates(goods);
       const locked = new Array(5).fill(null); // locked[slotId] = resourceId po correct
       let turnNumber = 1;
-      const MAX_TURNS = 10; // bezpiecznik — serwer sam zwróci out_of_turns
+      const MAX_TURNS = 3; // Pól Chwały pozwala wykonać najwyżej trzy tury
 
       while (turnNumber <= MAX_TURNS) {
         if(turnNumber>1)await negotiationTurnPause(event.data.turnDelay);
+        if(battlegroundLive.closedSince(provinceId,sectorBefore))throw Error('Sektor został przejęty podczas negocjacji.');
         // Wyznacz ruch.
         const guess = negBestGuess(candidates, goods, locked);
         if(!Array.isArray(guess)){
-          const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+          const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[],'giveUp',{kind:'negotiation',provinceId});
           if(surrendered?.__class__!=='Success')throw Error('Nie potwierdzono poddania negocjacji. Sprawdź jej stan w grze.');
           answer(false,'Solver nie znalazł zgodnego rozwiązania. Negocjacja poddana; automatyzacja zatrzymana.',{won:false,surrendered:true});
           return;
@@ -679,9 +685,10 @@
         // Poinformuj panel o proponowanym ruchu.
         window.postMessage({channel: 'foe-negotiate-turn', token, turn: turnNumber, guess, slots}, location.origin);
 
-        await ensureFreeNegotiationTurn(connection,slots,game.possibleCosts?.resources);
+        await ensureFreeNegotiationTurn(connection,slots,game.possibleCosts?.resources,provinceId);
+        if(battlegroundLive.closedSince(provinceId,sectorBefore))throw Error('Sektor został przejęty podczas negocjacji.');
         const progressBefore=battlegroundLive.snapshot(provinceId);
-        const result = await battleCall(connection, 'NegotiationGameService', 'submitTurn', [slots, turnNumber]);
+        const result = await battleCall(connection, 'NegotiationGameService', 'submitTurn', [slots, turnNumber],'submitTurn',{kind:'negotiation',provinceId});
         if (result?.__class__ !== 'NegotiationGameResult') throw Error('Nieoczekiwana odpowiedź serwera.');
 
         const feedback = (result.turnResult?.slots || []).map(slot=>({...slot,slotId:slot.slotId??0}));
@@ -693,13 +700,20 @@
           answer(true, 'Negocjacja zakończona sukcesem w ' + turnNumber + ' ' + (turnNumber === 1 ? 'turze' : turnNumber < 5 ? 'turach' : 'turach') + '.', {won: true, turns: turnNumber, refreshed});
           return;
         }
+        if (result.state === 'lost') {
+          answer(false, 'Negocjacja zakończona porażką po ' + turnNumber + ' turach.', {won:false,turns:turnNumber,negotiationEnded:true,continueAuto:true});
+          return;
+        }
+
         if (result.state === 'out_of_turns') {
-          const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+          const surrendered=await battleCall(connection,'NegotiationGameService','giveUp',[],'giveUp',{kind:'negotiation',provinceId});
           if(surrendered?.__class__!=='Success')throw Error('Nie potwierdzono poddania przegranej negocjacji. Sprawdź jej stan w grze.');
           answer(false, 'Wyczerpano limit tur. Negocjacja poddana.', {won: false, turns: turnNumber,surrendered:true,continueAuto:true});
           return;
         }
 
+        if(result.state!=='ongoing')throw Error('Nieznany stan negocjacji: '+String(result.state));
+        if(turnNumber===MAX_TURNS)throw Error('Negocjacja nie zakończyła się po trzech turach; dalsze ruchy nie zostały wysłane.');
         // Aktualizuj locked i filtruj kandydatów.
         const fullFeedback = [...feedback]; // tylko wysłane sloty
         for (const fb of feedback) {
@@ -712,13 +726,14 @@
       answer(false, 'Osiągnięto wewnętrzny limit bezpieczeństwa tur.', {won: false});
     } catch (error) {
       if(!started&&error.localIgnored){answer(false,'Sektor lokalnie ignorowany — szukam następnego.',{sectorSkipped:true,notStarted:true});return;}
+      if(started&&stage==='startNegotiation'&&error.confirmedRejection===true){answer(false,error.message+' Serwer odrzucił rozpoczęcie negocjacji; ponawiam próbę.',{notStarted:true,retryable:true,confirmedRejection:true});return;}
       let cleanup='',negotiationEnded=false;
       if(started){
         try{
-          const running=await battleCall(connection,'NegotiationGameService','getRunning',[]);
+          const running=await battleCall(connection,'NegotiationGameService','getRunning',[],'getRunning',{kind:'negotiation',provinceId});
           negotiationEnded=running===null;
           if(running?.game?.context==='guildBattleground'&&['ongoing','out_of_turns'].includes(running.state)){
-            const result=await battleCall(connection,'NegotiationGameService','giveUp',[]);
+            const result=await battleCall(connection,'NegotiationGameService','giveUp',[],'giveUp',{kind:'negotiation',provinceId});
             if(result?.__class__!=='Success')throw Error('brak potwierdzenia');
             negotiationEnded=true;cleanup=' Aktywna negocjacja została poddana.';
           }
@@ -726,6 +741,9 @@
       }
       if(started&&negotiationEnded&&battlegroundLive?.closedSince(provinceId,sectorBefore)){
         answer(false,'Sektor przejęty — negocjacja zakończona, szukam następnego.',{sectorClosed:true,negotiationEnded:true,continueAuto:true});return;
+      }
+      if(bulkPolicy?.guardClosing===true&&error.code==='INSUFFICIENT_GOODS'&&negotiationEnded){
+        answer(false,'Brak towarów — zamykanie przechodzi na walki.',{insufficientGoods:true,negotiationEnded:true});return;
       }
       answer(false, error.message+cleanup+' Auto-negocjacje zatrzymane. Sprawdź dostępność towarów przed ponownym uruchomieniem.',{stopAuto:true,notStarted:!started});
     } finally {

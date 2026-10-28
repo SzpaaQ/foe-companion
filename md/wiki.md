@@ -10,6 +10,9 @@ Instrukcja opisuje elementy widoczne w panelu rozszerzenia. Funkcje pojawiają s
   - Wpłaty, przelicznik, bonus Arki i kopiowanie kwot
 - [⚔️ Pola Chwały](pola-chwaly.md)
   - Otwarte sektory, rozpiska, wysyłanie jej na Discorda
+  - Przełączniki rozpiski: 👾 ⚔️ ⚪ 🔥 🔻, widoczność otwartych 👁️, kopiowanie zamkniętych i pomijanie Ignoruj
+  - Zamykanie 🕐/⚡: ponawianie negocjacji, przejście na walki po braku towarów i STOP po trzech porażkach
+  - Checkbox „Zamykaj sektory” dla autoataku i autonegocjacji aż do przejęcia oraz godzina/stan własnych sektorów
   - Walki i negocjacje, automatyzacja i pilnowanie sektorów
   - Okna „Nasze sektory” i „Opcje pilnowania”
 - [🏘️ Zbiory](zbiory.md)

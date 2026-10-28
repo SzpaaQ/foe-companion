@@ -1569,7 +1569,7 @@ Otwórz mapę Pól Chwały w grze.
       else if(full.includes('Auto-negocjacje zatrzymane.'))short='Auto-negocjacje: STOP — błąd; sprawdź towary.';
       else if(full.startsWith('Pobieranie i wymiana armii:'))short=full.replace('Pobieranie i wymiana armii:','Wymiana armii:');
       modalActionStatus=short;
-      if(writeConsole&&/nie udało|błąd|brak gotowego połączenia|nie potwierdz|nieprawidłow|brak towar|odrzu|nie rozpoznano|limit bezpieczeństwa/i.test(full))logGbgConsole(full,'error');
+      if(writeConsole&&/nie udało|błąd|brak gotowego połączenia|nie potwierdz|nieprawidłow|brak towar|odrzu|nie rozpoznano|limit bezpieczeństwa/i.test(full))logGbgConsole(globalThis.FoeMode?.debug===true?full:(short===full?'Wystąpił błąd — sprawdź status.':short),'error');
       const status=root.querySelector('[data-bulk-status]');if(status)status.textContent=short;
       const feedback=$('battle-feedback');feedback.textContent=short;feedback.setAttribute('aria-label',short);
     }
@@ -1701,8 +1701,8 @@ Otwórz mapę Pól Chwały w grze.
         negStatus.textContent=d.won===true?'wygrana':d.won===false?'przegrana':'ready';
         if(d.won===true)logGbgConsole(sector+' — negocjacja: wygrana.','win');
         else if(d.won===false)logGbgConsole(sector+' — negocjacja: przegrana.','loss');
-        else logGbgConsole(sector+' — błąd negocjacji: '+String(d.message||'Nieznany wynik.'),'error');
-        setBattleFeedback(d.message,false);
+        else logGbgConsole(sector+(globalThis.FoeMode?.debug===true?' — błąd negocjacji: '+String(d.message||'Nieznany wynik.'):' — błąd negocjacji.'),'error');
+        setBattleFeedback(d.message,globalThis.FoeMode?.debug===true);
         if(typeof d.won==='boolean'){negDone++;if(d.won)negWins++;negStats.textContent='🤝 '+negWins+'/'+negDone;}
         if(d.ok&&d.refreshed){// progres odświeżony — model jest już zaktualizowany przez emit
         }
@@ -1752,10 +1752,15 @@ Otwórz mapę Pól Chwały w grze.
     window.addEventListener('message',event=>{
       if(event.source!==window||event.origin!==location.origin)return;
       const data=event.data;
-      if(data?.channel==='foe-map-refresh-error')setBattleFeedback(data.message,false);
+      if(data?.channel==='foe-map-refresh-error')setBattleFeedback(data.message);
       if(data?.channel==='foe-battle-ready'){
         battleReady=data.ready===true;battleReadyReason=data.reason||'';
         paintOpenSectors();
+      }
+      if(globalThis.FoeMode?.debug===true&&data?.channel==='foe-gbg-request'){
+        const sector=FoeModel.sector?.(data.provinceId,battle?.map?.id)||String(data.provinceId??'');
+        const label=data.kind==='attack'?'atak':'negocjacja';
+        logGbgConsole(sector+' — '+label+': '+data.requestClass+'.'+data.requestMethod+' — wysyłanie żądania');
       }
       if(data?.channel==='foe-quick-battle-result'&&data.token===battlePending){
         battleLastSector=battlePendingSector;battleLastUntil=Date.now()+1800;battleLastOK=data.ok===true;
@@ -1766,9 +1771,9 @@ Otwórz mapę Pól Chwały w grze.
         if(!data.nextWave){
           if(data.ok&&data.won===true)logGbgConsole(sector+' — atak: wygrana.','win');
           else if(data.ok&&data.won===false)logGbgConsole(sector+' — atak: przegrana.','loss');
-          else logGbgConsole(sector+' — błąd ataku: '+String(data.message||'Nieznany wynik.'),'error');
+          else logGbgConsole(sector+(globalThis.FoeMode?.debug===true?' — błąd ataku: '+String(data.message||'Nieznany wynik.'):' — błąd ataku.'),'error');
         }
-        setBattleFeedback(data.message,false);
+        setBattleFeedback(data.message,globalThis.FoeMode?.debug===true);
         if(data.ok&&!data.nextWave&&typeof data.won==='boolean'){
           fights++;if(data.won)wins++;lossStreak=data.won?0:lossStreak+1;stats.textContent='🏆 '+wins+'/'+fights;
         }

@@ -14,10 +14,10 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(sender.id!==chrome.runtime.id || !sender.tab || !/^https:\/\/[^/]+\.forgeofempires\.com\//.test(sender.url||''))return;
   if(message?.type==='FOE_FEATURE_MODE'){
     (async()=>{
-      let advanced=false;
-      try{advanced=(await fetch(chrome.runtime.getURL('bot'),{cache:'no-store'})).ok;}catch{}
-      reply({advanced});
-    })().catch(()=>reply({advanced:false}));
+      const exists=async name=>{try{return(await fetch(chrome.runtime.getURL(name),{cache:'no-store'})).ok;}catch{return false;}};
+      const [advanced,debug]=await Promise.all([exists('bot'),exists('debug')]);
+      reply({advanced,debug});
+    })().catch(()=>reply({advanced:false,debug:false}));
     return true;
   }
   if(message?.type==='DEV_VERSION'){

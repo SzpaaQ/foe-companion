@@ -72,7 +72,7 @@ Ustawienia Discorda są osobne dla każdej karty gry. W każdej karcie możesz w
 - **ID kanału** to numeryczny identyfikator kanału Discord. Włącz tryb deweloperski w Discordzie, aby skopiować ID kanału.
 - **Limit liczby sektorów** ogranicza liczbę zamkniętych sektorów w rozpisce. Wartość **0** oznacza brak limitu; maksymalnie można wpisać 500. Otwarte sektory pozostają na liście.
 - **Limit czasu otwarcia (min)** ogranicza zamknięte sektory do tych, które otworzą się w podanym czasie. **0** oznacza brak limitu; maksymalnie 10080 minut. Można ustawić oba limity naraz.
-- **Sprawdź połączenie** weryfikuje, czy token działa i bot może odczytać wskazany kanał. Dopiero po udanym sprawdzeniu pojawia się checkbox **Wysyłaj rozpiskę**. Zmiana tokenu lub ID kanału chowa checkbox do czasu ponownego udanego testu. Udane sprawdzenie dostępu nie potwierdza, że bot może wysyłać wiadomości.
+- **Sprawdź połączenie** weryfikuje, czy token działa i bot może odczytać wskazany kanał. Checkbox **Wysyłaj rozpiskę** pozostaje widoczny, ale jest nieaktywny przed konfiguracją i udanym sprawdzeniem. Najedź na niego, aby zobaczyć, co należy uzupełnić. Zmiana tokenu lub ID kanału wymaga ponownego testu. Udane sprawdzenie dostępu nie potwierdza, że bot może wysyłać wiadomości.
 - Status wyjaśnia, czy wysyłanie jest wyłączone, aktywne, oczekuje na dane gry albo napotkało błąd.
 
 Treść rozpiski jest aktualizowana przez edycję zapamiętanej wiadomości, jeśli nadal jest właściwa. Wiadomość powstaje ponownie, gdy na końcu kanału znajduje się inna wiadomość. Zmiana tokenu lub kanału czyści zapamiętanie poprzedniej wiadomości. Discord narzuca limity długości; ustaw limity sektorów, jeśli rozpiska nie mieści się w wiadomości.

@@ -68,7 +68,7 @@
     const sendLabel=document.createElement('label');sendLabel.style.cssText='display:flex;align-items:center;gap:4px;margin-left:auto;font-size:11px;white-space:nowrap';
     const enabled=document.createElement('input');enabled.type='checkbox';enabled.style.margin='0';
     const sendText=document.createElement('span');sendText.textContent='Wysyłaj rozpiskę';
-    sendLabel.hidden=true;enabled.disabled=true;sendLabel.append(enabled,sendText);scheduleHeading.append(sendLabel);
+    sendLabel.title='Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.';enabled.disabled=true;sendLabel.append(enabled,sendText);scheduleHeading.append(sendLabel);
     const section=document.createElement('details');section.id='settings-discord';
     section.innerHTML='<summary>Discord</summary><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limit dotyczy zamkniętych sektorów; otwarte są zawsze uwzględniane.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
     const quantum=settings.querySelector('#settings-quantum');(quantum||settings.lastElementChild)?.after(section);
@@ -77,7 +77,7 @@
     let config=defaults,storedState=null,busy=false,timer=null,lastStatus='',retryUntil=0,connectionVerified=false;
     const setStatus=text=>{if(text!==lastStatus){status.textContent=text;lastStatus=text;}};
     let credentialRevision=0;
-    const setConnectionVerified=value=>{connectionVerified=value===true;sendLabel.hidden=!connectionVerified;sendLabel.style.display=connectionVerified?'flex':'none';enabled.disabled=!connectionVerified;};
+    const setConnectionVerified=value=>{connectionVerified=value===true;sendLabel.hidden=false;sendLabel.style.display='flex';enabled.disabled=!connectionVerified;sendLabel.title=connectionVerified?'':(!config.token||!config.channelId?'Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.':'Kliknij „Sprawdź połączenie” w Ustawienia → Discord.');};
     const discordFailure=(step,result)=>{
       const details=[step,result?.error||'Nie udało się sprawdzić połączenia.'];
       if(result?.discordMessage)details.push(`Discord: ${result.discordMessage}${result.discordCode?' ('+result.discordCode+')':''}`);

@@ -179,6 +179,20 @@
     event.screenshots||={};event.screenshots[label]=dataUrl;
     await save();
    });},
+   regroupActions(groupId,rows){return enqueue(async()=>{
+    if(!doc||!Array.isArray(rows))return;
+    const group=groupEvents(doc.events).find(g=>g.id===groupId);if(!group)return;
+    const available=new Set(actionRows(group.actions).flatMap(r=>r.refs.map(refKey)));
+    const requested=rows.flatMap(r=>r.map(refKey));
+    if(requested.length!==available.size||new Set(requested).size!==available.size||requested.some(k=>!available.has(k)))return;
+    const before=copy(doc.events);
+    for(const event of group.actions)event.actionLayout={...event.actionLayout};
+    rows.forEach((refs,index)=>{
+     const token=crypto.randomUUID();
+     for(const ref of refs){const event=doc.events.find(e=>e.id===ref.id);(event.actionLayout||={})[ref.key]={token,index};}
+    });
+    rememberEdit(before,'grupowanie działań');await save();
+   });},
    setActionOrder(groupId,firstIds){return enqueue(async()=>{
     // Zapisuje kolejność wierszy działań dla danej grupy zbiorów.
     // groupId: id pierwszego zdarzenia grupy (event.id z groupEvents)
@@ -206,6 +220,13 @@
  }
  const labels={added:'Dodano budynek',removed:'Usunięto budynek',changed:'Zmieniono budynek',completed:'Ukończono budowę',connection:'Zmieniono połączenie z drogą',expansion:'Kupuję rozszerzenie'};
  // Stable per-building row keys preserve notes when adjacent actions are grouped.
+ const refKey=ref=>JSON.stringify([ref?.id,ref?.key]);
+ function orderedRuns(actions,order){
+  const runs=actionRuns(actions);
+  if(!order?.length)return runs;
+  const rank=r=>{const i=order.findIndex(k=>k===refKey(r.refs[0])||k===r.refs[0]?.id);return i<0?Infinity:i;};
+  return runs.sort((a,b)=>rank(a)-rank(b));
+ }
  function actionRows(actions){
   const rows=[];
   for(const action of actions){
@@ -221,9 +242,9 @@
     if(action.hiddenRows?.includes(entry.key))continue;
     const name=items.find(i=>i.cityentity_id===entry.building)?.name||entry.building||labels[entry.kind]||entry.kind;
     const note=action.notes?.[entry.key]||'';
-    const previous=rows.at(-1),ref={id:action.id,key:entry.key};
-    if(previous&&previous.run===action.run&&previous.kind===entry.kind&&previous.building===entry.building&&entry.building&&previous.note===note&&action.at-previous.endAt<=120000){previous.count++;previous.endAt=action.at;previous.refs.push(ref);}
-    else rows.push({kind:entry.kind,building:entry.building,name,note,at:action.at,endAt:action.at,run:action.run,count:1,refs:[ref]});
+    const previous=rows.at(-1),ref={id:action.id,key:entry.key},layout=action.actionLayout?.[entry.key];
+    if(!layout&&!previous?.layout&&previous&&previous.run===action.run&&previous.kind===entry.kind&&previous.building===entry.building&&entry.building&&previous.note===note&&action.at-previous.endAt<=120000){previous.count++;previous.endAt=action.at;previous.refs.push(ref);}
+    else rows.push({kind:entry.kind,building:entry.building,name,note,layout,at:action.at,endAt:action.at,run:action.run,count:1,refs:[ref]});
    }
   }
   return rows;
@@ -232,19 +253,20 @@
  function actionRuns(actions){
   const runs=[];
   for(const row of actionRows(actions)){
-   let run=runs.at(-1);
-   if(!run||run.run!==row.run||run.kind!==row.kind||row.at-run.endAt>30*60*1000){
-    run={kind:row.kind,run:row.run,at:row.at,endAt:row.endAt,buildings:[],refs:[],notes:[]};runs.push(run);
+   let run=row.layout?runs.find(r=>r.layout?.token===row.layout.token):runs.at(-1);
+   if(!run||(row.layout?run.layout?.token!==row.layout.token:run.layout)||run.run!==row.run||(!row.layout&&run.kind!==row.kind)||row.at-run.endAt>30*60*1000&&!row.layout){
+    run={kind:row.kind,layout:row.layout,run:row.run,at:row.at,endAt:row.endAt,buildings:[],refs:[],notes:[]};runs.push(run);
    }
-   run.endAt=row.endAt;run.refs.push(...row.refs);
+   if(run.kind!==row.kind)run.kind='mixed';
+   run.endAt=Math.max(run.endAt,row.endAt);run.refs.push(...row.refs);
    if(row.note&&!run.notes.includes(row.note))run.notes.push(row.note);
-   const building=run.buildings.find(b=>b.building===row.building&&b.name===row.name);
+   const building=run.buildings.find(b=>b.kind===row.kind&&b.building===row.building&&b.name===row.name);
    if(building){building.count+=row.count;building.refs.push(...row.refs);}
-   else run.buildings.push({building:row.building,name:row.name,count:row.count,refs:[...row.refs]});
+   else run.buildings.push({kind:row.kind,building:row.building,name:row.name,count:row.count,refs:[...row.refs]});
   }
-  return runs.map(run=>({...run,note:run.notes.join(' · ')}));
+  return runs.sort((a,b)=>(a.layout?.index??Infinity)-(b.layout?.index??Infinity)).map(run=>({...run,note:run.notes.join(' · ')}));
  }
- function mount({root:host,button,history,getWidth=()=>350,getSnapshot=()=>null,getSettings=()=>({}),getPlayerId=()=>null}){
+ function mount({root:host,button,history,getWidth=()=>350,getScale=()=>1,getSnapshot=()=>null,getSettings=()=>({}),getPlayerId=()=>null}){
   const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;parent?.append(n);return n;};
   const dialog=el('dialog',host);dialog.setAttribute('aria-label','Historia zbiorów');dialog.className='qh-window';
   dialog.style.cssText='position:fixed;inset:auto;margin:0;z-index:2147483646;box-shadow:0 8px 30px #0008;color:#e7eeee;background:#102126;border:1px solid #56727b;padding:0;box-sizing:border-box;width:min(1100px,96vw);max-width:96vw;min-width:min(360px,96vw);resize:horizontal;max-height:85vh;overflow:hidden;pointer-events:auto;font:11px/1.35 system-ui';
@@ -258,7 +280,7 @@
   function place(x,y){
    const rect=dialog.getBoundingClientRect();
    position={x:Math.max(0,Math.min(x,Math.max(0,root.innerWidth-rect.width*0.2))),y:Math.max(0,Math.min(y,Math.max(0,root.innerHeight-70)))};
-   dialog.style.left=position.x+'px';dialog.style.top=position.y+'px';
+   dialog.style.left=position.x/getScale()+'px';dialog.style.top=position.y/getScale()+'px';
   }
   top.addEventListener('pointerdown',event=>{
    if(event.button!==0||event.target.closest('button'))return;
@@ -408,14 +430,7 @@
       }
       // Sekcja działań — skondensowana, bez edycji
       if(showActions&&actions.length){
-        const natural=actionRuns(actions);
-        const runs=(()=>{
-          if(!actionOrder?.length)return natural;
-          const byFirst=new Map(natural.map(r=>[r.refs[0]?.id,r]));
-          const sorted=actionOrder.map(id=>byFirst.get(id)).filter(Boolean);
-          const rest=natural.filter(r=>!actionOrder.includes(r.refs[0]?.id));
-          return [...sorted,...rest];
-        })();
+        const runs=orderedRuns(actions,actionOrder);
         if(runs.length){
           const hrA=document.createElement('hr');hrA.style.cssText='border:none;border-top:1px solid #2e4450;margin:10px 0 6px';wrap.append(hrA);
           const secA=document.createElement('details');secA.open=true;secA.style.cssText='text-align:left';wrap.append(secA);
@@ -429,7 +444,7 @@
             time.style.cssText='color:#8a9fa5;flex-shrink:0';row.append(time);
             const desc=document.createElement('span');desc.style.cssText='flex:1;min-width:0';row.append(desc);
             const lbl=kindLabel[run.kind];if(lbl){const s=document.createElement('span');s.textContent=lbl+' ';s.style.cssText='color:#a99885';desc.append(s);}
-            run.buildings.forEach((b,i)=>{if(i)desc.append(document.createTextNode(' · '));const strong=document.createElement('strong');strong.textContent=(b.building?b.count+'× ':'')+b.name;desc.append(strong);});
+            run.buildings.forEach((b,i)=>{if(i)desc.append(document.createTextNode(' · '));const strong=document.createElement('strong');strong.textContent=(run.kind==='mixed'?(kindLabel[b.kind]||'')+' ':'')+(b.building?b.count+'× ':'')+b.name;desc.append(strong);});
             if(run.note){const note=document.createElement('div');note.textContent=run.note;note.style.cssText='width:100%;color:#6a7a7e;font-style:italic;padding-left:2px;text-align:right';row.append(note);}
           }
         }
@@ -568,16 +583,7 @@
     const previous=grouped.slice(0,grouped.indexOf(event)).some(g=>g.run===event.run&&g.kind==='collection');
     if(event.kind!=='baseline'){const merge=smallButton(heading,'Połącz z poprzednim zbiorem',()=>history.merge(event.id));merge.disabled=!previous;}
     details.historyBuild=()=>{if(!details.open||details.dataset.built)return;details.dataset.built='1';
-     const rows=(()=>{
-      const natural=actionRuns(event.actions); // domyślnie: najstarsze na górze
-      const order=history.document?.actionOrder?.[event.id];
-      if(!order?.length)return natural;
-      // Sortuj wg zapisanej kolejności; nieznane runy dołączamy na koniec
-      const byFirst=new Map(natural.map(r=>[r.refs[0]?.id,r]));
-      const sorted=order.map(id=>byFirst.get(id)).filter(Boolean);
-      const rest=natural.filter(r=>!order.includes(r.refs[0]?.id));
-      return [...sorted,...rest];
-     })();
+     const rows=orderedRuns(event.actions,history.document?.actionOrder?.[event.id]);
      const actions=el('details',details);actions.style.cssText='background:#18333b;padding:6px 9px;margin:6px 0';
      const actionsSummary=el('summary',actions,'Działania ('+rows.length+')');
      const hasCustomOrder=!!(history.document?.actionOrder?.[event.id]?.length);
@@ -611,7 +617,7 @@
        const fromIdx=dragIdx,toIdx=Number(row.dataset.rowIdx);
        if(fromIdx===toIdx)return;
        // Buduj nową kolejność firstIds przenosząc fromIdx na toIdx
-       const currentOrder=rows.map(r=>r.refs[0]?.id);
+       const currentOrder=rows.map(r=>refKey(r.refs[0]));
        const moved=currentOrder.splice(fromIdx,1)[0];
        currentOrder.splice(toIdx,0,moved);
        await history.setActionOrder(event.id,currentOrder);
@@ -623,11 +629,25 @@
       if(label)el('span',description,label+' ');
       action.buildings.forEach((building,index)=>{
        if(index)el('span',description,' · ');
-       el('strong',description,(building.building?building.count+'× ':'')+building.name);
+       el('strong',description,(action.kind==='mixed'?({added:'Stawiam: ',removed:'Sprzedaję: ',collection:'Zbieram: ',changed:'Zmieniam: ',connection:'Połączenie: '}[building.kind]||''):'')+(building.building?building.count+'× ':'')+building.name);
       });
       const input=el('input',row);input.type='text';input.dataset.historyNote='1';input.onblur=()=>Promise.resolve().then(paint);input.value=action.note;input.placeholder='Dodaj notatkę…';input.maxLength=2000;input.setAttribute('aria-label','Notatka: '+action.buildings.map(b=>b.name).join(', '));
       input.style.cssText='flex:1;min-width:100px;max-width:100%;background:transparent;color:inherit;border:0;outline:none;box-shadow:none;font:inherit;padding:4px;text-align:right';
       input.onchange=()=>history.editRows(action.refs,input.value);
+      const regroup=async layout=>{await history.regroupActions(event.id,layout);await history.setActionOrder(event.id,[]);delete details.dataset.built;paint();};
+      if(action.refs.length>1){
+       const ungroup=smallButton(row,'🔀',()=>regroup(rows.flatMap((r,i)=>i===rowIdx?r.refs.map(ref=>[ref]):[r.refs])));
+       ungroup.title='Rozdziel grupę na pojedyncze wpisy';ungroup.setAttribute('aria-label',ungroup.title);
+      }else{
+       for(const [offset,emoji,label] of [[-1,'⬆️','Grupuj z górnym wpisem'],[1,'⬇️','Grupuj z dolnym wpisem']]){
+        const neighbor=rowIdx+offset;
+        const join=smallButton(row,emoji,()=>{
+         const layout=rows.map(r=>[...r.refs]);
+         layout[neighbor]=offset<0?[...layout[neighbor],...action.refs]:[...action.refs,...layout[neighbor]];
+         layout.splice(rowIdx,1);return regroup(layout);
+        });join.disabled=neighbor<0||neighbor>=rows.length;join.title=label;join.setAttribute('aria-label',label);
+       }
+      }
       const split=smallButton(row,'✂️',()=>history.split(action.refs));split.title='Rozdziel od tego działania (to działanie i późniejsze utworzą osobną grupę)';split.setAttribute('aria-label','Rozdziel od tego działania');split.disabled=action.refs[0]?.id===event.actions[0]?.id;
       const remove=smallButton(row,'×',()=>history.removeRows(action.refs));remove.title='Usuń działanie';remove.setAttribute('aria-label','Usuń działanie');
      }

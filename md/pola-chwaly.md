@@ -117,3 +117,44 @@ Domyślnie powtarza walki. Przy włączonym **Zamykaj sektory negocjacjami** pon
 Po **trzech kolejnych przegranych walkach** zatrzymuje zamykanie i pokazuje **Nie udało się zamknąć sektora — 3 przegrane walki z rzędu.** Wygrana walka zeruje serię porażek. Porażki negocjacji nie są doliczane do tej serii. Aby ponowić zamykanie po zatrzymaniu, ponownie zaznacz właściwą opcję 🕐 lub ⚡.
 
 **STOP** wstrzymuje zamykanie; trwająca akcja może zostać dokończona. Brak jednostek, niepotwierdzony wynik, utrata połączenia lub błąd gry także zatrzymują działania. Zamykanie kończy się, gdy sektor zostaje przejęty lub zablokowany; rozszerzenie nie może zagwarantować przejęcia przed inną gildią. Negocjacja na Polach Chwały wysyła najwyżej trzy tury.
+
+
+### Okna sektorów
+
+Przycisk 🏠 obok tytułu „Otwarte sektory” otwiera i zamyka okno „Nasze sektory”. Oba okna można rozciągać w pionie i poziomie za prawy dolny róg. Tooltip nazwy sektora ma nagłówek „Nasze sektory” i pokazuje każdego naszego sąsiada w osobnym wierszu. Checkboxy sterowania znajdują się razem przy prawej krawędzi górnego paska.
+
+Aktywne zagrożenie odcięciem pojawia się również w małym oknie „Pola chwały” jako wpis ⚠️ z nazwą sektora. Takie wpisy mają pierwszeństwo na liście i znikają po wygaśnięciu zagrożenia (chyba że sektor nadal spełnia warunki zwykłego powiadomienia). Małe okno pokazuje zagrożenie wyłącznie dla otwartych sektorów do zdobycia, niezależnie od opcji oznaczania zamkniętych w tabeli.
+
+Zagrożenie odcięciem wymaga dokładnie jednego naszego sąsiada. Ten sąsiad musi być otwarty, a postęp wroga na nim musi wzrosnąć w ostatnich 60 sekundach. Przy co najmniej dwóch naszych sąsiadach nie ma oznaczenia odcięcia, również jeśli część z nich jest zamknięta. Zastany postęp, zamknięcie albo utrata sąsiada nie są uznawane za świeży atak. Warunek jest wspólny dla oznaczenia w tabeli i opcji „Zamykaj zagrożone”.
+
+
+## Okna sektorów i wybór celu — 0.7.09
+
+- 🌐 otwiera Wszystkie sektory, posortowane po czasie otwarcia, z sąsiadami i zajętymi slotami budynków. Własne sektory nie mają dostępnych akcji ataku. Widok współdzieli sterowanie, filtry, kopiowanie i konsolę z oknem Otwartych sektorów; przełączenie widoku zachowuje działający automat.
+- ⚙️ obok 🏠 otwiera ustawienia ataku, negocjacji i automatyzacji bez zwijania sekcji. Zmiana trafia do tych samych ustawień co w panelu.
+- ▶ przy sektorze wybiera go do automatycznej obsługi. Globalna kolejka kończy rozpoczętą akcję, następnie obsługuje wskazany sektor i wraca do wcześniej włączonych trybów. STOP anuluje również oczekujące przełączenie i powrót.
+- Otwarte sektory z postępem 0 mogą rozpocząć pierwszą walkę lub negocjację mimo braku maksymalnego postępu w danych gry. Nadal obowiązują pozostałe ustawienia, towary, opór i bufor otwarcia 2 s lub jawne potwierdzenie otwarcia przez grę.
+- ⚠️ przy zamkniętym sektorze i w rozpisce ostrzega, jeśli wszyscy nasi sąsiedzi otwierają się wcześniej niż cel. To prognoza możliwego odcięcia; tooltip podaje naszych sąsiadów. Nie uruchamia sama opcji Zamykaj zagrożone, która nadal wymaga aktywnego ataku na jedynego dostępnego sąsiada.
+- Nasze sektory pokazują sąsiadów w osobnych liniach: odliczanie, kolor gildii, sektor, właściciel i opór. Nasza gildia ma biały kolor.
+- W oknach sektorów przewija się tabela; nagłówek i stopka pozostają widoczne. Rozwijana Konsola Pól Chwały ma kopiowanie i czyszczenie po lewej.
+- 🟥 / 🟦 przy automatach przełączają typy sektorów Atak/Obrona; tooltip podaje wł./wył. Opcja Przełącz na atak, gdy skończą się towary jest domyślnie wyłączona i wymaga dostępnej funkcji ataku oraz zakończenia poprzedniej negocjacji.
+
+## Sterowanie w oknie sektorów
+
+Okno dostępnych ustawień używa tych samych kolorów i kontrolek co panel: etykiety są po lewej, pola po prawej. Dostępność ustawień jest taka sama jak w panelu.
+
+**⏹ STOP** w nagłówku jest widoczny również podczas automatu pojedynczego sektora i oczekiwania na jego uruchomienie. Rozpoczęta walka zostaje dokończona.
+
+W globalnym autoataku dostępne sektory oznaczone **🎯** mają pierwszeństwo. Zmiany oznaczeń otrzymane z gry są uwzględniane przed kolejną akcją; priorytet nie omija blokady sektora, lokalnego ignorowania ani pozostałych limitów.
+
+Po wyłączeniu **Ignoruj łapkę** nowa automatyczna walka lub negocjacja nie rozpoczyna się na sektorze oznaczonym **✋**, także przy automacie pojedynczego sektora. Jawne wymuszone zamykanie według reguł pilnowania zachowuje wcześniejsze wyjątki.
+
+Pod rozpiską znajduje się jeden wiersz: **📋** kopiuje rozpiskę, **📋 Discord** kopiuje format Discorda, a emoji po prawej sterują zawartością. Pola Prefix i Suffix w ustawieniach Discorda mają jednakową szerokość.
+
+## Ustawienia i przełączanie widoku
+
+**⚙️** otwiera całą sekcję Pól Chwały (w tym Rozpiskę i Alert) oraz Discord. Widoczne są te same opcje co w panelu. **🌐** w nagłówku przełącza na wszystkie sektory, a **⚔️** w tym miejscu wraca do otwartych.
+
+Przełącznik **⚠️** pod rozpiską i tabelą włącza lub wyłącza ostrzeżenia w treści rozpiski oraz jej kopiowaniu. Nie wyłącza wykrywania zagrożenia. Skróty rozpiski są bez tooltipów. Kopiowanie **📋 Discord** otacza rozpiskę trzema backtickami, bez oznaczenia języka.
+
+Przy włączonym wysyłaniu rozszerzenie co minutę odczytuje ostatnią wiadomość kanału. Jeśli rozpiska została usunięta lub ktoś napisał po niej, publikuje nową, nawet gdy jej treść się nie zmieniła. Bot musi mieć uprawnienie odczytu historii wiadomości. Błąd sprawdzenia wstrzymuje wysyłanie; szczegóły są w statusie Discorda.

@@ -163,6 +163,8 @@
   }
   function checkLocalIgnore(policy,id){
     if(policy?.guardClosing===true||!policy?.localIgnoreKey)return;
+    const currentSettings=JSON.parse(localStorage.getItem('foe-companion.openSectorSettings.v1')||'{}');
+    policy.attackIgnoreGuildSignal=currentSettings.attackIgnoreGuildSignal===true;
     const ids=JSON.parse(localStorage.getItem(policy.localIgnoreKey)||'[]');if(!Array.isArray(ids))throw Error('Nieprawidłowy zapis lokalnego ignorowania.');
     if(ids.includes(id)){const error=Error('Sektor lokalnie ignorowany.');error.code='SECTOR_INELIGIBLE';error.localIgnored=true;throw error;}
   }
@@ -742,8 +744,8 @@
       if(started&&battlegroundLive?.closedSince(provinceId,sectorBefore)){
         answer(false,'Sektor przejęty — pomijam go i szukam następnego.',{sectorClosed:true,negotiationEnded,continueAuto:true});return;
       }
-      if(bulkPolicy?.guardClosing===true&&error.code==='INSUFFICIENT_GOODS'&&negotiationEnded){
-        answer(false,'Brak towarów — zamykanie przechodzi na walki.',{insufficientGoods:true,negotiationEnded:true});return;
+      if(error.code==='INSUFFICIENT_GOODS'&&negotiationEnded){
+        answer(false,'Brak towarów do negocjacji.',{insufficientGoods:true,negotiationEnded:true,stopAuto:true});return;
       }
       answer(false, error.message+cleanup+' Auto-negocjacje zatrzymane. Sprawdź dostępność towarów przed ponownym uruchomieniem.',{stopAuto:true,notStarted:!started});
     } finally {

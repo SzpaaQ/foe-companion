@@ -17,6 +17,8 @@
   function validConfig(value={}){
     return {
       enabled:value.enabled===true,
+      prefix:typeof value.prefix==='string'?value.prefix.slice(0,500):'',
+      suffix:typeof value.suffix==='string'?value.suffix.slice(0,500):'',
       verified:value.verified===true,
       token:typeof value.token==='string'?value.token.trim().slice(0,256):'',
       channelId:typeof value.channelId==='string'&&/^\d{16,22}$/.test(value.channelId.trim())?value.channelId.trim():'',
@@ -30,15 +32,16 @@
   const api=(config,action,extra={})=>chrome.runtime.sendMessage({type:'FOE_DISCORD_API',action,token:config.token,channelId:config.channelId,...extra});
 
   function hashText(text){let hash=2166136261;for(let i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,16777619);}return (hash>>>0).toString(16).padStart(8,'0');}
-  function discordPayload(text){
+  function discordPayload(text,config={}){
     const wrap=part=>'```text\n'+part+'\n```';
-    if(text.length+12<=2000)return {content:wrap(text),embeds:[]};
+    const prefix=config.prefix||'',suffix=config.suffix||'',content=[prefix,wrap(text),suffix].filter(Boolean).join('\n');
+    if(content.length<=2000)return {content,embeds:[]};
     if(text.length>6000)return null;
     const lines=text.split('\n'),chunks=[];let chunk='';
     for(const line of lines){if(line.length>4084)return null;const next=chunk?chunk+'\n'+line:line;if(next.length>4084){chunks.push(chunk);chunk=line;}else chunk=next;}
     if(chunk)chunks.push(chunk);
     if(chunks.length>10||text.length+chunks.length*12>6000)return null;
-    return {content:'',embeds:chunks.map(part=>({description:wrap(part)}))};
+    return {content:[prefix,suffix].filter(Boolean).join('\n'),embeds:chunks.map(part=>({description:wrap(part)}))};
   }
   function buildText(rows,config,formatOpen,now=Date.now()/1000,frontierOnly=false){
     const candidates=rows.filter(row=>row&&row.color!=='⚪');
@@ -72,9 +75,10 @@
     const section=document.createElement('details');section.id='settings-discord';
     section.innerHTML='<summary>Discord</summary><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limit dotyczy zamkniętych sektorów; otwarte są zawsze uwzględniane.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
     const quantum=settings.querySelector('#settings-quantum');(quantum||settings.lastElementChild)?.after(section);
+    const textFields={};for(const key of ['prefix','suffix']){const label=document.createElement('label');label.style.cssText='display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;align-items:center';label.textContent=key==='prefix'?'Prefix — przed rozpiską':'Suffix — po rozpisce';const field=document.createElement('textarea');field.rows=3;field.maxLength=500;field.setAttribute('aria-label',key);field.style.cssText='width:100%;min-width:0;box-sizing:border-box;resize:vertical;background:#102126;color:#e7eeee';label.append(field);section.append(label);textFields[key]=field;}
     const token=section.querySelector('#discord-token'),channel=section.querySelector('#discord-channel'),maxSectors=section.querySelector('#discord-max-sectors'),maxMinutes=section.querySelector('#discord-max-minutes'),test=section.querySelector('#discord-test'),status=section.querySelector('#discord-status');
     token.style.cssText='width:220px!important;max-width:65vw';channel.style.cssText='width:180px!important;max-width:65vw';
-    let config=defaults,storedState=null,busy=false,timer=null,lastStatus='',retryUntil=0,connectionVerified=false;
+    let config=defaults,storedState=null,busy=false,timer=null,lastStatus='',retryUntil=0,connectionVerified=false,lastMessageCheck=0,checkedChannel=null,latestMessageId=null;
     const setStatus=text=>{if(text!==lastStatus){status.textContent=text;lastStatus=text;}};
     let credentialRevision=0;
     const setConnectionVerified=value=>{connectionVerified=value===true;sendLabel.hidden=false;sendLabel.style.display='flex';enabled.disabled=!connectionVerified;sendLabel.title=connectionVerified?'':(!config.token||!config.channelId?'Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.':'Kliknij „Sprawdź połączenie” w Ustawienia → Discord.');};
@@ -87,7 +91,7 @@
     const writeConfig=async next=>{
       const previous=config;config=validConfig(next);
       if(previous.channelId!==config.channelId||previous.token!==config.token)config.verified=false;
-      enabled.checked=config.enabled;
+      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';enabled.checked=config.enabled;
       token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;
       try{await storageSet({[tabConfigKey]:config});}catch{setStatus('Nie udało się zapisać ustawień Discorda.');}
       if(previous.channelId!==config.channelId||previous.token!==config.token){setConnectionVerified(false);storedState=null;await storageRemove(tabStateKey);}
@@ -101,19 +105,21 @@
         if(!saved)await storageSet({[tabConfigKey]:config});
       }
       catch{config=defaults;setStatus('Nie udało się odczytać ustawień Discorda.');}
-      enabled.checked=config.enabled;token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;setConnectionVerified(config.verified);
+      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';enabled.checked=config.enabled;token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;setConnectionVerified(config.verified);
       if(config.enabled)setStatus(config.verified?'Połączenie sprawdzone.':'Sprawdź połączenie z Discordem, aby wznowić wysyłanie.');else setStatus('Wysyłanie wyłączone.');
     };
     let saveTimer=null;
     const saveFields=()=>{
-      clearTimeout(saveTimer);saveTimer=setTimeout(()=>writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0}),250);
+      clearTimeout(saveTimer);saveTimer=setTimeout(()=>writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0,prefix:textFields.prefix.value,suffix:textFields.suffix.value}),250);
     };
     const invalidateConnection=()=>{credentialRevision++;config={...config,verified:false};setConnectionVerified(false);storageSet({[tabConfigKey]:config}).catch(()=>setStatus('Nie udało się zapisać ustawień Discorda.'));if(config.enabled)setStatus('Sprawdź ponownie po zmianie tokenu lub kanału.');};
     token.addEventListener('input',invalidateConnection);channel.addEventListener('input',invalidateConnection);
     token.addEventListener('change',saveFields);token.addEventListener('blur',saveFields);channel.addEventListener('change',saveFields);channel.addEventListener('blur',saveFields);maxSectors.addEventListener('change',saveFields);maxMinutes.addEventListener('change',saveFields);
+    for(const field of Object.values(textFields))field.addEventListener('change',saveFields);
+    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const rows=getRows();if(!Array.isArray(rows))return;const body=buildText(rows,config,formatOpen,Date.now()/1000,isFrontierOnly());try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
     enabled.onchange=()=>writeConfig({...config,enabled:enabled.checked});
     test.onclick=async()=>{
-      await writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0});
+      await writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0,prefix:textFields.prefix.value,suffix:textFields.suffix.value});
       if(!config.token||!config.channelId){setConnectionVerified(false);setStatus('Wpisz token bota i ID kanału.');return;}
       const testedConfig={...config},revision=credentialRevision;
       test.disabled=true;setStatus('Sprawdzam dostęp do kanału…');
@@ -138,7 +144,7 @@
         if(!config.token||!config.channelId){setStatus('Wpisz token bota i ID kanału w Ustawienia → Discord.');return;}
         const rows=getRows();if(!Array.isArray(rows)){setStatus('Otwórz mapę Pól Chwały w grze.');return;}
         const text=buildText(rows,config,formatOpen,Date.now()/1000,isFrontierOnly())||'Brak sektorów w rozpisce.';
-        const payload=discordPayload(text);
+        const payload=discordPayload(text,config);
         if(!payload){setStatus('Rozpiska przekracza limit Discorda 6000 znaków. Ustaw limit liczby sektorów lub czasu.');return;}
         if(Date.now()<retryUntil)return;
         const lease=await storageGet(tabLockKey),now=Date.now();
@@ -147,10 +153,13 @@
         const confirm=await storageGet(tabLockKey);if(confirm?.owner!==ownId)return;
         storedState=await storageGet(tabStateKey)||null;
         const state=storedState&&storedState.channelId===config.channelId?storedState:null;
-        const channelCheck=await api(config,'channel');
-        if(!channelCheck?.ok){retryUntil=Date.now()+(channelCheck?.retryAfter?channelCheck.retryAfter*1000:60000);setStatus(discordFailure('Sprawdzenie ostatniej wiadomości',channelCheck));return;}
-        const isOurLastMessage=!!state?.messageId&&channelCheck.channel?.lastMessageId===state.messageId;
-        const contentHash=hashText(text);
+        if(checkedChannel!==config.channelId||now-lastMessageCheck>=60000){
+          const latest=await api(config,'latest');
+          if(!latest?.ok){retryUntil=Date.now()+(latest?.retryAfter?latest.retryAfter*1000:60000);setStatus(discordFailure('Sprawdzenie ostatniej wiadomości',latest));return;}
+          latestMessageId=latest.message?.id??null;checkedChannel=config.channelId;lastMessageCheck=now;
+        }
+        const isOurLastMessage=!!state?.messageId&&latestMessageId===state.messageId;
+        const contentHash=hashText(JSON.stringify(payload));
         if(isOurLastMessage&&state.hash===contentHash&&state.text===text){
           setStatus('Rozpiska aktualna na Discordzie.');return;
         }
@@ -166,6 +175,7 @@
         const sent=await api(config,'send',{payload});
         if(!sent?.ok){retryUntil=Date.now()+(sent?.retryAfter?sent.retryAfter*1000:60000);setStatus(discordFailure('Wysyłanie rozpiski',sent));return;}
         storedState={channelId:config.channelId,messageId:sent.message?.id||null,botId:sent.message?.author?.id||null,text,hash:contentHash,updatedAt:now};
+        latestMessageId=storedState.messageId;checkedChannel=config.channelId;lastMessageCheck=Date.now();
         await storageSet({[tabStateKey]:storedState});setStatus('Wysłano nową rozpiskę na Discorda.');
       }catch{setStatus('Błąd podczas aktualizacji rozpiski Discorda.');}
       finally{busy=false;}

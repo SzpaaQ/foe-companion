@@ -40,3 +40,5 @@ Funkcja Discord wysyła treść rozpiski na wskazany kanał. Token bota jest pou
 ## Jak czytać instrukcję
 
 Ikony, kolory, godziny i liczniki są objaśnione przy zakładce, w której się pojawiają. Jeśli przycisk jest szary lub nie reaguje, zwykle brakuje danych z gry albo dana akcja nie jest w tej chwili dostępna. Komunikat pod przyciskiem wyjaśnia przyczynę, jeśli gra ją udostępni.
+
+Okno 🌐 Wszystkie sektory i wybór celu opisano w [Polach Chwały](pola-chwaly.md), a skalowanie Shift + / − we [wspólnych funkcjach](wspolne.md).

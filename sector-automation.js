@@ -1,21 +1,22 @@
 (function(root){
  'use strict';
- const defaults={attackProgress:100,attackChance:20,closeEnemyProgress:50,closeWithNegotiations:false,negProgress:50,negWins:100,maxAttrition:100,attack:true,defense:true,attackIgnoreGuildSignal:false};
+ const defaults={attackProgress:100,attackChance:20,closeEnemyProgress:50,closeWithNegotiations:false,attackOnNoGoods:false,negProgress:50,negWins:100,maxAttrition:100,attack:true,defense:true,attackIgnoreGuildSignal:false};
  function settings(value={}){
   if(!value||typeof value!=='object')value={};
   const out={...defaults};
   for(const key of ['attackProgress','negProgress','closeEnemyProgress'])if(Number.isFinite(value[key])&&value[key]>0&&value[key]<=100)out[key]=value[key];
   for(const key of ['negWins','maxAttrition'])if(Number.isSafeInteger(value[key])&&value[key]>=(key==='negWins'?1:0))out[key]=value[key];
   if(Number.isFinite(value.attackChance)&&value.attackChance>=0&&value.attackChance<=100)out.attackChance=value.attackChance;
-  for(const key of ['attack','defense','closeWithNegotiations','attackIgnoreGuildSignal','closeSectors'])if(typeof value[key]==='boolean')out[key]=value[key];
+  for(const key of ['attack','defense','closeWithNegotiations','attackOnNoGoods','attackIgnoreGuildSignal','closeSectors','closeThreatened'])if(typeof value[key]==='boolean')out[key]=value[key];
   return out;
  }
  function eligible(row,kind,config,now,reserve=0){
   if(!row||row.ignored&&!(config.attackIgnoreGuildSignal)||row.localIgnored||row.color==='⚪'||(!row.openConfirmed&&row.until>0&&row.until+2>now)||!Number.isFinite(row.progress)||row.progress<0)return false;
-  const firstAttack=kind==='attack'&&row.progress===0&&row.maxProgress==null;
+  const forceClose=config.closeSectors===true||config.closeThreatened===true&&row.threatened===true;
+  const firstAttack=row.progress===0&&row.maxProgress==null;
   if(!firstAttack&&(!Number.isFinite(row.maxProgress)||row.maxProgress<=0))return false;
   const cost=kind==='negotiation'?2:1,limit=kind==='negotiation'?config.negProgress:config.attackProgress;
-  if(!firstAttack&&!config.closeSectors&&(row.progress/row.maxProgress*100>=limit||row.maxProgress-row.progress-cost<reserve))return false;
+  if(!firstAttack&&!forceClose&&(row.progress/row.maxProgress*100>=limit||row.maxProgress-row.progress-cost<reserve))return false;
   if(kind==='attack'&&(!Number.isFinite(row.gainAttritionChance)||row.gainAttritionChance<0||row.gainAttritionChance>config.attackChance))return false;
   return kind==='negotiation'?row.gainAttritionChance===20:(row.isAttackBattleType===true?config.attack:row.isAttackBattleType===false?config.defense:false);
  }
@@ -51,18 +52,18 @@
    if(!ready){stop(null,'Brak gotowego połączenia — uruchom ponownie po odświeżeniu danych.');return;}
    if(negotiation&&Number.isFinite(attrition)&&attrition>config.maxAttrition)stop('negotiation','Opór przekracza limit negocjacji.');
    if(busy||now()<nextAt)return;
-   const sorted=[...rows].sort((a,b)=>a.until-b.until||a.id-b.id);
+   const sorted=[...rows].sort((a,b)=>Number(b.focused===true)-Number(a.focused===true)||a.until-b.until||a.id-b.id);
    for(const kind of ['negotiation','attack']){
     if(!(kind==='attack'?attack:negotiation))continue;
     if(kind==='negotiation'&&!Number.isSafeInteger(attrition)){status='Oczekiwanie na odczyt oporu z mapy.';continue;}
     const row=sorted.find(r=>{
      if(!eligible(r,kind,config,now()/1000,reserve))return false;
-     const count=ledger[scope].counts[opening(r.id)];return kind==='attack'||(!count?.pending&&(config.closeSectors||(count?.wins||0)<config.negWins));
+     const count=ledger[scope].counts[opening(r.id)],forceClose=config.closeSectors||config.closeThreatened&&r.threatened;return kind==='attack'||(!count?.pending&&(forceClose||(count?.wins||0)<config.negWins));
     });
     if(!row)continue;
     const identity=opening(row.id);if(!identity)continue;
     delaySetting=Number.isFinite(delay)&&delay>=0?delay:delaySetting;
-    active={kind,id:row.id,scope,identity,delay:delaySetting,policy:{localIgnoreKey,mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,attackIgnoreGuildSignal:config.attackIgnoreGuildSignal,reserve,closeUntilClosed:config.closeSectors===true}};
+    active={kind,id:row.id,scope,identity,delay:delaySetting,policy:{localIgnoreKey,mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,attackIgnoreGuildSignal:config.attackIgnoreGuildSignal,reserve,closeUntilClosed:config.closeSectors===true||config.closeThreatened===true&&row.threatened===true}};
     if(kind==='negotiation'){const count=ledger[scope].counts[identity]||={wins:0};count.pending=true;if(!save()){active=null;changed();return;}}
     status=(kind==='attack'?'⚔️ ':'🤝 ')+row.sector+(kind==='negotiation'?' · sukcesy: '+(ledger[scope].counts[identity]?.wins||0)+'/'+config.negWins:'');
     changed();if(send(kind,row.id,active.policy)===false)result({ok:false,notStarted:true,message:'Nie udało się rozpocząć akcji.'});return;
@@ -77,10 +78,11 @@
    const previous=active;active=null;lastFinishedAt=now();delayFloor=0;nextAt=lastFinishedAt+previous.delay;
    const skipped=data.sectorSkipped===true&&data.notStarted===true||previous.kind==='negotiation'&&data.sectorClosed===true;
    const confirmed=skipped|| (previous.kind==='attack'?data.ok&&typeof data.won==='boolean'&&(data.won===false||data.refreshed):data.won===true&&data.ok&&data.refreshed||data.won===false&&data.continueAuto&&(data.surrendered||data.negotiationEnded));
+   if(skipped)status=data.message||'Sektor zamknięty — szukam następnego.';
    if(previous.kind==='negotiation'){
     const count=ledger[previous.scope]?.counts[previous.identity];
     if(count&&confirmed){count.pending=false;if(!skipped&&data.won)count.wins++;save();}
-    else if(count&&data.notStarted){count.pending=false;save();}
+    else if(count&&(data.notStarted||data.negotiationEnded===true)){count.pending=false;save();}
    }
    if(data.retryable===true&&data.notStarted===true&&!data.uncertain){
     retryStreak++;

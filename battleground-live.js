@@ -78,6 +78,12 @@
   }
   function checkPolicy(id,policy){
    if(!policy||!['attack','negotiation'].includes(policy.kind)||!Number.isFinite(policy.progress)||policy.progress<=0||policy.progress>100||!Number.isInteger(policy.reserve)||policy.reserve<0)throw Error('Nieprawidłowe warunki automatyzacji.');
+   if(policy.singleSector===true){
+    const s=check(id,policy.reserve,policy.kind==='negotiation'?2:1);
+    if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
+    if(ignored.has(id)&&policy.attackIgnoreGuildSignal!==true)throw unavailable('Sektor oznaczony jako ignorowany.');
+    return s;
+   }
    if(policy.guardClosing===true){
     const s=check(id);
     if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
@@ -96,7 +102,7 @@
    if(mapId!==policy.mapId||endsAt!==policy.endsAt)throw Error('Mapa zmieniona.');
    if(ignored.has(id)&&!(policy.attackIgnoreGuildSignal===true))throw unavailable('Sektor oznaczony jako ignorowany.');
    if(Number.isFinite(s.maxProgress)&&s.maxProgress>0&&s.progress/s.maxProgress*100>=policy.progress)throw unavailable('Osiągnięto limit progresu.');
-   const firstAttack=policy.kind==='attack'&&s.progress===0&&s.maxProgress==null;
+   const firstAttack=s.progress===0&&s.maxProgress==null;
    if(!firstAttack&&(!Number.isFinite(s.maxProgress)||s.maxProgress<=0||s.progress/s.maxProgress*100>=policy.progress))throw Error('Osiągnięto limit progresu lub brak potwierdzonego limitu.');
    if(policy.kind==='negotiation'&&(!Number.isSafeInteger(attrition)||attrition<0||!Number.isSafeInteger(policy.maxAttrition)||attrition>policy.maxAttrition))throw Error('Brak aktualnego oporu lub przekroczono limit — otwórz mapę w grze.');
    if(policy.kind==='negotiation'&&p.gainAttritionChance!==20)throw Error('Szansa wzrostu oporu nie wynosi 20%.');

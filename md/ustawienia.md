@@ -95,3 +95,7 @@ Kliknij **Changelog · numer wersji**, aby rozwinąć listę zmian w kolejnych w
 ## Notatka
 
 Notatka na dole panelu jest wspólna dla zakładki Ustawienia. Patrz [Notatki](wspolne.md#notatki).
+
+
+### Format Discorda
+Prefix i suffix (do 500 znaków każde) dodają tekst przed i po rozpisce. Rozpiska jest blokiem kodu; przy dużej wiadomości może trafić do osadzonych bloków Discorda. Przycisk 📋 Discord kopiuje całość do ręcznego wklejenia. Kopiowanie nie wymaga skonfigurowanego bota.

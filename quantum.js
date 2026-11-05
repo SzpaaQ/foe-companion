@@ -29,6 +29,26 @@
   }
   return [...groups.values()].sort((a,b)=>(categoryOrder.indexOf(a.category)<0?99:categoryOrder.indexOf(a.category))-(categoryOrder.indexOf(b.category)<0?99:categoryOrder.indexOf(b.category))||a.name.localeCompare(b.name,'pl'));
  }
+ function settlementOverview(entities,definitions){
+  const keys=['guild_raids_population','guild_raids_happiness'];
+  const current={population:0,happiness:0,free:0},future={population:0,happiness:0,free:0},rows=[];
+  let incomplete=false;
+  for(const e of entities){
+   if(e.cityentity_id.includes('Impediment'))continue;
+   const def=definitions.get(e.cityentity_id),c=def?.components?.AllAge;
+   if(!c){incomplete=true;continue;}
+   const building=e.state?.__class__==='ConstructionState',category=e.type==='main_building'?'main_building':c.constructionMenu?.category;
+   const raw=c.staticResources?.resources?.resources||{};
+   const effects=Object.fromEntries(keys.map(k=>[k,e.connected===0?0:Number(raw[k])||0]));
+   const population=effects.guild_raids_population,happiness=effects.guild_raids_happiness;
+   for(const total of building?[future]:[current,future]){total.free+=population;total.population+=Math.max(0,population);total.happiness+=happiness;}
+   if(!['culture','decoration'].includes(category))rows.push({cityentity_id:e.cityentity_id,name:category==='main_building'?'Ratusz':def.name||e.cityentity_id,category,underConstruction:building,effects});
+  }
+  for(const total of [current,future])total.missingHappiness=Math.max(0,2*total.population-total.happiness);
+  const ready=groupedExtras(rows.filter(r=>!r.underConstruction)),pending=groupedExtras(rows.filter(r=>r.underConstruction)).map(r=>({...r,underConstruction:true}));
+  const sum=list=>Object.fromEntries(keys.map(k=>[k,list.reduce((n,r)=>n+r.effects[k],0)]));
+  return {rows:[...ready,...pending],totals:sum(ready),withConstruction:sum([...ready,...pending]),current,future,incomplete,hasConstruction:entities.some(e=>e.state?.__class__==='ConstructionState')};
+ }
  function isSettlementResponse(data){return (Array.isArray(data)?data:[data]).some(r=>r?.requestClass==='CityMapService'&&r.requestMethod==='getCityMap'&&r.responseData?.gridId==='guild_raids');}
  function walk(data,fn){const q=[data];for(let i=0;i<q.length&&i<250000;i++){const v=q[i];if(!v||typeof v!=='object')continue;fn(v);for(const c of Object.values(v))if(c&&typeof c==='object')q.push(c);}}
  function products(option){const sum=empty();for(const p of option?.products||[]){const r=p.playerResources?.resources;if(r)for(const k of KEYS)sum[k]+=Number(r[k])||0;}return sum;}
@@ -166,7 +186,7 @@
    }}
    let actionsPerHour=5000;
    for(const e of map.entities){if(e.connected===0)continue;for(const b of component(e)?.boosts?.boosts||[])if(b.type==='guild_raids_action_points_collection')actionsPerHour+=Number(b.value)||0;}
-   return {groups,totals,builds,extras,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
+   return {populationOverview:settlementOverview(map.entities,definitions),groups,totals,builds,extras,missing:[...missing],actionsPerHour,ropeCapacity:ropeCapacity(definitions,wallet),currentBonuses:bonuses(now),raid,wallet:{...wallet},bonuses:bonuses(groups.at(-1)?.at||now),entityCount:map.entities.filter(e=>!e.cityentity_id.includes('Impediment')).length};
   }
   return {consume,summary,definitions,get map(){return map;},get army(){return army;}};
  }

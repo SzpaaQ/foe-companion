@@ -1,4 +1,4 @@
-# FoE Companion 0.7.07
+# FoE Companion 0.7.10
 
 Panel pomocniczy do Forge of Empires. Automatycznie odczytuje odpowiedzi fetch/XHR gry pod `/game/json`; przyciski akcji korzystają z bieżącej sesji. Po instalacji lub aktualizacji odśwież grę i otwórz odpowiednią mapę, perłę albo osadę.
 

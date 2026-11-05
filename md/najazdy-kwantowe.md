@@ -36,9 +36,13 @@ Budynki są grupowane według przewidywanego terminu zbioru. Kilka budynków o z
 - **Zestawienie** oraz **Pozostałe budynki** to zwijane nagłówki. Kliknij nagłówek, aby ukryć lub pokazać tabelę.
 - W tabelach **😊** oznacza zadowolenie, **👥** populację, **⚡** produkcję działań na godzinę, **🔋** pojemność działań, **🗡️** bonus ataku, a **🛡️** bonus obrony. Kolumny pojawiają się tylko wtedy, gdy są dostępne dane.
 
-## Wojsko
+## 👥 Populacja
 
-Sekcja **Wojsko** pokazuje dostępne jednostki, zdrowie, skład armii i czas ostatniego odczytu, jeśli takie informacje zostały przekazane. Gdy ich brakuje, otwórz ekran armii w grze. Panel nie odczytuje składu, którego gra mu nie udostępniła.
+Zwijana tabela zastępuje listę wojska. Pokazuje liczbę i nazwę budynków oraz kolumnę **👥 populacja**. Zużycie jest ujemne i czerwone, brak efektu oznacza kreska. Budowy mają osobne, przygaszone wiersze z 🏗️.
+
+**Suma** obejmuje gotowe budynki z tabeli, a **🏗️ Suma z budową** również ich przewidywane efekty po ukończeniu. Kultura i ozdoby pozostają w „Pozostałych budynkach”. Tabela nie zawiera kolumny zadowolenia ani dodatkowego podsumowania osady i komunikatu o brakujących definicjach.
+
+Wartości są szacunkiem z ostatnio odczytanej mapy i definicji. Aktualizują się po otrzymaniu danych o sprzedaży, budowie lub jej ukończeniu.
 
 ## Historia zbiorów
 
@@ -87,3 +91,19 @@ W **Ustawienia → Najazdy kwantowe** znajdują się:
 ## Notatka
 
 Notatka na dole panelu jest wspólna dla zakładki Najazdy kwantowe. Osobne pola notatek przy działaniach w historii zapisują się w tych działaniach.
+
+
+### Ręczne grupowanie działań
+
+Przycisk 🔀 przy grupie działań rozdziela ją na pojedyncze wpisy (po jednym budynku). Przy pojedynczym wpisie ⬆️ łączy go z wpisem powyżej, a ⬇️ z wpisem poniżej. Sąsiadem może być pojedynczy wpis lub istniejąca grupa, także innego rodzaju działania. Na początku i końcu listy niedostępna strzałka jest wyłączona. Aby przesunąć wpis dalej, użyj uchwytu przeciągania, a następnie połącz go z sąsiadem.
+
+Podział i grupowanie zachowują czasy obserwacji, notatki oraz dane osady Przed/Po, zapisują się w historii i eksporcie JSON. Można je cofnąć przyciskiem ↶ Cofnij. Rozdzielenie nie odtwarza nieznanej godziny sprzedaży — pozostaje czas zarejestrowania przez rozszerzenie. Przycisk ✂️ nadal rozdziela cały zbiór od wskazanego działania.
+
+### Zagrożenie odcięciem w Polach Chwały
+
+Najechanie na nazwę sektora w tabeli otwartych sektorów pokazuje nasze sąsiednie sektory, po jednym w wierszu: czas do otwarcia, typ 🟥/🟦, nazwę i postęp wroga `👾N/M`. Ikona ⚠️ przy przycisku kopiowania oznacza, że postęp wroga na jedynym naszym sąsiednim sektorze wzrósł w ostatnich 60 sekundach i ten sąsiad jest otwarty. Sam utrzymujący się postęp nie oznacza zagrożenia.
+
+Ustawienie ⚠️ „Oznaczaj zagrożeniem zamknięte sektory” w Rozpisce rozszerza oznaczanie na sektory zamknięte. Checkbox „Zamykaj zagrożone” w oknie otwartych sektorów uruchamia dla aktywnie zagrożonego sektora zamykanie walką lub negocjacjami zgodnie z wybranym trybem. Pomija zwykły limit postępu i rezerwę walk, ale nadal respektuje lokalne ignorowanie, typ akcji, opór i dostępność towarów.
+
+
+Przełączniki 🟥 / 🟦 obok automatów zmieniają typy sektorów wybieranych do walki. Tooltip pokazuje stan wł./wył. Opcja „Przełącz na atak, gdy skończą się towary” pozwala autonegocjacjom przejść na walki po potwierdzonym braku towarów i zakończeniu negocjacji; wymaga dostępnych przycisków ataku.

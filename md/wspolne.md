@@ -28,3 +28,7 @@ Tekst pod listą lub obok przycisku pokazuje wynik działania, brak danych albo 
 ## Zmiana rozmiaru i przesuwanie okien
 
 Niektóre okna, na przykład historia zbiorów i okna sektorów, można przesunąć za pasek tytułu. Zmiana położenia okna nie zmienia danych gry. Jeśli okno ma uchwyt zmiany rozmiaru, przeciągnij jego narożnik.
+
+
+### Rozmiar interfejsu
+Shift + oraz Shift − zmieniają rozmiar panelu, okien i przycisków rozszerzenia co 10%, od 50% do 400%. Początkowa skala po odświeżeniu wynosi 100%. Skróty nie działają podczas pisania w polach tekstowych.

@@ -7,6 +7,10 @@
   const LIMIT = 24000000;
   const battlegroundLive=globalThis.FoeBattlegroundLive?.createTracker();
   globalThis.FoeBattlegroundLive?.observeSockets(window,data=>emit(location.origin+'/socket/',null,data,true,'socket'),connected=>{battlegroundLive.setConnected(connected);window.postMessage({channel:'foe-sector-open-confirmed',...battlegroundLive.socketOpenSnapshot()},location.origin);});
+  globalThis.FoeBattlegroundLive?.createSocketReader?.(window)?.subscribe(batch=>{
+    const updates=batch.filter(r=>r.requestClass==='CityMapService'&&['updateEntity','reset'].includes(r.requestMethod)).map(r=>({...r,responseData:(Array.isArray(r.responseData)?r.responseData:[]).filter(e=>e?.__class__==='CityMapEntity'&&e.type==='greatbuilding')})).filter(r=>r.responseData.length);
+    if(updates.length)emit(location.origin+'/socket/',null,updates,true,'socket');
+  });
   // Dynamiczne wyciąganie soli z pliku JS gry — uruchamia się gdy gra załaduje ForgeHX-*.js
   (function autoUpdateSalt(){
     const extract=async url=>{
@@ -30,6 +34,7 @@
   })();
   let collectBusy=false,cityOwner=null;const ownBuildings=new Map(),collectedStates=new Map();
   let transport=null,lastRequestId=0,paymentBusy=false,paymentUncertain=false;
+  let lastPearlTarget=null,pearlReadBusy=false,pearlReadAfter=0;
   let battleTransport=null,battleBusy=false,battleUncertain=false,nextWave=null;
   let battleReason='Nie przechwycono jeszcze podpisanego żądania gry.';
   const captureStats={version:2,requests:0,signed:0,verified:0,bodyType:'—'};
@@ -102,10 +107,30 @@
           return method;
         }); } catch {}
       }
+      if(!internal){const opened=methods.find(m=>m.requestClass==='GreatBuildingsService'&&m.requestMethod==='getConstruction');if(opened?.target)lastPearlTarget={...opened.target};}
       window.postMessage({channel:'foe-companion-v1', data, methods, internal, source, at:Date.now()}, location.origin);
     } catch { /* Observation must not interrupt the game. */ }
   }
   const originalFetch = window.fetch;
+  window.addEventListener('message',async event=>{
+    if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-pearl-refresh')return;
+    const target=event.data.target;
+    if(!target||target.playerId!==cityOwner||target.entityId!==lastPearlTarget?.entityId||target.playerId!==lastPearlTarget?.playerId||ownBuildings.get(target.entityId)?.type!=='greatbuilding')return;
+    if(!battleTransport||pearlReadBusy||Date.now()<pearlReadAfter||battleBusy||paymentBusy||collectBusy)return;
+    pearlReadBusy=true;pearlReadAfter=Date.now()+5000;
+    const before=ownBuildings.get(target.entityId),revision=JSON.stringify([before?.level,before?.state?.invested_forge_points??0]);
+    try{
+      const connection=battleTransport,item={__class__:'ServerRequest',requestClass:'GreatBuildingsService',requestMethod:'getConstruction',requestData:[target.entityId,target.playerId],requestId:++lastRequestId};
+      const body=JSON.stringify([item]),headers={'Content-Type':'application/json',Signature:FoeRequestSignature.sign(connection.h,body)};
+      if(connection.client)headers['Client-Identification']=connection.client;
+      const response=await Reflect.apply(originalFetch,window,[connection.url,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.timeout(15000)}]);
+      const data=await response.json();
+      const current=ownBuildings.get(target.entityId);
+      if(response.ok&&lastPearlTarget?.entityId===target.entityId&&lastPearlTarget?.playerId===target.playerId&&revision===JSON.stringify([current?.level,current?.state?.invested_forge_points??0]))emit(connection.url,body,data,true);
+    }catch{pearlReadAfter=Date.now()+10000;}
+    finally{pearlReadBusy=false;}
+  });
+
   window.addEventListener('message',async event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='foe-collect')return;
     const {token}=event.data;
@@ -279,6 +304,7 @@
         const id=item?.id||item?.asset_id;
         if(typeof id==='string'&&/^[A-Z]+_[A-Za-z0-9_]+$/.test(id)&&typeof item.name==='string'&&item.name.trim()){
           const entry={id,name:item.name.trim()};
+          if(item.maxTier&&['gold','copper'].includes(item.maxTier.value))entry.maxTier=item.maxTier;
           if(item.components)entry.producesFP=Object.values(item.components).some(c=>/"strategy_points"\s*:\s*[1-9]/.test(JSON.stringify(c?.production)||''));
           names.push(entry);
         }

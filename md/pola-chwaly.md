@@ -158,3 +158,13 @@ Pod rozpiską znajduje się jeden wiersz: **📋** kopiuje rozpiskę, **📋 Dis
 Przełącznik **⚠️** pod rozpiską i tabelą włącza lub wyłącza ostrzeżenia w treści rozpiski oraz jej kopiowaniu. Nie wyłącza wykrywania zagrożenia. Skróty rozpiski są bez tooltipów. Kopiowanie **📋 Discord** otacza rozpiskę trzema backtickami, bez oznaczenia języka.
 
 Przy włączonym wysyłaniu rozszerzenie co minutę odczytuje ostatnią wiadomość kanału. Jeśli rozpiska została usunięta lub ktoś napisał po niej, publikuje nową, nawet gdy jej treść się nie zmieniła. Bot musi mieć uprawnienie odczytu historii wiadomości. Błąd sprawdzenia wstrzymuje wysyłanie; szczegóły są w statusie Discorda.
+
+Najedź na **⚠️ przy konkretnym sektorze w rozpisce**, aby zobaczyć jego własnych sąsiadów, po jednym wierszu. Godzina oznacza otwarcie sąsiada; **⚠️mm:ss** to czas od jego otwarcia do otwarcia celu (dla już otwartego sąsiada: czas pozostały od teraz). **👾** pokazuje postęp wroga, jeśli jest większy od zera. Cała rozpiska nie ma wspólnego tooltipu.
+
+**Kopiowanie 📋 Discord:** kopiuje dokładnie zawartość widocznego pola rozpiski (zamknięte sektory, z aktualnym filtrem „tylko sąsiedzi”), otoczoną potrójnymi backtickami oraz ustawionym prefiksem i sufiksem. Nie dopisuje otwartych sektorów ani nie stosuje dodatkowych limitów automatycznej wysyłki.
+
+### Zamykanie sektora zagrożonego odcięciem
+
+Kolumna ⚡ uwzględnia również jedynego własnego sąsiada zapewniającego dostęp do celu. Sąsiad musi być otwarty, postęp wroga musi świeżo rosnąć (w ostatnich 60 sekundach) i przekroczyć próg z ustawień zamykania. Przy dwóch lub większej liczbie własnych sąsiadów ten warunek nie działa. Zamknięty sąsiad albo nieruchomy postęp nie uruchamia zamykania.
+
+Opcja **Zamykaj zagrożone** również stosuje ten próg. Samo wizualne ostrzeżenie ⚠️ nadal może pojawić się wcześniej. Zamykanie korzysta z wybranej metody walk/negocjacji i respektuje STOP.

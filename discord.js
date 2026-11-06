@@ -62,7 +62,7 @@
     return [openLines.join('\n'),closedLines.join('\n')].filter(Boolean).join('\n\n');
   }
 
-  function mount({root,getRows,formatOpen,isFrontierOnly=()=>false}){
+  function mount({root,getRows,formatOpen,isFrontierOnly=()=>false,getSchedule=()=>''}){
     if(!root||typeof getRows!=='function'||typeof formatOpen!=='function')return null;
     const scheduleHeading=root.querySelector('#schedule-heading');
     const settings=root.querySelector('#settings');
@@ -116,7 +116,7 @@
     token.addEventListener('input',invalidateConnection);channel.addEventListener('input',invalidateConnection);
     token.addEventListener('change',saveFields);token.addEventListener('blur',saveFields);channel.addEventListener('change',saveFields);channel.addEventListener('blur',saveFields);maxSectors.addEventListener('change',saveFields);maxMinutes.addEventListener('change',saveFields);
     for(const field of Object.values(textFields))field.addEventListener('change',saveFields);
-    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const rows=getRows();if(!Array.isArray(rows))return;const body=buildText(rows,config,formatOpen,Date.now()/1000,isFrontierOnly());try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
+    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const body=getSchedule();if(typeof body!=='string')return;try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
     enabled.onchange=()=>writeConfig({...config,enabled:enabled.checked});
     test.onclick=async()=>{
       await writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0,prefix:textFields.prefix.value,suffix:textFields.suffix.value});

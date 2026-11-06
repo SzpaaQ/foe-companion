@@ -30,9 +30,9 @@ Kliknij emoji, aby włączyć lub wyłączyć opcję. Włączona ikona jest w pe
 
 ### Wysyłanie rozpiski na Discord
 
-Pole **Wysyłaj rozpiskę** przy nagłówku rozpiski włącza lub wyłącza wysyłanie bieżącej listy na skonfigurowany kanał Discord. Funkcja sprawdza zmiany co sekundę, ale aktualizuje wiadomość tylko wtedy, gdy zmieni się treść. Jeśli ostatnia wiadomość na kanale nie jest zapamiętaną rozpiską, bot publikuje nową, aby bieżąca lista ponownie znalazła się na końcu kanału.
+Emoji **📨** przy nagłówku rozpiski włącza lub wyłącza wysyłanie bieżącej listy na skonfigurowany kanał Discord. Kliknij **🔓**, aby dołączać otwarte sektory. Ta opcja jest domyślnie wyłączona i steruje również ich kopiowaniem przyciskiem **📋 Discord**. Obie ikony mają tooltip ze stanem; przygaszona ikona jest wyłączona. Funkcja sprawdza zmiany co sekundę, ale aktualizuje wiadomość tylko wtedy, gdy zmieni się treść. Jeśli ostatnia wiadomość na kanale nie jest zapamiętaną rozpiską, bot publikuje nową, aby bieżąca lista ponownie znalazła się na końcu kanału.
 
-Konfigurację wykonuje się w **Ustawienia → Discord**. Filtr sąsiedztwa z pola **tylko sąsiedzi** obejmuje także wysyłaną listę. Limity liczby sektorów i czasu dotyczą wyłącznie zamkniętych sektorów; otwarte pozostają na liście. Wiersze otwartych i nadchodzących sektorów są rozdzielone pustym wierszem. Wiadomość nie dodaje nagłówków „Otwarte” ani „Zamknięte”. Discord ogranicza długość wiadomości, więc w razie zbyt długiej listy ustaw jeden z limitów.
+Konfigurację wykonuje się w **Ustawienia → Discord**. Checkbox **Wysyłaj otwarte** jest zsynchronizowany z **🔓**. Filtr sąsiedztwa z pola **tylko sąsiedzi** obejmuje także wysyłaną i kopiowaną listę. Limity liczby sektorów i czasu dotyczą wyłącznie zamkniętych sektorów. Gdy otwarte sektory są włączone, ich wiersze i nadchodzące sektory są rozdzielone pustym wierszem. Wiadomość nie dodaje nagłówków „Otwarte” ani „Zamknięte”. Discord ogranicza długość wiadomości, więc w razie zbyt długiej listy ustaw jeden z limitów.
 
 Bot musi mieć dostęp do kanału oraz prawo do wyświetlania kanału i wysyłania wiadomości. Przycisk **Sprawdź połączenie** w ustawieniach sprawdza dostęp. Token bota traktuj jak hasło i nie udostępniaj go.
 

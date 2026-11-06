@@ -3,7 +3,7 @@
   const STATE_KEY='foe.discord.schedule.v1';
   const LOCK_KEY='foe.discord.lease.v1';
   const POLL_MS=1000;
-  const defaults={enabled:false,token:'',channelId:'',maxSectors:0,maxMinutes:0};
+  const defaults={enabled:false,includeOpen:false,token:'',channelId:'',maxSectors:0,maxMinutes:0};
   function getTabId(){
     try{
       let id=sessionStorage.getItem('foe.discord.tabId');
@@ -17,6 +17,7 @@
   function validConfig(value={}){
     return {
       enabled:value.enabled===true,
+      includeOpen:value.includeOpen===true,
       prefix:typeof value.prefix==='string'?value.prefix.slice(0,500):'',
       suffix:typeof value.suffix==='string'?value.suffix.slice(0,500):'',
       verified:value.verified===true,
@@ -45,7 +46,7 @@
   }
   function buildText(rows,config,formatOpen,now=Date.now()/1000,frontierOnly=false){
     const candidates=rows.filter(row=>row&&row.color!=='⚪');
-    const open=candidates.filter(row=>row.until<=now&&(!frontierOnly||row.frontier===true)).sort((a,b)=>(a.progress??0)-(b.progress??0)||a.id-b.id);
+    const open=config.includeOpen===true?candidates.filter(row=>row.until<=now&&(!frontierOnly||row.frontier===true)).sort((a,b)=>(a.progress??0)-(b.progress??0)||a.id-b.id):[];
     let closed=candidates.filter(row=>row.until>now&&(!frontierOnly||row.frontier===true)).sort((a,b)=>a.until-b.until||a.id-b.id);
     if(config.maxMinutes>0)closed=closed.filter(row=>row.until-now<=config.maxMinutes*60);
     if(config.maxSectors>0)closed=closed.slice(0,config.maxSectors);
@@ -68,20 +69,25 @@
     const settings=root.querySelector('#settings');
     if(!scheduleHeading||!settings)return null;
 
-    const sendLabel=document.createElement('label');sendLabel.style.cssText='display:flex;align-items:center;gap:4px;margin-left:auto;font-size:11px;white-space:nowrap';
-    const enabled=document.createElement('input');enabled.type='checkbox';enabled.style.margin='0';
-    const sendText=document.createElement('span');sendText.textContent='Wysyłaj rozpiskę';
-    sendLabel.title='Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.';enabled.disabled=true;sendLabel.append(enabled,sendText);scheduleHeading.append(sendLabel);
+    const discordControls=document.createElement('div');discordControls.style.cssText='display:flex;align-items:center;gap:5px;margin-left:auto;white-space:nowrap';
+    const sendButton=document.createElement('button');sendButton.type='button';sendButton.textContent='📨';sendButton.disabled=true;sendButton.style.cssText='background:transparent;border:0;padding:1px 2px;margin:0;min-width:0;line-height:16px;cursor:pointer';sendButton.setAttribute('aria-label','Wysyłaj rozpiskę na Discord');
+    const includeOpenButton=document.createElement('button');includeOpenButton.type='button';includeOpenButton.textContent='🔓';includeOpenButton.style.cssText='background:transparent;border:0;padding:1px 2px;margin:0;min-width:0;line-height:16px;cursor:pointer';includeOpenButton.setAttribute('aria-label','Wysyłaj otwarte sektory');
+    discordControls.append(sendButton,includeOpenButton);scheduleHeading.append(discordControls);
     const section=document.createElement('details');section.id='settings-discord';
-    section.innerHTML='<summary>Discord</summary><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limit dotyczy zamkniętych sektorów; otwarte są zawsze uwzględniane.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
+    section.innerHTML='<summary>Discord</summary><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label><input type="checkbox" id="discord-include-open"> Wysyłaj otwarte</label><small>Otwarte sektory są pomijane domyślnie. Ta opcja dotyczy także kopiowania 📋 Discord.</small><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limity liczby i czasu dotyczą zamkniętych sektorów.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
     const quantum=settings.querySelector('#settings-quantum');(quantum||settings.lastElementChild)?.after(section);
     const textFields={};for(const key of ['prefix','suffix']){const label=document.createElement('label');label.style.cssText='display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;align-items:center';label.textContent=key==='prefix'?'Prefix — przed rozpiską':'Suffix — po rozpisce';const field=document.createElement('textarea');field.rows=3;field.maxLength=500;field.setAttribute('aria-label',key);field.style.cssText='width:100%;min-width:0;box-sizing:border-box;resize:vertical;background:#102126;color:#e7eeee';label.append(field);section.append(label);textFields[key]=field;}
-    const token=section.querySelector('#discord-token'),channel=section.querySelector('#discord-channel'),maxSectors=section.querySelector('#discord-max-sectors'),maxMinutes=section.querySelector('#discord-max-minutes'),test=section.querySelector('#discord-test'),status=section.querySelector('#discord-status');
+    const token=section.querySelector('#discord-token'),channel=section.querySelector('#discord-channel'),includeOpen=section.querySelector('#discord-include-open'),maxSectors=section.querySelector('#discord-max-sectors'),maxMinutes=section.querySelector('#discord-max-minutes'),test=section.querySelector('#discord-test'),status=section.querySelector('#discord-status');
     token.style.cssText='width:220px!important;max-width:65vw';channel.style.cssText='width:180px!important;max-width:65vw';
     let config=defaults,storedState=null,busy=false,timer=null,lastStatus='',retryUntil=0,connectionVerified=false,lastMessageCheck=0,checkedChannel=null,latestMessageId=null;
     const setStatus=text=>{if(text!==lastStatus){status.textContent=text;lastStatus=text;}};
     let credentialRevision=0;
-    const setConnectionVerified=value=>{connectionVerified=value===true;sendLabel.hidden=false;sendLabel.style.display='flex';enabled.disabled=!connectionVerified;sendLabel.title=connectionVerified?'':(!config.token||!config.channelId?'Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.':'Kliknij „Sprawdź połączenie” w Ustawienia → Discord.');};
+    const paintDiscordControls=()=>{
+      for(const [button,active,label] of [[sendButton,config.enabled,'Wysyłaj rozpiskę na Discord'],[includeOpenButton,config.includeOpen,'Wysyłaj otwarte sektory']]){
+        button.style.opacity=active?'1':'0.5';button.style.filter=active?'drop-shadow(rgba(0, 8, 12, 0.8) 0px 0px 2px)':'none';button.setAttribute('aria-pressed',String(active));button.setAttribute('data-tooltip',label+' — '+(active?'wł.':'wył.'));button.title=label+' — '+(active?'wł.':'wył.');
+      }
+    };
+    const setConnectionVerified=value=>{connectionVerified=value===true;sendButton.disabled=!connectionVerified;sendButton.title=connectionVerified?'Wysyłaj rozpiskę na Discord — '+(config.enabled?'wł.':'wył.')+' (kliknij, aby przełączyć)':(!config.token||!config.channelId?'Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.':'Kliknij „Sprawdź połączenie” w Ustawienia → Discord.');paintDiscordControls();};
     const discordFailure=(step,result)=>{
       const details=[step,result?.error||'Nie udało się sprawdzić połączenia.'];
       if(result?.discordMessage)details.push(`Discord: ${result.discordMessage}${result.discordCode?' ('+result.discordCode+')':''}`);
@@ -91,8 +97,8 @@
     const writeConfig=async next=>{
       const previous=config;config=validConfig(next);
       if(previous.channelId!==config.channelId||previous.token!==config.token)config.verified=false;
-      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';enabled.checked=config.enabled;
-      token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;
+      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';includeOpen.checked=config.includeOpen;
+      token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;paintDiscordControls();
       try{await storageSet({[tabConfigKey]:config});}catch{setStatus('Nie udało się zapisać ustawień Discorda.');}
       if(previous.channelId!==config.channelId||previous.token!==config.token){setConnectionVerified(false);storedState=null;await storageRemove(tabStateKey);}
       if(!config.enabled)setStatus('Wysyłanie wyłączone.');
@@ -105,7 +111,7 @@
         if(!saved)await storageSet({[tabConfigKey]:config});
       }
       catch{config=defaults;setStatus('Nie udało się odczytać ustawień Discorda.');}
-      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';enabled.checked=config.enabled;token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;setConnectionVerified(config.verified);
+      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';includeOpen.checked=config.includeOpen;token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;setConnectionVerified(config.verified);
       if(config.enabled)setStatus(config.verified?'Połączenie sprawdzone.':'Sprawdź połączenie z Discordem, aby wznowić wysyłanie.');else setStatus('Wysyłanie wyłączone.');
     };
     let saveTimer=null;
@@ -116,8 +122,10 @@
     token.addEventListener('input',invalidateConnection);channel.addEventListener('input',invalidateConnection);
     token.addEventListener('change',saveFields);token.addEventListener('blur',saveFields);channel.addEventListener('change',saveFields);channel.addEventListener('blur',saveFields);maxSectors.addEventListener('change',saveFields);maxMinutes.addEventListener('change',saveFields);
     for(const field of Object.values(textFields))field.addEventListener('change',saveFields);
-    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const body=getSchedule();if(typeof body!=='string')return;try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
-    enabled.onchange=()=>writeConfig({...config,enabled:enabled.checked});
+    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const body=getSchedule(config.includeOpen);if(typeof body!=='string')return;try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
+    sendButton.onclick=()=>{if(!connectionVerified)return;writeConfig({...config,enabled:!config.enabled});};
+    includeOpenButton.onclick=()=>writeConfig({...config,includeOpen:!config.includeOpen});
+    includeOpen.onchange=()=>writeConfig({...config,includeOpen:includeOpen.checked});
     test.onclick=async()=>{
       await writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0,prefix:textFields.prefix.value,suffix:textFields.suffix.value});
       if(!config.token||!config.channelId){setConnectionVerified(false);setStatus('Wpisz token bota i ID kanału.');return;}

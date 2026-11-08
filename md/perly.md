@@ -8,7 +8,7 @@ Otwórz w grze perłę architektury, aby panel odczytał jej koszt poziomu i ran
 
 - **Przelicznik miedziany / złoty** określają, ile razy większa ma być wpłata od nagrody z danego miejsca. Wpisz dodatnią liczbę nie większą niż 10, do czterech miejsc po przecinku. Zmiana od razu przelicza kwoty i zostaje zapamiętana.
 - **Bonus Arki miedziany / złoty (%)** określają bonus, z jakim kalkulator ocenia nagrodę z Arki. Dozwolony zakres to 0–1000%, do czterech miejsc po przecinku. Podpowiedź nad kwotą pokazuje szacowaną nagrodę, zysk lub stratę i proponowaną wpłatę.
-- **Total PR / Koszt poziomu** pozwala wpisać ręcznie całkowity koszt podniesienia poziomu. Jest przydatne, gdy chcesz obliczyć dopłatę właściciela dla innej wartości. Pozostaw pole puste, aby użyć kosztu odczytanego z gry. Zmiana dotyczy aktualnie otwartej perły.
+- **🎯 / 👤** przy nazwie perły pokazują koszt poziomu i wpłatę właściciela. Koszt jest odczytywany automatycznie.
 - **Kopiuj kwotę (klawisze 1–7)** włącza kopiowanie kwot miejsc P1–P7 po naciśnięciu cyfr 1–7, gdy kursor nie znajduje się w polu tekstowym. Wyłącz opcję, jeśli te klawisze mają służyć wyłącznie grze.
 
 ## Wyniki i symbole
@@ -50,3 +50,11 @@ Maraton korzysta z ostatniego pełnego rankingu otrzymanego z gry. Jeśli nadejd
 ### Aktualizacja maratonu na żywo
 
 Przy rozwiniętym maratonie we własnej perle rozszerzenie wykrywa przez socket zmianę łącznej wpłaty. Wtedy odczytuje pełny ranking inwestorów, bez wpłacania PR. Odczyty odbywają się najwyżej raz na 5 sekund, tylko gdy zakładka przeglądarki i panel pereł są widoczne. Zwijając maraton, wyłączasz te odczyty. Zmiana poziomu usuwa stare potwierdzenia i powoduje ponowny odczyt. Sam brak nowych danych nie jest uznawany za wpłatę.
+
+## Okno maratonu i wpłaty
+
+Przycisk 🏃 otwiera okno maratonu, które zapamiętuje położenie i rozmiar. Te same dane pokazuje domyślnie rozwinięta sekcja **Wpłaty** na dole panelu. Zero jest widoczne; poprawne wpłaty mają zielony kolor i ✅. Nieaktualny ranking nie daje potwierdzenia.
+
+Przycisk ⚙️ otwiera wszystkie ustawienia pereł. **Otwieraj maraton przy własnej perle** automatycznie pokazuje okno. **Tolerancja wpłat (PR)** dopuszcza narastający niedobór: przy 2 PR jest to do −2 po pierwszym opłaconym miejscu, do −4 po drugim itd. Rzeczywiste różnice nadal są wyświetlane.
+
+**Kopiuj przy zamkniętym panelu** pozwala korzystać z cyfr 1–7 bez wysuwania panelu, gdy włączone jest kopiowanie kwot. Potwierdzenie, np. **P4: 123 PR ✅**, pojawia się na 3 sekundy w prawym dolnym rogu. 📋 przy **Łączny koszt właściciela** kopiuje tę wartość.

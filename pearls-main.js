@@ -62,15 +62,17 @@
   if(max==='gold')return level>=101?'gold':'copper';
   return level<=100?'copper':null;
  }
- function marathonRows(construction,rows){
+ function marathonRows(construction,rows,tolerance=0){
   if(!Array.isArray(construction?.rankings))return [];
-  let balance=0;
+  tolerance=Number.isSafeInteger(Number(tolerance))&&Number(tolerance)>=0?Number(tolerance):0;
+  let balance=0,allowance=0;
   return rows.map(row=>{
    const record=construction.rankings.find(r=>r.rank===row.rank&&r.player?.player_id!==construction.target?.playerId);
    const paid=record?.forge_points??0;
    const delta=Number.isSafeInteger(row.amount)?paid-row.amount:null;
    balance=delta===null?NaN:balance+delta;
-   return {...row,paid,delta,balance,complete:!construction.rankingsStale&&paid>0&&Number.isFinite(balance)&&balance>=0};
+   if(paid>0)allowance+=tolerance;
+   return {...row,paid,delta,balance,complete:!construction.rankingsStale&&paid>0&&Number.isFinite(balance)&&balance>=-allowance};
   });
  }
 
@@ -93,7 +95,7 @@
   const scale=10**(text.split('.')[1]||'').length,numerator=Math.round(Number(text)*scale);
   const ranks=[...new Set((construction?.rankings??[]).filter(r=>Number.isSafeInteger(r.rank)&&r.rank>0&&r.reward).map(r=>r.rank))].sort((a,b)=>a-b);
   const rows=ranks.map(rank=>{
-   const record=construction.rankings.find(r=>r.rank===rank&&r.reward),base=record?.reward?.strategy_point_amount;
+   const record=construction.rankings.find(r=>r.rank===rank&&r.reward),base=record?.reward?.strategy_point_amount??(record?.reward?.__class__==='GreatBuildingRankingRowReward'?0:null);
    return {rank,base:Number.isSafeInteger(base)&&base>=0?base:null,amount:Number.isSafeInteger(base)&&base>=0?Math.max(1,Math.ceil(base*numerator/scale)):null};
   });
   const cost=construction?.forge_points_for_level_up;

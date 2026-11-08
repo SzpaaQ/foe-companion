@@ -533,7 +533,7 @@
    if(node.open)node.historyBuild?.();
    childDetails(node).forEach((child,i)=>restore(child,state.children[i]));
   }
-  const groupLabel=event=>(event.kind==='collection'?'Zbiór '+event.cycle:event.kind==='baseline'?'Początek obserwacji':'Żonglowanie')+' · '+new Date(event.at).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const groupLabel=event=>(event.kind==='collection'?'Zbiór '+(event.displayCycle??event.cycle):event.kind==='baseline'?'Początek obserwacji':'Żonglowanie')+' · '+new Date(event.at).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   function paint(){
    if(!dialog.open)return;
    undo.disabled=!history.undoCount;undo.title=history.undoLabel?'Cofnij: '+history.undoLabel+' ('+history.undoCount+'/3)':'Brak operacji do cofnięcia';
@@ -545,6 +545,8 @@
    download.disabled=!doc?.events.length;
    if(!doc?.events.length){el('p',list,'Brak zapisanej historii zbiorów dla tego świata.');return;}
    const grouped=groupEvents(doc.events).filter(e=>actionRows(e.actions).length);
+   const visibleCycles=new Map();
+   for(const group of grouped)if(group.kind==='collection'){const number=(visibleCycles.get(group.run)||0)+1;visibleCycles.set(group.run,number);group.displayCycle=number;}
    // Kumulatywne walki per event (od początku runu do tego eventu włącznie)
    const cumFights=new Map(); // eventId → walki
    const runState=new Map(); // run → {prevAt, prevAph}

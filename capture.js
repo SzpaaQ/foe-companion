@@ -187,7 +187,7 @@
     return result;
   }
   function checkLocalIgnore(policy,id){
-    if(policy?.guardClosing===true||!policy?.localIgnoreKey)return;
+    if(!policy?.localIgnoreKey)return;
     const currentSettings=JSON.parse(localStorage.getItem('foe-companion.openSectorSettings.v1')||'{}');
     policy.attackIgnoreGuildSignal=currentSettings.attackIgnoreGuildSignal===true;
     const ids=JSON.parse(localStorage.getItem(policy.localIgnoreKey)||'[]');if(!Array.isArray(ids))throw Error('Nieprawidłowy zapis lokalnego ignorowania.');
@@ -218,7 +218,7 @@
         changed=true;
         const updated=await battleCall(connection,'ArmyUnitManagementService','updatePools',[pools,context],'getArmyInfo',{kind:'attack',provinceId});
         stage='potwierdzenie składu';
-        if(!FoeBattleArmy.confirmed(updated,pools))throw Error('Skład, liczba lub zdrowie jednostek nie odpowiadają planowi. Walka nie została wysłana.');
+        if(!FoeBattleArmy.confirmed(updated,pools)){const error=Error('Skład, liczba lub zdrowie jednostek nie odpowiadają planowi. Walka nie została wysłana.');error.retryable=false;error.armyStateError=true;throw error;}
       }
       if(bulkPolicy&&!nextWave){checkLocalIgnore(bulkPolicy,provinceId);battlegroundLive.checkPolicy(provinceId,bulkPolicy);}
       changed=true;
@@ -240,14 +240,14 @@
       if(!more&&won===true)refreshed=await (battlegroundLive?.waitForProgress(provinceId,progressBefore,1)??Promise.resolve(false));
       answer(true,more?'Fala zakończona — pozostała kolejna.':(won===true?'Wygrana.':won===false?'Przegrana.':'Nie rozpoznano wyniku walki.')+(!more&&won===true?(refreshed?' Progres potwierdzony przez socket.':' Brak aktualizacji socketu — autoatak zatrzymany.'):''),{provinceId,nextWave:more,won,refreshed,battleId:realm.battleId});
     }catch(error){
-      if(!fightSent&&!nextWave&&bulkPolicy&&battlegroundLive?.canSkipAttack(provinceId,bulkPolicy,error)){answer(false,'Pomijam sektor: '+error.message+' Szukam następnego.',{provinceId,sectorSkipped:true,notStarted:true});return;}
+      if(!fightSent&&!nextWave&&bulkPolicy&&battlegroundLive?.canSkipAttack(provinceId,bulkPolicy,error)){answer(false,'Pomijam sektor: '+error.message+' Szukam następnego.',{provinceId,sectorSkipped:true,notStarted:true,localIgnored:error.localIgnored===true});return;}
       const invalidWave=error.invalidWave===true;
       if(invalidWave)nextWave=null;
       battleUncertain=fightSent&&!invalidWave&&!error.confirmedRejection;
       if(battleUncertain)publishBattleState();
       const notStarted=!fightSent||error.confirmedRejection===true;
-      const retryable=notStarted&&!battleUncertain&&!invalidWave;
-      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':error.confirmedRejection?' Serwer odrzucił żądanie. Ponawiam próbę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':' Walka nie została wysłana; ponawiam próbę.'),{uncertain:battleUncertain,invalidWave,notStarted,retryable,confirmedRejection:error.confirmedRejection===true});
+      const retryable=notStarted&&!battleUncertain&&!invalidWave&&error.retryable!==false;
+      answer(false,'Etap: '+stage+'. '+error.message+(invalidWave?' Nie udało się powiązać kolejnej fali. Autoatak zatrzymany; możesz ręcznie rozpocząć kolejną walkę.':error.confirmedRejection?' Serwer odrzucił żądanie. Ponawiam próbę.':fightSent?' Nie potwierdzono wyniku wysłanej walki. Sprawdź stan w grze przed kolejną próbą.':retryable?' Walka nie została wysłana; ponawiam próbę.':error.armyStateError?' Walka nie została wysłana. Uzupełnij lub zmień skład armii przed ponownym uruchomieniem autoataku.':' Walka nie została wysłana; automaty zatrzymane.'),{uncertain:battleUncertain,invalidWave,notStarted,retryable,confirmedRejection:error.confirmedRejection===true,armyStateError:error.armyStateError===true});
     }finally{battleBusy=false;}
   });
   // Wire IDs share one sequence. Restore the game's IDs before its callbacks read a response.
@@ -753,7 +753,7 @@
       }
       answer(false, 'Osiągnięto wewnętrzny limit bezpieczeństwa tur.', {won: false});
     } catch (error) {
-      if(!started&&error.localIgnored){answer(false,'Sektor lokalnie ignorowany — szukam następnego.',{sectorSkipped:true,notStarted:true});return;}
+      if(!started&&error.localIgnored){answer(false,'Sektor lokalnie ignorowany — szukam następnego.',{sectorSkipped:true,notStarted:true,localIgnored:true});return;}
       if(started&&stage==='startNegotiation'&&error.confirmedRejection===true){answer(false,error.message+' Serwer odrzucił rozpoczęcie negocjacji; ponawiam próbę.',{notStarted:true,retryable:true,confirmedRejection:true});return;}
       let cleanup='',negotiationEnded=false;
       if(started){

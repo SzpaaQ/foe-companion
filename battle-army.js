@@ -1,5 +1,6 @@
 (function(root){
  const expectations=new WeakMap();
+ function armyStateError(message){const error=Error(message);error.retryable=false;error.armyStateError=true;return error;}
  function units(info){
   if(info?.__class__!=='ArmyInfo'||!Array.isArray(info.units))throw Error('Brak danych armii.');
   const all=new Map();
@@ -12,10 +13,10 @@
   const all=units(info),current=all.filter(u=>u.is_attacking);
   const templates=(info.templates||[]).filter(t=>t.unitTypeIds?.length===8);
   const wanted=current.length===8?current.map(u=>u.unitTypeId):templates.length===1?templates[0].unitTypeIds:null;
-  if(!wanted)throw Error('Ustaw pełny skład w grze lub jednoznaczny szablon ośmiu jednostek.');
+  if(!wanted)throw armyStateError('Ustaw pełny skład w grze lub jednoznaczny szablon ośmiu jednostek.');
   const available=all.filter(u=>u.currentHitpoints===10&&!u.is_defending&&!u.isArenaDefending).sort((a,b)=>Number(!!a.is_attacking)-Number(!!b.is_attacking));
   const selected=[];
-  for(const type of wanted){const index=available.findIndex(u=>u.unitTypeId===type);if(index<0)throw Error('Brakuje zdrowych jednostek typu '+type+'. Nie rozpoczęto walki.');selected.push(available.splice(index,1)[0].unitId);}
+  for(const type of wanted){const index=available.findIndex(u=>u.unitTypeId===type);if(index<0)throw armyStateError('Brakuje zdrowych jednostek typu '+type+'. Nie rozpoczęto walki.');selected.push(available.splice(index,1)[0].unitId);}
   const pools=[{__class__:'ArmyPool',type:'attacking',units:selected},{__class__:'ArmyPool',type:'defending',units:all.filter(u=>u.is_defending).map(u=>u.unitId)},{__class__:'ArmyPool',type:'arena_defending',units:all.filter(u=>u.isArenaDefending).map(u=>u.unitId)}];
   expectations.set(pools,pools.map(p=>p.units.map(id=>{const u=all.find(u=>u.unitId===id);return JSON.stringify([u.unitTypeId,u.currentHitpoints]);}).sort()));
   return pools;

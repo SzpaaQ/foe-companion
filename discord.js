@@ -84,7 +84,7 @@
     let credentialRevision=0;
     const paintDiscordControls=()=>{
       for(const [button,active,label] of [[sendButton,config.enabled,'Wysyłaj rozpiskę na Discord'],[includeOpenButton,config.includeOpen,'Wysyłaj otwarte sektory']]){
-        button.style.opacity=active?'1':'0.5';button.style.filter=active?'drop-shadow(rgba(0, 8, 12, 0.8) 0px 0px 2px)':'none';button.setAttribute('aria-pressed',String(active));button.setAttribute('data-tooltip',label+' — '+(active?'wł.':'wył.'));button.title=label+' — '+(active?'wł.':'wył.');
+        button.style.opacity=active?'1':'0.5';button.style.filter=active?'drop-shadow(rgba(0, 8, 12, 0.8) 0px 0px 2px)':'none';button.setAttribute('aria-pressed',String(active));const tooltip=button===sendButton&&button.disabled?(!config.token||!config.channelId?'Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.':'Kliknij „Sprawdź połączenie” w Ustawienia → Discord.'):label+' — '+(active?'wł.':'wył.');button.setAttribute('data-tooltip',tooltip);button.title=tooltip;
       }
     };
     const setConnectionVerified=value=>{connectionVerified=value===true;sendButton.disabled=!connectionVerified;sendButton.title=connectionVerified?'Wysyłaj rozpiskę na Discord — '+(config.enabled?'wł.':'wył.')+' (kliknij, aby przełączyć)':(!config.token||!config.channelId?'Uzupełnij token bota i ID kanału w Ustawienia → Discord, a następnie sprawdź połączenie.':'Kliknij „Sprawdź połączenie” w Ustawienia → Discord.');paintDiscordControls();};

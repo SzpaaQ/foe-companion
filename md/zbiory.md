@@ -50,3 +50,5 @@ Pasek nad listą pokazuje aktywne bonusy z gry.
 Notatka na dole panelu jest wspólna dla zakładki Zbiory. Patrz [Notatki](wspolne.md#notatki).
 
 Lista w każdej kategorii jest sortowana według czasu zbioru, od najwcześniejszych do najpóźniejszych. Budynki bez znanego czasu i niegotowe do zbioru są na końcu.
+
+W wersji bot przycisk 🤲 Zbierz wszystkie jest widoczny także przy wyłączonych pojedynczych przyciskach zbioru. Wysyła wszystkie gotowe budynki bieżącej kategorii jedną paczką i rozlicza potwierdzenia osobno.

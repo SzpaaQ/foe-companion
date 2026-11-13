@@ -168,3 +168,5 @@ Najedź na **⚠️ przy konkretnym sektorze w rozpisce**, aby zobaczyć jego w�
 Kolumna ⚡ uwzględnia również jedynego własnego sąsiada zapewniającego dostęp do celu. Sąsiad musi być otwarty, postęp wroga musi świeżo rosnąć (w ostatnich 60 sekundach) i przekroczyć próg z ustawień zamykania. Przy dwóch lub większej liczbie własnych sąsiadów ten warunek nie działa. Zamknięty sąsiad albo nieruchomy postęp nie uruchamia zamykania.
 
 Opcja **Zamykaj zagrożone** również stosuje ten próg. Samo wizualne ostrzeżenie ⚠️ nadal może pojawić się wcześniej. Zamykanie korzysta z wybranej metody walk/negocjacji i respektuje STOP.
+
+Konsola walk używa ❤️ atak i 💙 obrona. Jedna walka zachowuje jeden wpis, dopisując kolejne fale i wynik (zielona wygrana, czerwona przegrana). Obok 🏠 znak ❗ wskazuje własne sektory z mniej niż dwoma budynkami. Powiadomienia znikają po minucie od otwarcia lub ostatnich danych sektora. Przycisk Zamknij wszystkie jest ukryty bez trybu zaawansowanego albo przy wyłączonych atakach i negocjacjach.

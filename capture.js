@@ -146,12 +146,15 @@
         const e=ownBuildings.get(entityId);
         return e&&!/GuildRaids/.test(e.cityentity_id||'')&&ready(e.state)&&e.connected!==0&&collectedStates.get(entityId)!==JSON.stringify(e.state);
       });
-      for(const id of selected)collectedStates.set(id,JSON.stringify(ownBuildings.get(id).state));
+      // One game-style batch: all selected IDs are sent before awaiting the response.
+      // Keep the pre-request state independent of passive updates arriving in flight.
+      const sentStates=new Map(selected.map(id=>[id,JSON.stringify(ownBuildings.get(id).state)]));
+      for(const [id,state] of sentStates)collectedStates.set(id,state);
       let data=null;
       if(selected.length){try{data=await battleCall(battleTransport,'CityProductionService','pickupProduction',[selected]);}catch{}}
       const results=ids.map(entityId=>{
         if(!selected.includes(entityId))return {entityId,ok:false,retryable:false};
-        const stamp=collectedStates.get(entityId);
+        const stamp=sentStates.get(entityId);
           const updated=data?.updatedEntities?.find(v=>v.id===entityId&&(v.player_id==null||v.player_id===cityOwner));
           const ok=!!updated?.state&&typeof updated.state.__class__==='string'&&!ready(updated.state)&&JSON.stringify(updated.state)!==stamp;
           const retryable=(!!updated?.state&&ready(updated.state))||(Array.isArray(data?.updatedEntities)&&data.updatedEntities.length===0);

@@ -1,9 +1,9 @@
 (function(root) {
   'use strict';
   const topologies = new Map();
-  let displaySettings={guildColor:true,ownProgress:true,enemyProgress:true,markRace:true,markThreat:true,showOpen:true,showClosed:true,markClosedThreat:false,closedAttrition:true,closedCount:10};
+  let displaySettings={guildColor:true,ownProgress:true,enemyProgress:true,markRace:true,markThreat:true,showOpen:true,showClosed:true,markClosedThreat:false,closedAttrition:true,openGuildColor:true,openMarkRace:true,openOwnProgress:true,openEnemyProgress:true,openAttrition:true,openThreat:true,closedCount:10};
   function setDisplaySettings(value={}){
-    for(const key of ['guildColor','ownProgress','enemyProgress','markRace','markThreat','showOpen','showClosed','markClosedThreat','closedAttrition'])if(typeof value[key]==='boolean')displaySettings[key]=value[key];
+    for(const key of ['guildColor','ownProgress','enemyProgress','markRace','markThreat','showOpen','showClosed','markClosedThreat','closedAttrition','openGuildColor','openMarkRace','openOwnProgress','openEnemyProgress','openAttrition','openThreat'])if(typeof value[key]==='boolean')displaySettings[key]=value[key];
     if(Number.isInteger(value.closedCount)&&value.closedCount>=0&&value.closedCount<=500)displaySettings.closedCount=value.closedCount;
     return {...displaySettings};
   }
@@ -106,11 +106,12 @@
     const full=findBattle(payload);
     if(full) return {battle:full,changed:true,kind:'Pełna mapa'};
     if(!current) return {battle:null,changed:false};
-    const queue=[payload], patches=[],participants=[]; let visited=0;
+    const queue=[payload], patches=[],buildingPatches=[],participants=[]; let visited=0;
     while(queue.length && visited++<10000){
       const value=queue.shift();
       if(!value || typeof value!=='object')continue;
       if(value.requestClass==='GuildBattlegroundService'&&value.requestMethod==='getPlayerParticipant'&&Number.isSafeInteger(value.responseData?.participantId))participants.push({...value.responseData,signals:value.responseData.signals??[]});
+      if(value.__class__==='GuildBattlegroundProvinceBuildings'&&Number.isSafeInteger(value.provinceId)&&Array.isArray(value.placedBuildings)&&value.placedBuildings.every(b=>b&&typeof b.id==='string'))buildingPatches.push(value);
       if(value.__class__==='GuildBattlegroundProvince') patches.push(value);
       else if(Number.isSafeInteger(value.participantId)&&(Array.isArray(value.signals)||(value.__class__==='GuildBattlegroundParticipant'&&!Object.hasOwn(value,'signals'))))participants.push({...value,signals:value.signals??[]});
       else if(Array.isArray(value))queue.push(...value.slice(0,1000));
@@ -118,15 +119,17 @@
         if(key!=='requestData' && child && typeof child==='object') queue.push(child);
       }
     }
-    if(!patches.length&&!participants.length)return {battle:current,changed:false};
+    if(!patches.length&&!buildingPatches.length&&!participants.length)return {battle:current,changed:false};
     let changed=false;
     const provinces=current.map.provinces.map(p=>{
       const matching=patches.filter(v=>(v.id??0)===(p.id??0));
-      if(!matching.length)return p;
+      const buildings=buildingPatches.filter(v=>v.provinceId===(p.id??0)).at(-1);
+      if(!matching.length&&!buildings)return p;
       changed=true;
-      return matching.reduce((previous,patch)=>{
+      const updated=matching.reduce((previous,patch)=>{
         return {...previous,...patch,ownerId:patch.ownerId??0,lockedUntil:patch.lockedUntil??0,isSpawnSpot:patch.isSpawnSpot??false,conquestProgress:patch.conquestProgress??[],isAttackBattleType:patch.isAttackBattleType??false,gainAttritionChance:patch.gainAttritionChance??0};
       },p);
+      return buildings?{...updated,usedBuildingSlots:buildings.placedBuildings.length}:updated;
     });
     const battlegroundParticipants=current.battlegroundParticipants.map(p=>{const matching=participants.filter(v=>v.participantId===p.participantId);if(matching.length){changed=true;return Object.assign({},p,...matching);}return p;});
     return {battle:changed?{...current,battlegroundParticipants,map:{...current.map,provinces}}:current,changed,kind:'Aktualizacja sektorów'};
@@ -134,7 +137,7 @@
 
 function sectorMarker(row){return displaySettings.enemyProgress&&row.enemyProgress>0?' 👾'+row.enemyProgress:row.race?' 🔥':'';}
   function progressText(row){return row.progress>0?row.progress+'/'+(row.maxProgress??'—'):'0';}
-  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const markers=displaySettings.markRace&&row.race?' 🔥':'';const progress=[];if(displaySettings.ownProgress&&row.progress>0)progress.push('⚔️'+progressText(row));if(displaySettings.enemyProgress&&row.enemyProgress>0)progress.push('👾'+row.enemyProgress+'/'+(row.enemyMaxProgress??'—'));return type+guildColor(row)+row.sector+markers+(progress.length?' | '+progress.join(' '):'')+' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%')+(row.ignored?' ✋':'');}
+  function openSectorText(row){const type=row.isAttackBattleType===true?'🟥 ':row.isAttackBattleType===false?'🟦 ':'';const markers=displaySettings.openMarkRace&&row.race?' 🔥':'';const progress=[];if(displaySettings.openOwnProgress&&row.progress>0)progress.push('⚔️'+progressText(row));if(displaySettings.openEnemyProgress&&row.enemyProgress>0)progress.push('👾'+row.enemyProgress+'/'+(row.enemyMaxProgress??'—'));return type+(displaySettings.openGuildColor?(row.color||'⚪')+' ':'')+row.sector+markers+(displaySettings.openThreat&&(row.threatened||row.cutoffRisk)?' ⚠️':'')+(progress.length?' | '+progress.join(' '):'')+(displaySettings.openAttrition?' | '+(row.gainAttritionChance==null?'—':row.gainAttritionChance+'%'):'')+(row.ignored?' ✋':'');}
 function line(row) {return closedSectorText(row);}
 
   // --- Zbiory ---

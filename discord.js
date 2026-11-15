@@ -3,7 +3,7 @@
   const STATE_KEY='foe.discord.schedule.v1';
   const LOCK_KEY='foe.discord.lease.v1';
   const POLL_MS=1000;
-  const defaults={enabled:false,includeOpen:false,token:'',channelId:'',maxSectors:0,maxMinutes:0};
+  const defaults={enabled:false,includeOpen:false,openPosition:'after',missingBuildings:false,openingAlert:false,cutoffAlert:false,groupMinutes:5,groupMinSectors:3,guardedProgress:3,token:'',channelId:'',maxSectors:0,maxMinutes:0};
   function getTabId(){
     try{
       let id=sessionStorage.getItem('foe.discord.tabId');
@@ -18,6 +18,12 @@
     return {
       enabled:value.enabled===true,
       includeOpen:value.includeOpen===true,
+      openPosition:value.openPosition==='before'?'before':'after',
+      missingBuildings:value.missingBuildings===true,
+      openingAlert:value.openingAlert===true,cutoffAlert:value.cutoffAlert===true,
+      groupMinutes:Number.isInteger(value.groupMinutes)&&value.groupMinutes>=1&&value.groupMinutes<=60?value.groupMinutes:5,
+      groupMinSectors:Number.isInteger(value.groupMinSectors)&&value.groupMinSectors>=1&&value.groupMinSectors<=100?value.groupMinSectors:3,
+      guardedProgress:Number.isInteger(value.guardedProgress)&&value.guardedProgress>=1&&value.guardedProgress<=20?value.guardedProgress:3,
       prefix:typeof value.prefix==='string'?value.prefix.slice(0,500):'',
       suffix:typeof value.suffix==='string'?value.suffix.slice(0,500):'',
       verified:value.verified===true,
@@ -35,7 +41,7 @@
   function hashText(text){let hash=2166136261;for(let i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,16777619);}return (hash>>>0).toString(16).padStart(8,'0');}
   function discordPayload(text,config={}){
     const wrap=part=>'```text\n'+part+'\n```';
-    const prefix=config.prefix||'',suffix=config.suffix||'',content=[prefix,wrap(text),suffix].filter(Boolean).join('\n');
+    const prefix=(config.alertHeader?[config.prefix?.trim(),config.alertHeader].filter(Boolean).join(' '):config.prefix)||'',suffix=config.suffix||'',content=[prefix,wrap(text),suffix].filter(Boolean).join('\n');
     if(content.length<=2000)return {content,embeds:[]};
     if(text.length>6000)return null;
     const lines=text.split('\n'),chunks=[];let chunk='';
@@ -43,6 +49,12 @@
     if(chunk)chunks.push(chunk);
     if(chunks.length>10||text.length+chunks.length*12>6000)return null;
     return {content:[prefix,suffix].filter(Boolean).join('\n'),embeds:chunks.map(part=>({description:wrap(part)}))};
+  }
+  function appendBuildingAlerts(text,rows,config,now=Date.now()/1000){
+    if(!config.missingBuildings)return text;
+    const missing=rows.filter(r=>r&&r.color==='⚪'&&Number.isSafeInteger(r.usedBuildingSlots)&&r.usedBuildingSlots>=0&&r.usedBuildingSlots<2&&Number.isSafeInteger(r.totalBuildingSlots)&&r.totalBuildingSlots>=2&&r.until-now>=9000&&r.until-now<=14100).sort((a,b)=>a.until-b.until||a.id-b.id);
+    const lines=missing.map(r=>'⚠️ '+(r.isAttackBattleType===true?'🟥 ':r.isAttackBattleType===false?'🟦 ':'')+r.sector+' - brakujący budynek').join('\n');
+    return lines?(text?text+'\n\n\n':'')+lines:text;
   }
   function buildText(rows,config,formatOpen,now=Date.now()/1000,frontierOnly=false){
     const candidates=rows.filter(row=>row&&row.color!=='⚪');
@@ -60,7 +72,68 @@
       const time=new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(row.until*1000));
       return time+'   '+type+row.color+' '+row.sector+race+guild+enemy;
     });
-    return [openLines.join('\n'),closedLines.join('\n')].filter(Boolean).join('\n\n');
+    const openBlock=openLines.length?'Otwarte:\n'+openLines.join('\n'):'';
+    const blocks=config.openPosition==='before'?[openBlock,closedLines.join('\n')]:[closedLines.join('\n'),openBlock];
+    return appendBuildingAlerts(blocks.filter(Boolean).join('\n\n'),rows,config,now);
+  }
+
+  function createAlertTracker(){
+    let scope=null;const progress=new Map(),activity=new Map();
+    const openingKey=r=>r.id+':'+r.ownerId+':'+r.until;
+    function observe(rows,now){
+      const next=rows[0]?.alertScope||'';
+      if(next!==scope){scope=next;progress.clear();activity.clear();}
+      const present=new Set();
+      for(const r of rows){
+        if(r.color!=='⚪'||r.until>now)continue;
+        const key=String(r.id);present.add(key);
+        const values=r.enemyConquests||[{participantId:0,progress:r.enemyProgress||0}];
+        const current=new Map(values.map(v=>[v.participantId,v.progress||0]));
+        const before=progress.get(key);
+        if(before&&[...current].some(([id,value])=>value>(before.get(id)||0))){
+          const old=activity.get(key);activity.set(key,{last:now,start:old&&now-old.last<15?old.start:now});
+        }
+        if(![...current.values()].some(v=>v>0))activity.delete(key);
+        progress.set(key,current);
+      }
+      for(const key of progress.keys())if(!present.has(key)){progress.delete(key);activity.delete(key);}
+    }
+    function select(rows,config,stored={},now=Date.now()/1000,frontierOnly=false){
+      const ledger=stored.scope===scope?{...stored,seen:{...(stored.seen||{})}}:{scope,seen:{}};
+      for(const [key,expiry] of Object.entries(ledger.seen))if(expiry<now-300)delete ledger.seen[key];
+      const own=new Set(rows.filter(r=>r.color==='⚪').map(r=>r.id));
+      if(config.cutoffAlert){
+        const threatened=new Set();
+        for(const r of rows){
+          const remaining=r.maxProgress-r.progress;
+          if(r.color==='⚪'||r.until>now||!Number.isFinite(remaining)||remaining<=0||remaining>config.guardedProgress)continue;
+          const adjacent=r.ownNeighborIds||(r.neighborIds||[]).filter(id=>own.has(id));
+          if(adjacent.length===1){const a=activity.get(String(adjacent[0]));if(a&&now-a.last<15)threatened.add(adjacent[0]);}
+        }
+        const victims=rows.filter(r=>threatened.has(r.id)).sort((a,b)=>a.id-b.id);
+        if(victims.length){const keys=victims.map(r=>'cutoff:'+r.id+':'+activity.get(String(r.id)).start);return {header:'Sektor atakowany '+victims.map(r=>'⚠️'+(r.isAttackBattleType?'🟥':'🟦')+' '+r.sector).join(' · '),fresh:keys.some(k=>!ledger.seen[k]),commit(){for(const key of keys)ledger.seen[key]=now+86400;return ledger;}};}
+      }
+      let reason='';
+      if(config.openingAlert){
+        const upcoming=rows.filter(r=>r.color!=='⚪'&&r.until>now&&(!frontierOnly||r.frontier===true)).sort((a,b)=>a.until-b.until||a.id-b.id);
+        const important=upcoming.find(r=>r.until-now<=300&&r.race&&/^[A-Z][123][A-Z]$/i.test(r.sector)&&!ledger.seen['race:'+openingKey(r)]);
+        let active=important?{first:openingKey(important),until:important.until,keys:[openingKey(important)],race:true,count:1,raceKey:'race:'+openingKey(important),sector:important.sector}:ledger.opening;
+        if(active&&!(active.until>now&&rows.some(r=>openingKey(r)===active.first)))active=null;
+        if(!active){
+          const ownCount=rows[0]?.ownSectorCount??own.size;
+          for(let i=0;i<upcoming.length;i++){
+            const first=upcoming[i];if(first.until-now>300)break;if(ledger.seen['open:'+openingKey(first)]){if(!reason)reason='Otwarcie '+first.sector+' było już uwzględnione we wcześniejszym alercie grupy.';continue;}
+            const group=[first];for(let j=i+1;j<upcoming.length&&upcoming[j].until-group.at(-1).until<=config.groupMinutes*60;j++)group.push(upcoming[j]);
+            const race=group.some(r=>r.until-now<=300&&r.race&&/^[A-Z][123][A-Z]$/i.test(r.sector));
+            if(!race&&group.length<(config.groupMinSectors??3)&&ownCount>=5)continue;
+            active={first:openingKey(first),until:first.until,keys:group.map(openingKey),race,count:group.length};break;
+          }
+        }
+        if(active){const fresh=!ledger.seen[active.raceKey||'open:'+active.first];return {header:'Pola 🔥🔥 '+Math.ceil((active.until-now)/60)+' min | '+active.count+(active.race?' · wyścig'+(active.sector?' '+active.sector:''):''),fresh,commit(){ledger.opening=active;if(active.raceKey)ledger.seen[active.raceKey]=active.until+300;for(const key of active.keys)ledger.seen['open:'+key]=Number(key.split(':').at(-1))+300;return ledger;}};}
+      }
+      return {header:'',fresh:false,reason,commit(){delete ledger.opening;return ledger;}};
+    }
+    return {observe,select};
   }
 
   function mount({root,getRows,formatOpen,isFrontierOnly=()=>false,getSchedule=()=>''}){
@@ -74,9 +147,14 @@
     const includeOpenButton=document.createElement('button');includeOpenButton.type='button';includeOpenButton.textContent='🔓';includeOpenButton.style.cssText='background:transparent;border:0;padding:1px 2px;margin:0;min-width:0;line-height:16px;cursor:pointer';includeOpenButton.setAttribute('aria-label','Wysyłaj otwarte sektory');
     discordControls.append(sendButton,includeOpenButton);scheduleHeading.append(discordControls);
     const section=document.createElement('details');section.id='settings-discord';
-    section.innerHTML='<summary>Discord</summary><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label><input type="checkbox" id="discord-include-open"> Wysyłaj otwarte</label><small>Otwarte sektory są pomijane domyślnie. Ta opcja dotyczy także kopiowania 📋 Discord.</small><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limity liczby i czasu dotyczą zamkniętych sektorów.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
+    section.innerHTML='<summary>Discord</summary><details><summary>Alerty</summary><label><input type="checkbox" id="discord-missing-buildings"> Brakujące budynki</label><small>Nasze sektory z mniej niż 2 budynkami, od 3:55 do 2:30 do otwarcia. Dotyczy wysyłania i kopiowania Discord.</small><label><input type="checkbox" id="discord-opening-alert"> Otwarcie sektorów — 5 min</label><label>Odstęp grupowania (min) <input type="number" id="discord-group-minutes" min="1" max="60" step="1"></label><label>Minimalna liczba sektorów w grupie <input type="number" id="discord-group-min-sectors" min="1" max="100" step="1"></label><label><input type="checkbox" id="discord-cutoff-alert"> Odcięcie pilnowanych sektorów</label><label>Pilnowany — brakujący postęp <input type="number" id="discord-guarded-progress" min="1" max="20" step="1"></label><small>Alarm odcięcia od razu po wzroście postępu wroga; znika po 15 s bez wzrostu. Nowy alert powiadamia oznaczenie z prefixu, edycje nie ponawiają pingu.</small></details><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label><input type="checkbox" id="discord-include-open"> Wysyłaj otwarte</label><label id="discord-open-position-label">Położenie otwartych <select id="discord-open-position"><option value="before">Przed zamkniętymi (nad)</option><option value="after">Po zamkniętych (pod)</option></select></label><small>Otwarte sektory są pomijane domyślnie. Ta opcja dotyczy także kopiowania 📋 Discord.</small><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limity liczby i czasu dotyczą zamkniętych sektorów.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
     const quantum=settings.querySelector('#settings-quantum');(quantum||settings.lastElementChild)?.after(section);
     const textFields={};for(const key of ['prefix','suffix']){const label=document.createElement('label');label.style.cssText='display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;align-items:center';label.textContent=key==='prefix'?'Prefix — przed rozpiską':'Suffix — po rozpisce';const field=document.createElement('textarea');field.rows=3;field.maxLength=500;field.setAttribute('aria-label',key);field.style.cssText='width:100%;min-width:0;box-sizing:border-box;resize:vertical;background:#102126;color:#e7eeee';label.append(field);section.append(label);textFields[key]=field;}
+    const openPosition=section.querySelector('#discord-open-position'),openPositionLabel=section.querySelector('#discord-open-position-label');
+    const missingBuildings=section.querySelector('#discord-missing-buildings');
+    const alertFields={openingAlert:section.querySelector('#discord-opening-alert'),cutoffAlert:section.querySelector('#discord-cutoff-alert'),groupMinutes:section.querySelector('#discord-group-minutes'),groupMinSectors:section.querySelector('#discord-group-min-sectors'),guardedProgress:section.querySelector('#discord-guarded-progress')};
+    const paintAlertFields=()=>{for(const [key,field] of Object.entries(alertFields))if(typeof config[key]==='boolean')field.checked=config[key];else field.value=config[key];};
+    const alertTracker=createAlertTracker();let loaded=false;
     const token=section.querySelector('#discord-token'),channel=section.querySelector('#discord-channel'),includeOpen=section.querySelector('#discord-include-open'),maxSectors=section.querySelector('#discord-max-sectors'),maxMinutes=section.querySelector('#discord-max-minutes'),test=section.querySelector('#discord-test'),status=section.querySelector('#discord-status');
     token.style.cssText='width:220px!important;max-width:65vw';channel.style.cssText='width:180px!important;max-width:65vw';
     let config=defaults,storedState=null,busy=false,timer=null,lastStatus='',retryUntil=0,connectionVerified=false,lastMessageCheck=0,checkedChannel=null,latestMessageId=null;
@@ -97,7 +175,7 @@
     const writeConfig=async next=>{
       const previous=config;config=validConfig(next);
       if(previous.channelId!==config.channelId||previous.token!==config.token)config.verified=false;
-      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';includeOpen.checked=config.includeOpen;
+      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';includeOpen.checked=config.includeOpen;openPosition.value=config.openPosition;openPositionLabel.hidden=!config.includeOpen;openPositionLabel.style.display=config.includeOpen?'':'none';missingBuildings.checked=config.missingBuildings;paintAlertFields();
       token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;paintDiscordControls();
       try{await storageSet({[tabConfigKey]:config});}catch{setStatus('Nie udało się zapisać ustawień Discorda.');}
       if(previous.channelId!==config.channelId||previous.token!==config.token){setConnectionVerified(false);storedState=null;await storageRemove(tabStateKey);}
@@ -111,7 +189,7 @@
         if(!saved)await storageSet({[tabConfigKey]:config});
       }
       catch{config=defaults;setStatus('Nie udało się odczytać ustawień Discorda.');}
-      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';includeOpen.checked=config.includeOpen;token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;setConnectionVerified(config.verified);
+      for(const key of ['prefix','suffix'])textFields[key].value=config[key]||'';includeOpen.checked=config.includeOpen;openPosition.value=config.openPosition;openPositionLabel.hidden=!config.includeOpen;openPositionLabel.style.display=config.includeOpen?'':'none';missingBuildings.checked=config.missingBuildings;paintAlertFields();token.value=config.token;channel.value=config.channelId;maxSectors.value=config.maxSectors;maxMinutes.value=config.maxMinutes;setConnectionVerified(config.verified);
       if(config.enabled)setStatus(config.verified?'Połączenie sprawdzone.':'Sprawdź połączenie z Discordem, aby wznowić wysyłanie.');else setStatus('Wysyłanie wyłączone.');
     };
     let saveTimer=null;
@@ -122,9 +200,12 @@
     token.addEventListener('input',invalidateConnection);channel.addEventListener('input',invalidateConnection);
     token.addEventListener('change',saveFields);token.addEventListener('blur',saveFields);channel.addEventListener('change',saveFields);channel.addEventListener('blur',saveFields);maxSectors.addEventListener('change',saveFields);maxMinutes.addEventListener('change',saveFields);
     for(const field of Object.values(textFields))field.addEventListener('change',saveFields);
-    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const body=getSchedule(config.includeOpen);if(typeof body!=='string')return;try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
+    const copyDiscord=document.createElement('button');copyDiscord.textContent='📋 Discord';copyDiscord.style.cssText='width:auto;flex:0 0 auto;margin:0;padding:3px 5px;white-space:nowrap';copyDiscord.setAttribute('aria-label','Kopiuj rozpiskę w formacie Discorda');root.querySelector('#copy')?.after(copyDiscord);if(!copyDiscord.isConnected)scheduleHeading.after(copyDiscord);copyDiscord.onclick=async()=>{const schedule=getSchedule(config.includeOpen,config);if(typeof schedule!=='string')return;const body=appendBuildingAlerts(schedule,getRows()||[],config);if(typeof body!=='string')return;try{await navigator.clipboard.writeText([textFields.prefix.value,'```\n'+body+'\n```',textFields.suffix.value].filter(Boolean).join('\n'));copyDiscord.textContent='✓';setTimeout(()=>copyDiscord.textContent='📋 Discord',1500);}catch{setStatus('Nie udało się skopiować rozpiski.');}};
     sendButton.onclick=()=>{if(!connectionVerified)return;writeConfig({...config,enabled:!config.enabled});};
     includeOpenButton.onclick=()=>writeConfig({...config,includeOpen:!config.includeOpen});
+    missingBuildings.onchange=()=>writeConfig({...config,missingBuildings:missingBuildings.checked});
+    for(const [key,field] of Object.entries(alertFields))field.onchange=()=>writeConfig({...config,[key]:typeof config[key]==='boolean'?field.checked:Number(field.value)});
+    openPosition.onchange=()=>writeConfig({...config,openPosition:openPosition.value});
     includeOpen.onchange=()=>writeConfig({...config,includeOpen:includeOpen.checked});
     test.onclick=async()=>{
       await writeConfig({...config,token:token.value,channelId:channel.value,maxSectors:Number(maxSectors.value)||0,maxMinutes:Number(maxMinutes.value)||0,prefix:textFields.prefix.value,suffix:textFields.suffix.value});
@@ -144,7 +225,8 @@
     };
 
     const tick=async()=>{
-      if(busy)return;busy=true;
+      const observed=getRows();if(Array.isArray(observed))alertTracker.observe(observed,Date.now()/1000);
+      if(busy||!loaded)return;busy=true;
       try{
         config=validConfig(await storageGet(tabConfigKey)||config);
         if(!config.enabled){const held=await storageGet(tabLockKey);if(held?.owner===ownId)await storageRemove(tabLockKey);setStatus('Wysyłanie wyłączone.');return;}
@@ -152,8 +234,7 @@
         if(!config.token||!config.channelId){setStatus('Wpisz token bota i ID kanału w Ustawienia → Discord.');return;}
         const rows=getRows();if(!Array.isArray(rows)){setStatus('Otwórz mapę Pól Chwały w grze.');return;}
         const text=buildText(rows,config,formatOpen,Date.now()/1000,isFrontierOnly())||'Brak sektorów w rozpisce.';
-        const payload=discordPayload(text,config);
-        if(!payload){setStatus('Rozpiska przekracza limit Discorda 6000 znaków. Ustaw limit liczby sektorów lub czasu.');return;}
+
         if(Date.now()<retryUntil)return;
         const lease=await storageGet(tabLockKey),now=Date.now();
         if(lease?.expires>now&&lease.owner!==ownId){setStatus('Rozpiska jest aktualizowana w innej karcie.');return;}
@@ -161,37 +242,45 @@
         const confirm=await storageGet(tabLockKey);if(confirm?.owner!==ownId)return;
         storedState=await storageGet(tabStateKey)||null;
         const state=storedState&&storedState.channelId===config.channelId?storedState:null;
+        const alert=alertTracker.select(rows,config,state?.alerts,now/1000,isFrontierOnly());
+        const payload=discordPayload(text,{...config,alertHeader:alert.header});
+        if(!payload){setStatus('Rozpiska przekracza limit Discorda.');return;}
         if(checkedChannel!==config.channelId||now-lastMessageCheck>=60000){
           const latest=await api(config,'latest');
           if(!latest?.ok){retryUntil=Date.now()+(latest?.retryAfter?latest.retryAfter*1000:60000);setStatus(discordFailure('Sprawdzenie ostatniej wiadomości',latest));return;}
           latestMessageId=latest.message?.id??null;checkedChannel=config.channelId;lastMessageCheck=now;
         }
-        const isOurLastMessage=!!state?.messageId&&latestMessageId===state.messageId;
+        let isOurLastMessage=!!state?.messageId&&latestMessageId===state.messageId;
+        if(alert.fresh&&state?.messageId){
+          const removed=await api(config,'delete',{messageId:state.messageId});
+          if(!removed?.ok&&removed?.status!==404){retryUntil=Date.now()+(removed?.retryAfter?removed.retryAfter*1000:5000);setStatus(discordFailure('Usunięcie poprzedniej rozpiski',removed));return;}
+          isOurLastMessage=false;latestMessageId=null;
+        }
         const contentHash=hashText(JSON.stringify(payload));
-        if(isOurLastMessage&&state.hash===contentHash&&state.text===text){
-          setStatus('Rozpiska aktualna na Discordzie.');return;
+        if(isOurLastMessage&&!alert.fresh&&state.hash===contentHash&&state.text===text){
+          setStatus(alert.reason||'Rozpiska aktualna na Discordzie.');return;
         }
         if(isOurLastMessage){
           const edit=await api(config,'edit',{messageId:state.messageId,payload});
           if(edit?.ok){
-            storedState={...state,text,hash:contentHash,updatedAt:now};
-            await storageSet({[tabStateKey]:storedState});setStatus('Zaktualizowano rozpiskę na Discordzie.');return;
+            storedState={...state,text,hash:contentHash,updatedAt:now,alerts:alert.commit()};
+            await storageSet({[tabStateKey]:storedState});setStatus(alert.reason||'Zaktualizowano rozpiskę na Discordzie.');return;
           }
           if(edit?.status!==404){retryUntil=Date.now()+(edit?.retryAfter?edit.retryAfter*1000:60000);setStatus(discordFailure('Edycja rozpiski',edit));return;}
           storedState=null;await storageRemove(tabStateKey);
         }
-        const sent=await api(config,'send',{payload});
+        const sent=await api(config,'send',{payload,notify:alert.fresh,mentionPrefix:config.prefix});
         if(!sent?.ok){retryUntil=Date.now()+(sent?.retryAfter?sent.retryAfter*1000:60000);setStatus(discordFailure('Wysyłanie rozpiski',sent));return;}
-        storedState={channelId:config.channelId,messageId:sent.message?.id||null,botId:sent.message?.author?.id||null,text,hash:contentHash,updatedAt:now};
+        storedState={channelId:config.channelId,messageId:sent.message?.id||null,botId:sent.message?.author?.id||null,text,hash:contentHash,updatedAt:now,alerts:alert.commit()};
         latestMessageId=storedState.messageId;checkedChannel=config.channelId;lastMessageCheck=Date.now();
         await storageSet({[tabStateKey]:storedState});setStatus('Wysłano nową rozpiskę na Discorda.');
       }catch{setStatus('Błąd podczas aktualizacji rozpiski Discorda.');}
       finally{busy=false;}
     };
-    load().then(()=>tick());timer=setInterval(tick,POLL_MS);
+    load().then(()=>{loaded=true;tick();});timer=setInterval(tick,POLL_MS);
     return {refresh:tick,close(){clearInterval(timer);clearTimeout(saveTimer);storageGet(tabLockKey).then(lock=>{if(lock?.owner===ownId)storageRemove(tabLockKey);});}};
   }
 
-  globalThis.FoeDiscord={mount,buildText,discordPayload};
-  if(typeof module!=='undefined'&&module.exports)module.exports={buildText,discordPayload,hashText};
+  globalThis.FoeDiscord={mount,buildText,discordPayload,appendBuildingAlerts,createAlertTracker};
+  if(typeof module!=='undefined'&&module.exports)module.exports={buildText,discordPayload,hashText,appendBuildingAlerts,createAlertTracker};
 })();

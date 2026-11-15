@@ -27,6 +27,10 @@
         url = `https://discord.com/api/v10/channels/${channelId}`;
       } else if (message.action === 'latest') {
         url = `https://discord.com/api/v10/channels/${channelId}/messages?limit=1`;
+      } else if (message.action === 'delete') {
+        const messageId=typeof message.messageId==='string'?message.messageId.trim():'';
+        if(!idPattern.test(messageId))return {ok:false,error:'Brak prawidłowego ID wiadomości do usunięcia.'};
+        method='DELETE';url=`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
       } else if (message.action === 'send' || message.action === 'edit') {
         const messageId = typeof message.messageId === 'string' ? message.messageId.trim() : '';
         if (message.action === 'edit' && !idPattern.test(messageId)) return {ok:false,error:'Brak prawidłowego ID wiadomości do edycji.'};
@@ -35,7 +39,11 @@
         url = message.action === 'send'
           ? `https://discord.com/api/v10/channels/${channelId}/messages`
           : `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
-        body = JSON.stringify({...message.payload, allowed_mentions:{parse:[]}});
+        const prefix=typeof message.mentionPrefix==='string'?message.mentionPrefix.slice(0,500):'';
+        const notify=message.action==='send'&&message.notify===true;
+        const roles=notify?[...prefix.matchAll(/<@&(\d{16,22})>/g)].map(m=>m[1]):[];
+        const users=notify?[...prefix.matchAll(/<@!?(\d{16,22})>/g)].map(m=>m[1]):[];
+        body = JSON.stringify({...message.payload, allowed_mentions:{parse:notify&&/@(?:everyone|here)\b/.test(prefix)?['everyone']:[],roles:[...new Set(roles)],users:[...new Set(users)]}});
       } else {
         return {ok:false,error:'Nieznana operacja Discorda.'};
       }

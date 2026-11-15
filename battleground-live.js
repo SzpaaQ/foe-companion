@@ -164,7 +164,7 @@
   const reader=createSocketReader(win);if(!reader)return false;
   reader.onConnection(status);
   reader.subscribe(batch=>{
-   const updates=batch.filter(r=>r.requestClass==='GuildBattlegroundService'&&(['getProvince','getProvinces','getUpdatedProvinces','getPlayerParticipant'].includes(r.requestMethod)||(Array.isArray(r.responseData)?r.responseData:[r.responseData]).some(v=>Array.isArray(v?.signals)||v?.__class__==='GuildBattlegroundParticipant')));
+   const updates=batch.filter(r=>(r.requestClass==='GuildBattlegroundBuildingService'&&r.requestMethod==='getBuildings'&&r.responseData?.__class__==='GuildBattlegroundProvinceBuildings')||r.requestClass==='GuildBattlegroundService'&&(['getProvince','getProvinces','getUpdatedProvinces','getPlayerParticipant'].includes(r.requestMethod)||(Array.isArray(r.responseData)?r.responseData:[r.responseData]).some(v=>Array.isArray(v?.signals)||v?.__class__==='GuildBattlegroundParticipant')));
    if(updates.length)receive(updates.map(r=>!['getProvince','getProvinces','getUpdatedProvinces'].includes(r.requestMethod)?r:({...r,responseData:(Array.isArray(r.responseData)?r.responseData:[r.responseData]).filter(p=>p?.__class__==='GuildBattlegroundProvince').map(p=>({...p,ownerId:p.ownerId??0,lockedUntil:p.lockedUntil??0,socketHasLockedUntil:Object.hasOwn(p,'lockedUntil'),isSpawnSpot:p.isSpawnSpot??false,isAttackBattleType:p.isAttackBattleType??false,gainAttritionChance:p.gainAttritionChance??0,conquestProgress:p.conquestProgress??[]}))})));
   });
   return true;

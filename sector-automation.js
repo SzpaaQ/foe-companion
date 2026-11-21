@@ -1,18 +1,23 @@
 (function(root){
  'use strict';
- const defaults={attackProgress:100,attackChance:20,closeEnemyProgress:50,closeWithNegotiations:false,attackOnNoGoods:false,negProgress:50,negWins:100,maxAttrition:100,attack:true,defense:true,attackIgnoreGuildSignal:false};
+ const defaults={separateLossStops:true,attackProgress:100,attackChance:20,closeEnemyProgress:50,closeWithNegotiations:false,attackOnNoGoods:false,negProgress:50,negWins:100,maxAttrition:100,attack:true,defense:true,attackIgnoreGuildSignal:false};
  function settings(value={}){
   if(!value||typeof value!=='object')value={};
   const out={...defaults};
   for(const key of ['attackProgress','negProgress','closeEnemyProgress'])if(Number.isFinite(value[key])&&value[key]>0&&value[key]<=100)out[key]=value[key];
   for(const key of ['negWins','maxAttrition'])if(Number.isSafeInteger(value[key])&&value[key]>=(key==='negWins'?1:0))out[key]=value[key];
   if(Number.isFinite(value.attackChance)&&value.attackChance>=0&&value.attackChance<=100)out.attackChance=value.attackChance;
-  for(const key of ['attack','defense','closeWithNegotiations','attackOnNoGoods','attackIgnoreGuildSignal','closeSectors','closeThreatened'])if(typeof value[key]==='boolean')out[key]=value[key];
+  for(const key of ['separateLossStops','attack','defense','closeWithNegotiations','attackOnNoGoods','attackIgnoreGuildSignal','closeSectors','closeThreatened'])if(typeof value[key]==='boolean')out[key]=value[key];
   return out;
  }
+ function isGuarded(row,threshold=3){
+  const remaining=row?.maxProgress-row?.progress;
+  return Number.isFinite(row?.progress)&&row.progress>=0&&Number.isFinite(row?.maxProgress)&&remaining>0&&remaining<=threshold;
+ }
+ function forceClosing(row,config){return config.closeSectors===true||config.closeThreatened===true&&row.threatened===true&&isGuarded(row,config.guardedProgress);}
  function eligible(row,kind,config,now,reserve=0){
   if(!row||row.ignored&&!(config.attackIgnoreGuildSignal)||row.localIgnored||row.color==='⚪'||(!row.openConfirmed&&row.until>0&&row.until+2>now)||!Number.isFinite(row.progress)||row.progress<0)return false;
-  const forceClose=config.closeSectors===true||config.closeThreatened===true&&row.threatened===true;
+  const forceClose=forceClosing(row,config);
   const firstAttack=row.progress===0&&row.maxProgress==null;
   if(!firstAttack&&(!Number.isFinite(row.maxProgress)||row.maxProgress<=0))return false;
   const cost=kind==='negotiation'?2:1,limit=kind==='negotiation'?config.negProgress:config.attackProgress;
@@ -20,16 +25,18 @@
   if(kind==='attack'&&(!Number.isFinite(row.gainAttritionChance)||row.gainAttritionChance<0||row.gainAttritionChance>config.attackChance))return false;
   return kind==='negotiation'?row.gainAttritionChance===20:(row.isAttackBattleType===true?config.attack:row.isAttackBattleType===false?config.defense:false);
  }
- function create({storage,now=()=>Date.now(),onChange=()=>{}}={}){
+ function create({storage,now=()=>Date.now(),onChange=()=>{},onDisableType=()=>{}}={}){
   const key='foe-companion.openSectorLedger.v1';let ledger={};
   try{ledger=JSON.parse(storage?.getItem(key)||'{}');if(!ledger||typeof ledger!=='object'||Array.isArray(ledger))ledger={};}catch{}
   let scope=null,active=null,attack=false,negotiation=false,losses=0,retryStreak=0,nextAt=0,lastFinishedAt=0,delaySetting=0,delayFloor=0,status='Wyłączone',fatal=false,guardsPaused=false;
+  const typeLosses={attack:0,defense:0},blockedTypes=new Set();let lastConfig={};
+  function resetType(type){typeLosses[type]=0;blockedTypes.delete(type);}
   function save(){try{storage?.setItem(key,JSON.stringify(ledger));return true;}catch{attack=negotiation=false;fatal=true;status='Nie udało się zapisać liczników. Automaty zatrzymane.';return false;}}
   function changed(){onChange();}
   function stop(kind,message='Zatrzymano. Trwająca akcja zostanie dokończona.'){
    guardsPaused=true;if(!kind||kind==='attack')attack=false;if(!kind||kind==='negotiation')negotiation=false;status=message;changed();
   }
-  function enable(kind,value){if(fatal||(value&&active))return false;if(kind==='attack'){attack=value;if(value)losses=0;}else negotiation=value;status=value?'Oczekiwanie na pasujący sektor.':'Wyłączono tryb.';changed();return true;}
+  function enable(kind,value){if(fatal||(value&&active))return false;if(kind==='attack'){attack=value;if(value){losses=0;resetType('attack');resetType('defense');}}else negotiation=value;status=value?'Oczekiwanie na pasujący sektor.':'Wyłączono tryb.';changed();return true;}
   function sync(currentScope,rows){
    if(!currentScope)return false;
    if(scope&&scope!==currentScope){stop(null,'Zmieniła się mapa lub gracz — uruchom ponownie.');}
@@ -47,6 +54,7 @@
   }
   function opening(id){const o=ledger[scope]?.openings[id];return o?scope+':'+id+':'+o.serial:null;}
   function tick({scope:currentScope,allRows,rows,config,attrition,ready,busy,reserve,delay,send,localIgnoreKey}){
+   lastConfig=config;
    if(!sync(currentScope,allRows)||fatal)return;
    if(active||(!attack&&!negotiation))return;
    if(!ready){stop(null,'Brak gotowego połączenia — uruchom ponownie po odświeżeniu danych.');return;}
@@ -57,13 +65,14 @@
     if(!(kind==='attack'?attack:negotiation))continue;
     if(kind==='negotiation'&&!Number.isSafeInteger(attrition)){status='Oczekiwanie na odczyt oporu z mapy.';continue;}
     const row=sorted.find(r=>{
+     if(kind==='attack'&&blockedTypes.has(r.isAttackBattleType?'attack':'defense'))return false;
      if(!eligible(r,kind,config,now()/1000,reserve))return false;
-     const count=ledger[scope].counts[opening(r.id)],forceClose=config.closeSectors||config.closeThreatened&&r.threatened;return kind==='attack'||(!count?.pending&&(forceClose||(count?.wins||0)<config.negWins));
+     const count=ledger[scope].counts[opening(r.id)],forceClose=forceClosing(r,config);return kind==='attack'||(!count?.pending&&(forceClose||(count?.wins||0)<config.negWins));
     });
     if(!row)continue;
     const identity=opening(row.id);if(!identity)continue;
     delaySetting=Number.isFinite(delay)&&delay>=0?delay:delaySetting;
-    active={kind,id:row.id,scope,identity,delay:delaySetting,policy:{localIgnoreKey,mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,attackIgnoreGuildSignal:config.attackIgnoreGuildSignal,reserve,closeUntilClosed:config.closeSectors===true||config.closeThreatened===true&&row.threatened===true}};
+    active={kind,battleType:row.isAttackBattleType?'attack':'defense',separateLossStops:config.separateLossStops===true,id:row.id,scope,identity,delay:delaySetting,policy:{localIgnoreKey,mapId:row.mapId,endsAt:row.endsAt,kind,progress:kind==='attack'?config.attackProgress:config.negProgress,maxAttrition:config.maxAttrition,attackChance:config.attackChance,attack:config.attack,defense:config.defense,attackIgnoreGuildSignal:config.attackIgnoreGuildSignal,reserve,closeUntilClosed:forceClosing(row,config)}};
     if(kind==='negotiation'){const count=ledger[scope].counts[identity]||={wins:0};count.pending=true;if(!save()){active=null;changed();return;}}
     status=(kind==='attack'?'⚔️ ':'🤝 ')+row.sector+(kind==='negotiation'?' · sukcesy: '+(ledger[scope].counts[identity]?.wins||0)+'/'+config.negWins:'');
     changed();if(send(kind,row.id,active.policy)===false)result({ok:false,notStarted:true,message:'Nie udało się rozpocząć akcji.'});return;
@@ -92,11 +101,20 @@
    }
    if(!confirmed){stop(null,data.message||'Niepotwierdzony wynik — automaty zatrzymane.');return true;}
    retryStreak=0;
-   if(previous.kind==='attack'&&!skipped){losses=data.won?0:losses+1;if(losses>=3)stop('attack',previous.policy.closeUntilClosed?'Nie udało się zamknąć sektora — 3 przegrane walki z rzędu.':'Autoatak zatrzymany po 3 porażkach z rzędu.');}
+   if(previous.kind==='attack'&&!skipped){
+    losses=data.won?0:losses+1;
+    const type=previous.battleType;typeLosses[type]=data.won?0:typeLosses[type]+1;
+    if(previous.separateLossStops&&typeLosses[type]>=3){
+     blockedTypes.add(type);guardsPaused=true;
+     status=(type==='attack'?'🟥 Atak':'🟦 Obrona')+' wyłączony po 3 porażkach z rzędu.';
+     try{onDisableType(type,status);}catch{stop('attack','Nie udało się zapisać wyłączenia typu walki.');changed();return true;}
+     if(!['attack','defense'].some(t=>lastConfig[t]&&!blockedTypes.has(t)))stop('attack','Autoatak zatrzymany — brak włączonych typów walki po 3 porażkach.');
+    }else if(!previous.separateLossStops&&losses>=3)stop('attack',previous.policy.closeUntilClosed?'Nie udało się zamknąć sektora — 3 przegrane walki z rzędu.':'Autoatak zatrzymany po 3 porażkach z rzędu.');
+   }
    changed();return true;
   }
   function setDelay(delay){if(!Number.isFinite(delay)||delay<0)return false;delaySetting=delay;if(active)active.delay=delay;if(nextAt>now())nextAt=lastFinishedAt+Math.max(delay,delayFloor);return true;}
-  return {enable,stop,tick,result,setDelay,pauseGuards(){guardsPaused=true;},resumeGuards(){guardsPaused=false;},get guardsPaused(){return guardsPaused;},get active(){return active;},get state(){return {attack,negotiation,losses,status,active:active?{...active}:null};},get engaged(){return attack||negotiation||!!active;}};
+  return {enable,stop,tick,result,setDelay,resetType,pauseGuards(){guardsPaused=true;},resumeGuards(){guardsPaused=false;},get guardsPaused(){return guardsPaused;},get active(){return active;},get state(){return {attack,negotiation,losses,typeLosses:{...typeLosses},status,active:active?{...active}:null};},get engaged(){return attack||negotiation||!!active;}};
  }
- const api={defaults,settings,eligible,create};root.FoeSectorAutomation=api;if(typeof module!=='undefined')module.exports=api;
+ const api={defaults,settings,isGuarded,eligible,create};root.FoeSectorAutomation=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

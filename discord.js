@@ -3,7 +3,7 @@
   const STATE_KEY='foe.discord.schedule.v1';
   const LOCK_KEY='foe.discord.lease.v1';
   const POLL_MS=1000;
-  const defaults={enabled:false,includeOpen:false,openPosition:'after',missingBuildings:false,openingAlert:false,cutoffAlert:false,groupMinutes:5,groupMinSectors:3,guardedProgress:3,token:'',channelId:'',maxSectors:0,maxMinutes:0};
+  const defaults={enabled:false,includeOpen:false,openPosition:'after',missingBuildings:false,openingAlert:false,singleRaceOnly:false,cutoffAlert:false,groupMinutes:5,groupMinSectors:0,guardedProgress:3,token:'',channelId:'',maxSectors:0,maxMinutes:0};
   function getTabId(){
     try{
       let id=sessionStorage.getItem('foe.discord.tabId');
@@ -20,9 +20,9 @@
       includeOpen:value.includeOpen===true,
       openPosition:value.openPosition==='before'?'before':'after',
       missingBuildings:value.missingBuildings===true,
-      openingAlert:value.openingAlert===true,cutoffAlert:value.cutoffAlert===true,
+      openingAlert:value.openingAlert===true,singleRaceOnly:value.singleRaceOnly===true,cutoffAlert:value.cutoffAlert===true,
       groupMinutes:Number.isInteger(value.groupMinutes)&&value.groupMinutes>=1&&value.groupMinutes<=60?value.groupMinutes:5,
-      groupMinSectors:Number.isInteger(value.groupMinSectors)&&value.groupMinSectors>=1&&value.groupMinSectors<=100?value.groupMinSectors:3,
+      groupMinSectors:Number.isInteger(value.groupMinSectors)&&value.groupMinSectors>=0&&value.groupMinSectors<=100?value.groupMinSectors:0,
       guardedProgress:Number.isInteger(value.guardedProgress)&&value.guardedProgress>=1&&value.guardedProgress<=20?value.guardedProgress:3,
       prefix:typeof value.prefix==='string'?value.prefix.slice(0,500):'',
       suffix:typeof value.suffix==='string'?value.suffix.slice(0,500):'',
@@ -116,20 +116,26 @@
       let reason='';
       if(config.openingAlert){
         const upcoming=rows.filter(r=>r.color!=='⚪'&&r.until>now&&(!frontierOnly||r.frontier===true)).sort((a,b)=>a.until-b.until||a.id-b.id);
-        const important=upcoming.find(r=>r.until-now<=300&&r.race&&/^[A-Z][123][A-Z]$/i.test(r.sector)&&!ledger.seen['race:'+openingKey(r)]);
-        let active=important?{first:openingKey(important),until:important.until,keys:[openingKey(important)],race:true,count:1,raceKey:'race:'+openingKey(important),sector:important.sector}:ledger.opening;
+        const everySector=(config.groupMinSectors??0)===0;
+        const individualKey=r=>(r.race&&(config.singleRaceOnly||/^[A-Z][123][A-Z]$/i.test(r.sector))?'race:':'single:')+openingKey(r);
+        const individual=everySector?upcoming.find(r=>r.until-now<=300&&(!config.singleRaceOnly||r.race===true)&&!ledger.seen[individualKey(r)]):null;
+        const important=upcoming.find(r=>r.until-now<=300&&r.race&&(config.singleRaceOnly||/^[A-Z][123][A-Z]$/i.test(r.sector))&&!ledger.seen['race:'+openingKey(r)]);
+        let active=individual?{first:openingKey(individual),until:individual.until,keys:[openingKey(individual)],race:individual.race===true,count:1,raceKey:individualKey(individual),sector:individual.sector}:important&&!everySector?{first:openingKey(important),until:important.until,keys:[openingKey(important)],race:true,count:1,raceKey:'race:'+openingKey(important),sector:important.sector}:ledger.opening;
+        if(config.singleRaceOnly&&active&&!active.race&&active.count===1)active=null;
+        if(everySector&&active&&!active.raceKey)active=null;
         if(active&&!(active.until>now&&rows.some(r=>openingKey(r)===active.first)))active=null;
-        if(!active){
+        if(!active&&!everySector){
           const ownCount=rows[0]?.ownSectorCount??own.size;
           for(let i=0;i<upcoming.length;i++){
             const first=upcoming[i];if(first.until-now>300)break;if(ledger.seen['open:'+openingKey(first)]){if(!reason)reason='Otwarcie '+first.sector+' było już uwzględnione we wcześniejszym alercie grupy.';continue;}
             const group=[first];for(let j=i+1;j<upcoming.length&&upcoming[j].until-group.at(-1).until<=config.groupMinutes*60;j++)group.push(upcoming[j]);
             const race=group.some(r=>r.until-now<=300&&r.race&&/^[A-Z][123][A-Z]$/i.test(r.sector));
+            if(config.singleRaceOnly&&!race&&group.length<Math.max(2,config.groupMinSectors??3))continue;
             if(!race&&group.length<(config.groupMinSectors??3)&&ownCount>=5)continue;
             active={first:openingKey(first),until:first.until,keys:group.map(openingKey),race,count:group.length};break;
           }
         }
-        if(active){const fresh=!ledger.seen[active.raceKey||'open:'+active.first];return {header:'Pola 🔥🔥 '+Math.ceil((active.until-now)/60)+' min | '+active.count+(active.race?' · wyścig'+(active.sector?' '+active.sector:''):''),fresh,commit(){ledger.opening=active;if(active.raceKey)ledger.seen[active.raceKey]=active.until+300;for(const key of active.keys)ledger.seen['open:'+key]=Number(key.split(':').at(-1))+300;return ledger;}};}
+        if(active){const fresh=!ledger.seen[active.raceKey||'open:'+active.first];return {header:'Pola · '+Math.ceil((active.until-now)/60)+' min |'+(active.count===1?' `📍1 · '+(active.sector||rows.find(r=>openingKey(r)===active.first)?.sector||'')+'`':' `📍'+active.count+' `')+(active.race?' · wyścig':''),fresh,commit(){ledger.opening=active;if(active.raceKey)ledger.seen[active.raceKey]=active.until+300;for(const key of active.keys)ledger.seen['open:'+key]=Number(key.split(':').at(-1))+300;return ledger;}};}
       }
       return {header:'',fresh:false,reason,commit(){delete ledger.opening;return ledger;}};
     }
@@ -147,12 +153,12 @@
     const includeOpenButton=document.createElement('button');includeOpenButton.type='button';includeOpenButton.textContent='🔓';includeOpenButton.style.cssText='background:transparent;border:0;padding:1px 2px;margin:0;min-width:0;line-height:16px;cursor:pointer';includeOpenButton.setAttribute('aria-label','Wysyłaj otwarte sektory');
     discordControls.append(sendButton,includeOpenButton);scheduleHeading.append(discordControls);
     const section=document.createElement('details');section.id='settings-discord';
-    section.innerHTML='<summary>Discord</summary><details><summary>Alerty</summary><label><input type="checkbox" id="discord-missing-buildings"> Brakujące budynki</label><small>Nasze sektory z mniej niż 2 budynkami, od 3:55 do 2:30 do otwarcia. Dotyczy wysyłania i kopiowania Discord.</small><label><input type="checkbox" id="discord-opening-alert"> Otwarcie sektorów — 5 min</label><label>Odstęp grupowania (min) <input type="number" id="discord-group-minutes" min="1" max="60" step="1"></label><label>Minimalna liczba sektorów w grupie <input type="number" id="discord-group-min-sectors" min="1" max="100" step="1"></label><label><input type="checkbox" id="discord-cutoff-alert"> Odcięcie pilnowanych sektorów</label><label>Pilnowany — brakujący postęp <input type="number" id="discord-guarded-progress" min="1" max="20" step="1"></label><small>Alarm odcięcia od razu po wzroście postępu wroga; znika po 15 s bez wzrostu. Nowy alert powiadamia oznaczenie z prefixu, edycje nie ponawiają pingu.</small></details><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label><input type="checkbox" id="discord-include-open"> Wysyłaj otwarte</label><label id="discord-open-position-label">Położenie otwartych <select id="discord-open-position"><option value="before">Przed zamkniętymi (nad)</option><option value="after">Po zamkniętych (pod)</option></select></label><small>Otwarte sektory są pomijane domyślnie. Ta opcja dotyczy także kopiowania 📋 Discord.</small><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limity liczby i czasu dotyczą zamkniętych sektorów.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
+    section.innerHTML='<summary>Discord</summary><details><summary>Alerty</summary><label><input type="checkbox" id="discord-missing-buildings"> Brakujące budynki</label><small>Nasze sektory z mniej niż 2 budynkami, od 3:55 do 2:30 do otwarcia. Dotyczy wysyłania i kopiowania Discord.</small><label><input type="checkbox" id="discord-opening-alert"> Otwarcie sektorów — 5 min</label><label><input type="checkbox" id="discord-single-race-only"> Pojedyncze alerty tylko dla wyścigów</label><small>Dotyczy każdego wyścigu, niezależnie od cyfry sektora. Grupy nadal obowiązują przy limicie większym od 0; przy limicie 0 wysyłane są tylko pojedyncze wyścigi. Wyjątek mniej niż 5 naszych sektorów nie omija tego filtra.</small><label>Odstęp grupowania (min) <input type="number" id="discord-group-minutes" min="1" max="60" step="1"></label><label>Limit grupy sektorów <input type="number" id="discord-group-min-sectors" min="0" max="100" step="1"></label><small>0 = osobny alert dla każdego sektora 5 min przed otwarciem. Wartość większa od 0 = minimalna liczba sektorów w grupie; nadal działają wyjątki dla ważnych wyścigów i mniej niż 5 naszych sektorów.</small><label><input type="checkbox" id="discord-cutoff-alert"> Odcięcie pilnowanych sektorów</label><label>Pilnowany — brakujący postęp <input type="number" id="discord-guarded-progress" min="1" max="20" step="1"></label><small>Próg wspólny dla alertu odcięcia i Zamykaj zagrożone (także ⚡). Alarm odcięcia od razu po wzroście postępu wroga; znika po 15 s bez wzrostu. Nowy alert powiadamia oznaczenie z prefixu, edycje nie ponawiają pingu.</small></details><label>Token bota <input type="text" id="discord-token" autocomplete="off" spellcheck="false" aria-label="Token bota Discord"></label><label>ID kanału <input type="text" id="discord-channel" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="ID kanału Discord"></label><label><input type="checkbox" id="discord-include-open"> Wysyłaj otwarte</label><label id="discord-open-position-label">Położenie otwartych <select id="discord-open-position"><option value="before">Przed zamkniętymi (nad)</option><option value="after">Po zamkniętych (pod)</option></select></label><small>Otwarte sektory są pomijane domyślnie. Ta opcja dotyczy także kopiowania 📋 Discord.</small><label>Limit liczby sektorów <input type="number" id="discord-max-sectors" min="0" max="500" step="1" value="0"></label><small>0 = bez limitu. Limity liczby i czasu dotyczą zamkniętych sektorów.</small><label>Limit czasu otwarcia (min) <input type="number" id="discord-max-minutes" min="0" max="10080" step="1" value="0"></label><small>0 = bez limitu. Możesz użyć limitu liczby sektorów, czasu albo obu naraz.</small><div class="settings-action-row" style="display:flex;justify-content:flex-end;margin:7px 0"><button type="button" id="discord-test">Sprawdź połączenie</button></div><small id="discord-status" role="status" style="display:block;margin:5px 0;white-space:normal"></small><small>Bot potrzebuje dostępu do kanału i wysyłania wiadomości. Rozpiska jest aktualizowana przez edycję zapisanej wiadomości.</small>';
     const quantum=settings.querySelector('#settings-quantum');(quantum||settings.lastElementChild)?.after(section);
     const textFields={};for(const key of ['prefix','suffix']){const label=document.createElement('label');label.style.cssText='display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;align-items:center';label.textContent=key==='prefix'?'Prefix — przed rozpiską':'Suffix — po rozpisce';const field=document.createElement('textarea');field.rows=3;field.maxLength=500;field.setAttribute('aria-label',key);field.style.cssText='width:100%;min-width:0;box-sizing:border-box;resize:vertical;background:#102126;color:#e7eeee';label.append(field);section.append(label);textFields[key]=field;}
     const openPosition=section.querySelector('#discord-open-position'),openPositionLabel=section.querySelector('#discord-open-position-label');
     const missingBuildings=section.querySelector('#discord-missing-buildings');
-    const alertFields={openingAlert:section.querySelector('#discord-opening-alert'),cutoffAlert:section.querySelector('#discord-cutoff-alert'),groupMinutes:section.querySelector('#discord-group-minutes'),groupMinSectors:section.querySelector('#discord-group-min-sectors'),guardedProgress:section.querySelector('#discord-guarded-progress')};
+    const alertFields={singleRaceOnly:section.querySelector('#discord-single-race-only'),openingAlert:section.querySelector('#discord-opening-alert'),cutoffAlert:section.querySelector('#discord-cutoff-alert'),groupMinutes:section.querySelector('#discord-group-minutes'),groupMinSectors:section.querySelector('#discord-group-min-sectors'),guardedProgress:section.querySelector('#discord-guarded-progress')};
     const paintAlertFields=()=>{for(const [key,field] of Object.entries(alertFields))if(typeof config[key]==='boolean')field.checked=config[key];else field.value=config[key];};
     const alertTracker=createAlertTracker();let loaded=false;
     const token=section.querySelector('#discord-token'),channel=section.querySelector('#discord-channel'),includeOpen=section.querySelector('#discord-include-open'),maxSectors=section.querySelector('#discord-max-sectors'),maxMinutes=section.querySelector('#discord-max-minutes'),test=section.querySelector('#discord-test'),status=section.querySelector('#discord-status');
@@ -278,7 +284,7 @@
       finally{busy=false;}
     };
     load().then(()=>{loaded=true;tick();});timer=setInterval(tick,POLL_MS);
-    return {refresh:tick,close(){clearInterval(timer);clearTimeout(saveTimer);storageGet(tabLockKey).then(lock=>{if(lock?.owner===ownId)storageRemove(tabLockKey);});}};
+    return {get guardedProgress(){return loaded?config.guardedProgress:null;},refresh:tick,close(){clearInterval(timer);clearTimeout(saveTimer);storageGet(tabLockKey).then(lock=>{if(lock?.owner===ownId)storageRemove(tabLockKey);});}};
   }
 
   globalThis.FoeDiscord={mount,buildText,discordPayload,appendBuildingAlerts,createAlertTracker};

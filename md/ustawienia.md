@@ -99,3 +99,7 @@ Notatka na dole panelu jest wspólna dla zakładki Ustawienia. Patrz [Notatki](w
 
 ### Format Discorda
 Prefix i suffix (do 500 znaków każde) dodają tekst przed i po rozpisce. Rozpiska jest blokiem kodu; przy dużej wiadomości może trafić do osadzonych bloków Discorda. Przycisk 📋 Discord kopiuje całość do ręcznego wklejenia. Kopiowanie nie wymaga skonfigurowanego bota.
+
+### Osobne porażki autoataku
+
+W Automatyzacja → Autoatak opcja **Wyłączaj osobno atak i obronę po 3 porażkach** jest domyślnie włączona. Trzy kolejne porażki na niebieskich odznaczają Obrona, a na czerwonych Atak. Wygrana zeruje tylko serię swojego typu. Drugi włączony typ działa dalej; gdy nie zostaje żaden, autoatak się zatrzymuje. Wyłączenie typu jest zapamiętywane także po odświeżeniu; ponownie zaznacz go ręcznie, aby wznowić. Po wyłączeniu opcji obowiązuje wspólny limit 3 porażek. Negocjacje nie zwiększają liczników.

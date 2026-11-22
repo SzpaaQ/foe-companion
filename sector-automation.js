@@ -60,7 +60,9 @@
    if(!ready){stop(null,'Brak gotowego połączenia — uruchom ponownie po odświeżeniu danych.');return;}
    if(negotiation&&Number.isFinite(attrition)&&attrition>config.maxAttrition)stop('negotiation','Opór przekracza limit negocjacji.');
    if(busy||now()<nextAt)return;
-   const sorted=[...rows].sort((a,b)=>Number(b.focused===true)-Number(a.focused===true)||a.until-b.until||a.id-b.id);
+   const rank=r=>r.ignored?2:r.focused?0:1;
+   const ring=r=>{const match=/^[A-Z](\d)[A-Z]$/i.exec(r.sector||'');return match?Number(match[1]):Infinity;};
+   const sorted=[...rows].sort((a,b)=>rank(a)-rank(b)||(ring(a)-ring(b)||0)||a.until-b.until||a.id-b.id);
    for(const kind of ['negotiation','attack']){
     if(!(kind==='attack'?attack:negotiation))continue;
     if(kind==='negotiation'&&!Number.isSafeInteger(attrition)){status='Oczekiwanie na odczyt oporu z mapy.';continue;}
